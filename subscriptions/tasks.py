@@ -1,3 +1,6 @@
+import json
+import requests
+
 from celery.task import Task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
@@ -8,16 +11,8 @@ from django.core.exceptions import ObjectDoesNotExist
 logger = get_task_logger(__name__)
 
 from .models import Subscription
-from mama_ng_control.apps.vumimessages.models import Outbound  # TODO
 from mama_ng_control.scheduler.client import SchedulerApiClient  # TODO
 from contentstore.models import Schedule, MessageSet, Message
-
-
-def scheduler_client():  # TODO
-    return SchedulerApiClient(
-        username=settings.SCHEDULER_USERNAME,
-        password=settings.SCHEDULER_PASSWORD,
-        api_url=settings.SCHEDULER_URL)
 
 
 class Schedule_Create(Task):
@@ -118,21 +113,28 @@ class Create_Message(Task):
                 # if more than one matching message in Content store due to
                 # poor management then we just use the first message
                 message = Message[0]
+
                 # Create the message which will trigger send task
-                new_message = Outbound()
-                new_message.contact_id = contact_id  # TODO
-                new_message.content = message.text_content  # message["text_content"] ?
-                new_message.metadata = {}
-                new_message.metadata["voice_speech_url"] = \
-                    message.binary_content.content  # TODO api call
-                new_message.metadata["subscription_id"] = subscription_id  # TODO
-                new_message.save()
-                return "New message created <%s>" % str(new_message.id)
+                outbound_data = {
+                    "contact_id": contact_id,
+                    "content": message.text_content,
+                    "metadata": {
+                        "voice_speech_url": message.binary_content.content,  # TODO
+                        "subscription_id": subscription_id
+                    }
+                }
+                result = requests.post(
+                    "%s/outbound/" % settings.MESSAGESTORE_URL,  # url
+                    headers={'Content-Type': 'application/json'},
+                    data=json.dumps(outbound_data),
+                    auth=(settings.MESSAGESTORE_USERNAME,
+                          settings.MESSAGESTORE_PASSWORD),  # TODO Different Auth?
+                    verify=False
+                )
+                return "New message created <%s>" % result.data["id"]  # TODO
             return "No message found for messageset <%s>, \
                     sequence_number <%s>, lang <%s>" % (
                 messageset_id, sequence_number, lang, )
-        except ObjectDoesNotExist:
-            logger.error('Missing Contact to message', exc_info=True)
 
         except SoftTimeLimitExceeded:
             logger.error(
