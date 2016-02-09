@@ -11,7 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 logger = get_task_logger(__name__)
 
 from .models import Subscription
-from mama_ng_control.scheduler.client import SchedulerApiClient  # TODO
+from scheduler.client import SchedulerApiClient
 from contentstore.models import Schedule, MessageSet, Message
 
 
@@ -21,12 +21,7 @@ class Schedule_Create(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.schedule_create"
 
-    class FailedEventRequest(Exception):  # TODO
-
-        """ The attempted task failed because of a non-200 HTTP return code.
-        """
-
-    def scheduler_client(self):  # TODO
+    def scheduler_client(self):
         return SchedulerApiClient(
             username=settings.SCHEDULER_USERNAME,
             password=settings.SCHEDULER_PASSWORD,
@@ -49,7 +44,7 @@ class Schedule_Create(Task):
         l.info("Creating schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
-            scheduler = self.scheduler_client()  # TODO
+            scheduler = self.scheduler_client()
             # get the subscription schedule/protocol from content store
             l.info("Loading contentstore schedule <%s>" % (
                 subscription.schedule,))
@@ -64,10 +59,10 @@ class Schedule_Create(Task):
                 "frequency": subscription.metadata["frequency"],
                 "sendCounter": subscription.next_sequence_number,
                 "cronDefinition": self.schedule_to_cron(csschedule),
-                "endpoint": "%s/subscriptions/%s/send" % (  # TODO ?
-                    settings.CONTROL_URL, subscription_id)
+                "endpoint": "%s/%s/send" % (
+                    settings.SUBSCRIPTIONS_URL, subscription_id)
             }
-            result = scheduler.create_schedule(schedule)  # TODO
+            result = scheduler.create_schedule(schedule)
             l.info("Created schedule <%s> on scheduler for sub <%s>" % (
                 result["id"], subscription_id))
             subscription.metadata["scheduler_schedule_id"] = result["id"]
@@ -92,11 +87,6 @@ class Create_Message(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.create_message"
 
-    class FailedEventRequest(Exception):
-
-        """ The attempted task failed because of a non-200 HTTP return code.
-        """
-
     def run(self, contact_id, messageset_id, sequence_number, lang,
             subscription_id, **kwargs):
         """ Returns success message
@@ -119,19 +109,19 @@ class Create_Message(Task):
                     "contact_id": contact_id,
                     "content": message.text_content,
                     "metadata": {
-                        "voice_speech_url": message.binary_content.content,  # TODO
+                        "voice_speech_url": message.binary_content.content,
                         "subscription_id": subscription_id
                     }
                 }
                 result = requests.post(
-                    "%s/outbound/" % settings.MESSAGESTORE_URL,  # url
-                    headers={'Content-Type': 'application/json'},
+                    "%s/outbound/" % settings.MESSAGESTORE_URL,
+                    headers={'Content-Type': 'application/json',
+                             'Authorisation': 'Token %s' % (
+                                 settings.MESSAGESTORE_API_TOKEN)},
                     data=json.dumps(outbound_data),
-                    auth=(settings.MESSAGESTORE_USERNAME,
-                          settings.MESSAGESTORE_PASSWORD),  # TODO Different Auth?
                     verify=False
                 )
-                return "New message created <%s>" % result.data["id"]  # TODO
+                return "New message created <%s>" % result.data["id"]
             return "No message found for messageset <%s>, \
                     sequence_number <%s>, lang <%s>" % (
                 messageset_id, sequence_number, lang, )
