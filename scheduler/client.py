@@ -18,7 +18,7 @@ class SchedulerApiClient(object):
 
     :param str api_url:
         The full URL of the API. Defaults to
-        ``http://testserver/hello-mama/api/v1``.
+        ``http://testserver/seed-project/api/v1``.
 
     """
 
