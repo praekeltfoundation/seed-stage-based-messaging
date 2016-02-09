@@ -154,3 +154,11 @@ CELERY_ACCEPT_CONTENT = ['json']
 
 import djcelery
 djcelery.setup_loader()
+
+BASE_URL = 'http://testserver/hello-mama/api/v1'
+SCHEDULER_URL = '%s/scheduler' % BASE_URL
+SUBSCRIPTIONS_URL = '%s/subscriptions' % BASE_URL
+MESSAGESTORE_URL = '%s/messagestore' % BASE_URL
+
+SCHEDULER_API_TOKEN = 'scheduler_API_TOKEN'
+MESSAGESTORE_API_TOKEN = 'messagestore_API_TOKEN'
