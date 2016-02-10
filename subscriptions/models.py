@@ -35,4 +35,4 @@ from .tasks import schedule_create
 @receiver(post_save, sender=Subscription)
 def fire_sub_action_if_new(sender, instance, created, **kwargs):
     if created:
-        schedule_create.delay(str(instance.id))
+        schedule_create.apply_async(args=[str(instance.id)])
