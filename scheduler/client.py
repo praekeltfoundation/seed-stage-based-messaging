@@ -18,13 +18,13 @@ class SchedulerApiClient(object):
 
     :param str api_url:
         The full URL of the API. Defaults to
-        ``http://testserver/seed-project/api/v1``.
+        ``http://seed-project/api/v1``.
 
     """
 
     def __init__(self, api_token, api_url=None, session=None):
         if api_url is None:
-            api_url = "http://testserver/hello-mama/api/v1"
+            api_url = "http://seed-project/api/v1"
         self.api_url = api_url
         self.headers = {
             'Content-Type': 'application/json',
