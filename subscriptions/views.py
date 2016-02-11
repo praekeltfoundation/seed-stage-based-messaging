@@ -6,7 +6,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer
-from .tasks import create_message
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -44,13 +43,8 @@ class SubscriptionSend(APIView):
                 subscription.metadata["scheduler_message_id"] = \
                     request.data["message-id"]
                 subscription.save()
-                # Create and populate the message which will trigger send task
-                create_message.apply_async(args=[
-                    str(subscription.contact.id),
-                    subscription.messageset_id,
-                    subscription.next_sequence_number,
-                    subscription.lang,
-                    str(subscription.id)])
+                # TODO: add success signal for listener so message can be
+                # created
                 # Return
                 status = 201
                 accepted = {"accepted": True}
