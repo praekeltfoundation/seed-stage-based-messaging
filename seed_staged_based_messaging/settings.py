@@ -155,7 +155,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 
 djcelery.setup_loader()
 
-BASE_URL = 'http://testserver/seed-project/api/v1'
+BASE_URL = 'http://seed-project/api/v1'
 
 SUBSCRIPTIONS_URL = '%s/subscriptions' % BASE_URL
 
