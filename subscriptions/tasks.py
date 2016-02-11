@@ -20,17 +20,16 @@ class Schedule_Create(Task):
 
     def scheduler_client(self):
         return SchedulerApiClient(
-            username=settings.SCHEDULER_USERNAME,
-            password=settings.SCHEDULER_PASSWORD,
+            api_token=settings.SCHEDULER_API_TOKEN,
             api_url=settings.SCHEDULER_URL)
 
     def schedule_to_cron(self, schedule):
         return "%s %s %s %s %s" % (
-            schedule["minute"],
-            schedule["hour"],
-            schedule["day_of_month"],
-            schedule["month_of_year"],
-            schedule["day_of_week"]
+            schedule.minute,
+            schedule.hour,
+            schedule.day_of_month,
+            schedule.month_of_year,
+            schedule.day_of_week
         )
 
     def run(self, subscription_id, **kwargs):
@@ -49,10 +48,10 @@ class Schedule_Create(Task):
             # get the messageset length for frequency
             messageset = MessageSet.objects.get(pk=subscription.messageset_id)
             subscription.metadata["frequency"] = \
-                str(len(messageset["messages"]))
+                str(len(messageset.messages.all()))
             # Build the schedule POST create object
             schedule = {
-                "subscriptionId": subscription_id,
+                "subscriptionId": str(subscription_id),
                 "frequency": subscription.metadata["frequency"],
                 "sendCounter": subscription.next_sequence_number,
                 "cronDefinition": self.schedule_to_cron(csschedule),
