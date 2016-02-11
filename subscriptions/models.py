@@ -4,6 +4,7 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.contrib.auth.models import User
 
 
 class Subscription(models.Model):
@@ -24,6 +25,11 @@ class Subscription(models.Model):
     metadata = JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, related_name='registrations_created',
+                                   null=True)
+    updated_by = models.ForeignKey(User, related_name='registrations_updated',
+                                   null=True)
+    user = property(lambda self: self.created_by)
 
     def __str__(self):  # __unicode__ on Python 2
         return str(self.id)
