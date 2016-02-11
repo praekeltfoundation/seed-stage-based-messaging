@@ -30,11 +30,14 @@ class Schedule(models.Model):
         ordering = ['month_of_year', 'day_of_month',
                     'day_of_week', 'hour', 'minute']
 
+    def rfield(s):
+        return s and str(s).replace(' ', '') or '*'
+
     def __unicode__(self):
-        rfield = lambda f: f and str(f).replace(' ', '') or '*'
         return u'{0} {1} {2} {3} {4} (m/h/d/dM/MY)'.format(
-            rfield(self.minute), rfield(self.hour), rfield(self.day_of_week),
-            rfield(self.day_of_month), rfield(self.month_of_year),
+            self.rfield(self.minute), self.rfield(self.hour),
+            self.rfield(self.day_of_week), self.rfield(self.day_of_month),
+            self.rfield(self.month_of_year),
         )
 
 
