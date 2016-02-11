@@ -1,10 +1,12 @@
-import os.path
-from django.db import models
-from rest_framework.serializers import ValidationError
-from django.utils.translation import ugettext_lazy as _
 from datetime import datetime
+import os.path
+from rest_framework.serializers import ValidationError
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Schedule(models.Model):
 
     """
@@ -30,17 +32,18 @@ class Schedule(models.Model):
         ordering = ['month_of_year', 'day_of_month',
                     'day_of_week', 'hour', 'minute']
 
-    def rfield(s):
+    def rfield(self, s):
         return s and str(s).replace(' ', '') or '*'
 
-    def __unicode__(self):
-        return u'{0} {1} {2} {3} {4} (m/h/d/dM/MY)'.format(
+    def __str__(self):
+        return '{0} {1} {2} {3} {4} (m/h/d/dM/MY)'.format(
             self.rfield(self.minute), self.rfield(self.hour),
             self.rfield(self.day_of_week), self.rfield(self.day_of_month),
             self.rfield(self.month_of_year),
         )
 
 
+@python_2_unicode_compatible
 class MessageSet(models.Model):
 
     """
@@ -58,8 +61,8 @@ class MessageSet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __unicode__(self):
-        return u"%s" % self.short_name
+    def __str__(self):
+        return "%s" % self.short_name
 
 
 def generate_new_filename(instance, filename):
@@ -67,6 +70,7 @@ def generate_new_filename(instance, filename):
     return "%s%s" % (datetime.now().strftime("%Y%m%d%H%M%S%f"), ext)
 
 
+@python_2_unicode_compatible
 class BinaryContent(models.Model):
     """
         File store for reference in messages. Storage method handle by
@@ -78,10 +82,11 @@ class BinaryContent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __unicode__(self):
-        return u"%s" % (self.content.path.split('/')[-1])
+    def __str__(self):
+        return "%s" % (self.content.path.split('/')[-1])
 
 
+@python_2_unicode_compatible
 class Message(models.Model):
 
     """
@@ -112,6 +117,6 @@ class Message(models.Model):
         self.clean()
         super(Message, self).save(*args, **kwargs)
 
-    def __unicode__(self):
+    def __str__(self):
         return _("Message %s in %s from %s") % (
             self.sequence_number, self.lang, self.messageset.short_name)
