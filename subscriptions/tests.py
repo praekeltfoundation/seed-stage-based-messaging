@@ -126,20 +126,54 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
+    def test_read_subscription_data(self):
+        # Setup
+        existing = self.make_subscription()
+        # Execute
+        response = self.client.get('/api/v1/subscriptions/%s/' % existing.id,
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        d = Subscription.objects.last()
+        self.assertIsNotNone(d.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset_id, 2)
+        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.schedule, 1)
+        self.assertEqual(d.process_status, 0)
+        self.assertEqual(d.metadata["source"], "RapidProVoice")
+
     def test_update_subscription_data(self):
+        # Setup
         existing = self.make_subscription()
         patch_subscription = {
             "next_sequence_number": 10,
             "active": False,
             "completed": True
         }
+        # Execute
         response = self.client.patch('/api/v1/subscriptions/%s/' % existing.id,
                                      json.dumps(patch_subscription),
                                      content_type='application/json')
+        # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         d = Subscription.objects.get(pk=existing.id)
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.next_sequence_number, 10)
         self.assertEqual(d.lang, "en_ZA")
+
+    def test_delete_subscription_data(self):
+        # Setup
+        existing = self.make_subscription()
+        # Execute
+        response = self.client.delete(
+            '/api/v1/subscriptions/%s/' % existing.id,
+            content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        d = Subscription.objects.filter(id=existing.id).count()
+        self.assertEqual(d, 0)
