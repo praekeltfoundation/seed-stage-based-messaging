@@ -1,4 +1,4 @@
-import responses
+# import responses
 import json
 
 from django.contrib.auth.models import User

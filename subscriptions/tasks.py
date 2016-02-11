@@ -5,11 +5,11 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
-logger = get_task_logger(__name__)
-
 from .models import Subscription
 from scheduler.client import SchedulerApiClient
 from contentstore.models import Schedule, MessageSet
+
+logger = get_task_logger(__name__)
 
 
 class Schedule_Create(Task):
