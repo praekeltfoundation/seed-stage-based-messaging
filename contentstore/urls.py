@@ -12,8 +12,8 @@ router.register(r'binarycontent', views.BinaryContentViewSet)
 # Additionally, we include login URLs for the browseable API.
 urlpatterns = [
     url(r'^api/v1/', include(router.urls)),
-    url(r'^message/(?P<pk>.+)/content$',
+    url(r'^api/v1/message/(?P<pk>.+)/content$',
         views.MessagesContentView.as_view({'get': 'retrieve'})),
-    url(r'^messageset/(?P<pk>.+)/messages$',
+    url(r'^api/v1/messageset/(?P<pk>.+)/messages$',
         views.MessagesetMessagesContentView.as_view({'get': 'retrieve'})),
 ]
