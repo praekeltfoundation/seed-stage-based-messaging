@@ -43,6 +43,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # 3rd party
+    'djcelery',
     'raven.contrib.django.raven_compat',
     'rest_framework',
     'rest_framework.authtoken',
@@ -155,9 +156,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 djcelery.setup_loader()
 
 BASE_URL = 'http://testserver/seed-project/api/v1'
-SCHEDULER_URL = '%s/scheduler' % BASE_URL
-SUBSCRIPTIONS_URL = '%s/subscriptions' % BASE_URL
-MESSAGESTORE_URL = '%s/messagestore' % BASE_URL
 
-SCHEDULER_API_TOKEN = 'scheduler_API_TOKEN'
-MESSAGESTORE_API_TOKEN = 'messagestore_API_TOKEN'
+SUBSCRIPTIONS_URL = '%s/subscriptions' % BASE_URL
+
+SCHEDULER_URL = '%s/scheduler' % BASE_URL
+SCHEDULER_API_TOKEN = 'scheduler_api_token'
