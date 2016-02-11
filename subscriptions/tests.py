@@ -3,12 +3,13 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.db.models.signals import post_save
 
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from .models import Subscription
+from .models import Subscription, fire_sub_action_if_new
 
 
 class APITestCase(TestCase):
@@ -19,8 +20,45 @@ class APITestCase(TestCase):
 
 class AuthenticatedAPITestCase(APITestCase):
 
+    def make_subscription(self):
+        post_data = {
+            "contact": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset_id": 2,
+            "next_sequence_number": 1,
+            "lang": "en_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": 1,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        return Subscription.objects.create(**post_data)
+
+    def _replace_post_save_hooks(self):
+        def has_listeners():
+            return post_save.has_listeners(Subscription)
+        assert has_listeners(), (
+            "Subscription model has no post_save listeners. Make sure"
+            " helpers cleaned up properly in earlier tests.")
+        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+        assert not has_listeners(), (
+            "Subscription model still has post_save listeners. Make sure"
+            " helpers cleaned up properly in earlier tests.")
+
+    def _restore_post_save_hooks(self):
+        def has_listeners():
+            return post_save.has_listeners(Subscription)
+        assert not has_listeners(), (
+            "Subscription model still has post_save listeners. Make sure"
+            " helpers removed them properly in earlier tests.")
+        post_save.connect(fire_sub_action_if_new, sender=Subscription)
+
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
+        self._replace_post_save_hooks()
+
         self.username = 'testuser'
         self.password = 'testpass'
         self.user = User.objects.create_user(self.username,
@@ -29,6 +67,9 @@ class AuthenticatedAPITestCase(APITestCase):
         token = Token.objects.create(user=self.user)
         self.token = token.key
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+
+    def tearDown(self):
+        self._restore_post_save_hooks()
 
 
 class TestLogin(AuthenticatedAPITestCase):
@@ -52,46 +93,27 @@ class TestLogin(AuthenticatedAPITestCase):
 
 class TestSubscriptionsAPI(AuthenticatedAPITestCase):
 
-    @responses.activate
     def test_create_subscription_data(self):
-
-        schedule = {
-            "class": "mama.ng.scheduler.Schedule",
-            "id": "1",
-            "cronDefinition": "1 2 3 4 5",
-            "dateCreated": "2015-04-05T21:59:28Z",
-            "endpoint": "http://examplecontrol.com/api/v1",
-            "frequency": 10,
-            "messages": None,
-            "nextSend": "2015-04-05T22:00:00Z",
-            "sendCounter": 0,
-            "subscriptionId": "1234"
-        }
-
-        responses.add(
-            responses.GET,
-            "http://127.0.0.1:8000/mama-ng-scheduler/rest/schedules",
-            json.dumps(schedule),
-            status=200, content_type='application/json')
-
+        # Setup
         post_subscription = {
-            "contact": "/api/v1/contacts/%s/" % self.contact,
-            "messageset_id": "1",
-            "next_sequence_number": "1",
+            "contact": "7646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset_id": 1,
+            "next_sequence_number": 1,
             "lang": "en_ZA",
-            "active": "true",
-            "completed": "false",
-            "schedule": "1",
-            "process_status": "0",
+            "active": True,
+            "completed": False,
+            "schedule": 1,
+            "process_status": 0,
             "metadata": {
                 "source": "RapidProVoice"
             }
         }
+        # Execute
         response = self.client.post('/api/v1/subscriptions/',
                                     json.dumps(post_subscription),
                                     content_type='application/json')
+        # Check
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
         d = Subscription.objects.last()
         self.assertIsNotNone(d.id)
         self.assertEqual(d.version, 1)
@@ -103,3 +125,21 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.schedule, 1)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
+
+    def test_update_subscription_data(self):
+        existing = self.make_subscription()
+        patch_subscription = {
+            "next_sequence_number": 10,
+            "active": False,
+            "completed": True
+        }
+        response = self.client.patch('/api/v1/subscriptions/%s/' % existing.id,
+                                     json.dumps(patch_subscription),
+                                     content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        d = Subscription.objects.get(pk=existing.id)
+        self.assertEqual(d.active, False)
+        self.assertEqual(d.completed, True)
+        self.assertEqual(d.next_sequence_number, 10)
+        self.assertEqual(d.lang, "en_ZA")
