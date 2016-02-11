@@ -5,8 +5,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .tasks import schedule_create
-
 
 class Subscription(models.Model):
 
@@ -34,5 +32,6 @@ class Subscription(models.Model):
 # Make sure new subscriptions are created on scheduler
 @receiver(post_save, sender=Subscription)
 def fire_sub_action_if_new(sender, instance, created, **kwargs):
+    from .tasks import schedule_create
     if created:
         schedule_create.apply_async(args=[str(instance.id)])
