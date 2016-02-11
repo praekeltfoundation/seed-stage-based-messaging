@@ -1,4 +1,4 @@
-# import responses
+import responses
 import json
 
 from django.contrib.auth.models import User
@@ -10,6 +10,8 @@ from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
 from .models import Subscription, fire_sub_action_if_new
+from contentstore.models import Schedule, MessageSet, BinaryContent, Message
+from .tasks import schedule_create
 
 
 class APITestCase(TestCase):
@@ -177,3 +179,98 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         d = Subscription.objects.filter(id=existing.id).count()
         self.assertEqual(d, 0)
+
+
+class TestCreateScheduleTask(AuthenticatedAPITestCase):
+
+    @responses.activate
+    def test_create_schedule_task(self):
+        # Setup
+        # make schedule
+        schedule_data = {
+            "minute": "1",
+            "hour": "6",
+            "day_of_week": "1",
+            "day_of_month": "*",
+            "month_of_year": "*"
+        }
+        schedule = Schedule.objects.create(**schedule_data)
+
+        # make messageset
+        messageset_data = {
+            "short_name": "pregnancy",
+            "notes": "Base pregancy set",
+            "next_set": None,
+            "default_schedule": schedule
+        }
+        messageset = MessageSet.objects.create(**messageset_data)
+
+        # make binarycontent
+        binarycontent_data1 = {
+            "content": "fakefilename",
+        }
+        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
+        binarycontent_data2 = {
+            "content": "fakefilename",
+        }
+        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
+
+        # make messages
+        message_data1 = {
+            "messageset": messageset,
+            "sequence_number": 1,
+            "lang": "en_ZA",
+            "binary_content": binarycontent1,
+        }
+        Message.objects.create(**message_data1)
+        message_data2 = {
+            "messageset": messageset,
+            "sequence_number": 2,
+            "lang": "en_ZA",
+            "binary_content": binarycontent2,
+        }
+        Message.objects.create(**message_data2)
+
+        # make subscription
+        post_data = {
+            "contact": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset_id": messageset.id,
+            "next_sequence_number": 1,
+            "lang": "en_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": schedule.id,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        existing = Subscription.objects.create(**post_data)
+
+        # Create schedule
+        schedule_post = {
+            "class": "seedproject.scheduler.Schedule",
+            "id": "11",
+            "cronDefinition": "1 6 1 * *",
+            "dateCreated": "2015-04-05T21:59:28Z",
+            "endpoint": "%s/%s/%s/send" % (
+                "http://seed-project/api/v1",
+                "subscriptions",
+                str(existing.id)),
+            "frequency": 10,
+            "messages": None,
+            "nextSend": "2015-04-05T22:00:00Z",
+            "sendCounter": 0,
+            "subscriptionId": str(existing.id)
+        }
+        responses.add(responses.POST,
+                      "http://seed-project/api/v1/scheduler/schedules",
+                      json.dumps(schedule_post),
+                      status=200, content_type='application/json')
+
+        result = schedule_create.apply_async(args=[existing.id])
+        self.assertEqual(int(result.get()), 11)
+
+        d = Subscription.objects.get(pk=existing.id)
+        self.assertIsNotNone(d.id)
+        self.assertEqual(d.metadata["scheduler_schedule_id"], "11")
