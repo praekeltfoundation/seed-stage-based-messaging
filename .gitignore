@@ -19,9 +19,10 @@ lib64/
 parts/
 sdist/
 var/
+bin/
 *.egg-info/
-.installed.cfg
 *.egg
+.installed.cfg
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -55,3 +56,13 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+/ve/
+logs/*.log
+*.pid
+local_settings.py
+.DS_Store
