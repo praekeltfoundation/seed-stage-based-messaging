@@ -274,3 +274,69 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
         d = Subscription.objects.get(pk=existing.id)
         self.assertIsNotNone(d.id)
         self.assertEqual(d.metadata["scheduler_schedule_id"], "11")
+
+
+class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
+
+    def test_webhook_subscription_data_good(self):
+        # Setup
+        post_webhook = {
+            "hook": {
+                "id": 5,
+                "event": "subscriptionrequest.added",
+                "target": "http://example.com/api/v1/subscriptions/request"
+            },
+            "data": {
+                "messageset_id": 1,
+                "updated_at": "2016-02-17T07:59:42.831568+00:00",
+                "contact": "7646b7bc-b511-4965-a90b-e1145e398703",
+                "lang": "en_ZA",
+                "created_at": "2016-02-17T07:59:42.831533+00:00",
+                "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
+                "next_sequence_number": 1,
+                "schedule": 1
+            }
+        }
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/request',
+                                    json.dumps(post_webhook),
+                                    content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.last()
+        self.assertIsNotNone(d.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset_id, 1)
+        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.schedule, 1)
+        self.assertEqual(d.process_status, 0)
+
+    def test_webhook_subscription_data_bad(self):
+        # Setup with missing contact
+        post_webhook = {
+            "hook": {
+                "id": 5,
+                "event": "subscriptionrequest.added",
+                "target": "http://example.com/api/v1/subscriptions/request"
+            },
+            "data": {
+                "messageset_id": 1,
+                "updated_at": "2016-02-17T07:59:42.831568+00:00",
+                "lang": "en_ZA",
+                "created_at": "2016-02-17T07:59:42.831533+00:00",
+                "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
+                "next_sequence_number": 1,
+                "schedule": 1
+            }
+        }
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/request',
+                                    json.dumps(post_webhook),
+                                    content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(),
+                         {"contact": ["This field is required."]})

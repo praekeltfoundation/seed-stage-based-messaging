@@ -57,3 +57,24 @@ class SubscriptionSend(APIView):
             accepted = {"accepted": False,
                         "reason": "Missing subscription in control"}
         return Response(accepted, status=status)
+
+
+class SubscriptionRequest(APIView):
+
+    """ Webhook listener for registrations now needing a subscription
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """ Validates subscription data before creating Subscription message
+        """
+        # This is a workaround for JSONField not liking blank/null refs
+        if "metadata" not in request.data["data"]:
+            request.data["data"]["metadata"] = {}
+        subscription = SubscriptionSerializer(data=request.data["data"])
+        if subscription.is_valid(raise_exception=True):
+            subscription.save()
+            # Return
+            status = 201
+            accepted = {"accepted": True}
+            return Response(accepted, status=status)
