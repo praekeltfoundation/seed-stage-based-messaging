@@ -1,5 +1,5 @@
 """
-Django settings for seed_staged_based_messaging project.
+Django settings for seed_stage_based_messaging project.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/1.9/topics/settings/
@@ -64,9 +64,9 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'seed_staged_based_messaging.urls'
+ROOT_URLCONF = 'seed_stage_based_messaging.urls'
 
-WSGI_APPLICATION = 'seed_staged_based_messaging.wsgi.application'
+WSGI_APPLICATION = 'seed_stage_based_messaging.wsgi.application'
 
 
 # Database
@@ -76,7 +76,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get(
             'SUBSCRIPTIONS_DATABASE',
-            'postgres://postgres:@localhost/seed_staged_based_messaging')),
+            'postgres://postgres:@localhost/seed_stage_based_messaging')),
 }
 
 
@@ -135,11 +135,11 @@ CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
 
 BROKER_URL = os.environ.get('RABBITMQ_URL', 'redis://localhost:6379/0')
 
-CELERY_DEFAULT_QUEUE = 'seed_staged_based_messaging'
+CELERY_DEFAULT_QUEUE = 'seed_stage_based_messaging'
 CELERY_QUEUES = (
-    Queue('seed_staged_based_messaging',
-          Exchange('seed_staged_based_messaging'),
-          routing_key='seed_staged_based_messaging'),
+    Queue('seed_stage_based_messaging',
+          Exchange('seed_stage_based_messaging'),
+          routing_key='seed_stage_based_messaging'),
 )
 
 CELERY_ALWAYS_EAGER = False

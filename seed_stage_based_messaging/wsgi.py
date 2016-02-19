@@ -1,5 +1,5 @@
 """
-WSGI config for seed_staged_based_messaging project.
+WSGI config for seed_stage_based_messaging project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -12,6 +12,6 @@ from dj_static import Cling
 from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE",
-                      "seed_staged_based_messaging.settings")
+                      "seed_stage_based_messaging.settings")
 
 application = Cling(get_wsgi_application())
