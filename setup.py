@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="hellomama-registration",
+    name="seed-stage-based-messaging",
     version="0.1",
-    url='http://github.com/praekelt/hellomama-registration',
+    url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
     author='Praekelt Foundation',
     author_email='dev@praekeltfoundation.org',

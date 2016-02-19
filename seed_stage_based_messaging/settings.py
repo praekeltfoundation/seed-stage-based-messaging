@@ -75,7 +75,7 @@ WSGI_APPLICATION = 'seed_stage_based_messaging.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get(
-            'SUBSCRIPTIONS_DATABASE',
+            'STAGE_BASED_MESSAGING_DATABASE',
             'postgres://postgres:@localhost/seed_stage_based_messaging')),
 }
 
@@ -112,7 +112,7 @@ STATIC_URL = '/static/'
 # Sentry configuration
 RAVEN_CONFIG = {
     # DevOps will supply you with this.
-    'dsn': os.environ.get('SUBSCRIPTIONS_SENTRY_DSN', None),
+    'dsn': os.environ.get('STAGE_BASED_MESSAGING_SENTRY_DSN', None),
 }
 
 # REST Framework conf defaults
