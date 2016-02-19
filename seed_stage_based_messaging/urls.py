@@ -3,7 +3,7 @@ from django.conf.urls import patterns, include, url
 from django.contrib import admin
 
 admin.site.site_header = os.environ.get('SUBSCRIPTIONS_TITLE',
-                                        'Seed Staged Based Messaging Admin')
+                                        'Seed Stage Based Messaging Admin')
 
 
 urlpatterns = patterns(

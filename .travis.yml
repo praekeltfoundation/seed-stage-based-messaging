@@ -7,8 +7,8 @@ addons:
 services:
   - postgresql
 install:
-  - "pip install -r requirements.txt --use-wheel"
+  - "pip install -e . --use-mirrors"
   - "pip install -r requirements-dev.txt --use-wheel"
 script:
   - flake8 .
-  - py.test --ds=seed_staged_based_messaging.testsettings */tests.py
+  - py.test --ds=seed_stage_based_messaging.testsettings */tests.py

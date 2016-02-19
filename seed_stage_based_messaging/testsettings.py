@@ -1,4 +1,4 @@
-from seed_staged_based_messaging.settings import *  # flake8: noqa
+from seed_stage_based_messaging.settings import *  # flake8: noqa
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'TESTSEKRET'

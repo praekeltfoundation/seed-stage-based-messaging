@@ -8,9 +8,9 @@ from django.conf import settings
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE',
-                      'seed_staged_based_messaging.settings')
+                      'seed_stage_based_messaging.settings')
 
-app = Celery('seed_staged_based_messaging')
+app = Celery('')
 
 # Using a string here means the worker will not have to
 # pickle the object when using Windows.
