@@ -11,10 +11,10 @@ from django.utils.encoding import python_2_unicode_compatible
 @python_2_unicode_compatible
 class Subscription(models.Model):
 
-    """ Contacts subscriptions and their status
+    """ Identity subscriptions and their status
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    contact = models.CharField(max_length=36, null=False, blank=False)
+    identity = models.CharField(max_length=36, null=False, blank=False)
     version = models.IntegerField(default=1)
     messageset_id = models.IntegerField(null=False, blank=False)
     next_sequence_number = models.IntegerField(default=1, null=False,

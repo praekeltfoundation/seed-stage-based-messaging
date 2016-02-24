@@ -10,6 +10,6 @@ class SubscriptionSerializer(serializers.HyperlinkedModelSerializer):
         model = Subscription
         read_only_fields = ('url', 'id', 'created_at', 'updated_at')
         fields = (
-            'url', 'id', 'version', 'contact', 'messageset_id',
+            'url', 'id', 'version', 'identity', 'messageset_id',
             'next_sequence_number', 'lang', 'active', 'completed', 'schedule',
             'process_status', 'metadata', 'created_at', 'updated_at')
