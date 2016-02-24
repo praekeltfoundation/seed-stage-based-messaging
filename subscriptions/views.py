@@ -15,7 +15,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    filter_fields = ('contact', 'messageset_id', 'lang', 'active', 'completed',
+    filter_fields = ('identity', 'messageset_id', 'lang', 'active', 'completed',
                      'schedule', 'process_status', 'metadata',)
 
 

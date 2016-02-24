@@ -24,7 +24,7 @@ class AuthenticatedAPITestCase(APITestCase):
 
     def make_subscription(self):
         post_data = {
-            "contact": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset_id": 2,
             "next_sequence_number": 1,
             "lang": "en_ZA",
@@ -98,7 +98,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
     def test_create_subscription_data(self):
         # Setup
         post_subscription = {
-            "contact": "7646b7bc-b511-4965-a90b-e1145e398703",
+            "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
             "messageset_id": 1,
             "next_sequence_number": 1,
             "lang": "en_ZA",
@@ -233,7 +233,7 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
 
         # make subscription
         post_data = {
-            "contact": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset_id": messageset.id,
             "next_sequence_number": 1,
             "lang": "en_ZA",
@@ -289,7 +289,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
             "data": {
                 "messageset_id": 1,
                 "updated_at": "2016-02-17T07:59:42.831568+00:00",
-                "contact": "7646b7bc-b511-4965-a90b-e1145e398703",
+                "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
                 "lang": "en_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
@@ -315,7 +315,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
 
     def test_webhook_subscription_data_bad(self):
-        # Setup with missing contact
+        # Setup with missing identity
         post_webhook = {
             "hook": {
                 "id": 5,
@@ -339,4 +339,4 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
         # Check
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json(),
-                         {"contact": ["This field is required."]})
+                         {"identity": ["This field is required."]})
