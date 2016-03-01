@@ -32,6 +32,14 @@ class Schedule(models.Model):
         ordering = ['month_of_year', 'day_of_month',
                     'day_of_week', 'hour', 'minute']
 
+    @property
+    def cron_string(self):
+        return '{0} {1} {2} {3} {4}'.format(
+            self.rfield(self.minute), self.rfield(self.hour),
+            self.rfield(self.day_of_week), self.rfield(self.day_of_month),
+            self.rfield(self.month_of_year),
+        )
+
     def rfield(self, s):
         return s and str(s).replace(' ', '') or '*'
 

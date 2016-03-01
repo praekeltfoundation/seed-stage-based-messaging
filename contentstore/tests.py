@@ -59,6 +59,31 @@ class TestLogin(AuthenticatedAPITestCase):
 
 class TestContentStoreApi(AuthenticatedAPITestCase):
 
+    # Schedule testing
+    def test_read_schedule(self):
+        # Setup
+        existing = self.make_schedule()
+        # Execute
+        response = self.client.get('/api/v1/schedule/%s/' % existing.id,
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['hour'], '1')
+        d = Schedule.objects.last()
+        self.assertEqual(d.cron_string, '* 1 * * *')
+
+    def test_filter_schedule(self):
+        # Setup
+        existing = self.make_schedule()
+        # Execute
+        response = self.client.get('/api/v1/schedule/%s/' % existing.id,
+                                   {'cron_string':  '* 1 * * *'},
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], existing.id)
+
+    # MessageSet testing
     def test_create_messageset(self):
         # Setup
         existing_schedule = self.make_schedule()
