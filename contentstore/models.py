@@ -51,8 +51,8 @@ class MessageSet(models.Model):
         a particular schedule
     """
     CONTENT_TYPES = (
-        ("sms", 'SMS'),
-        ("voice", 'Voice')
+        ("text", 'Text'),
+        ("audio", 'Audio')
     )
 
     short_name = models.CharField(_('Short name'), max_length=20, unique=True)
@@ -63,7 +63,8 @@ class MessageSet(models.Model):
     default_schedule = models.ForeignKey(Schedule,
                                          related_name='message_sets',
                                          null=False)
-    content_type = models.CharField(choices=CONTENT_TYPES, max_length=20)
+    content_type = models.CharField(choices=CONTENT_TYPES, max_length=20,
+                                    default='text')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
