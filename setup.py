@@ -17,7 +17,7 @@ setup(
         'raven==5.10.0',
         'gunicorn==19.4.5',
         'django-filter==0.12.0',
-        'dj-static==0.0.6',
+        'whitenoise==2.0.6',
         'celery==3.1.19',
         'django-celery==3.1.17',
         'redis==2.10.5',
