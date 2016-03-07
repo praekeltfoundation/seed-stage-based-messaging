@@ -32,6 +32,14 @@ class Schedule(models.Model):
         ordering = ['month_of_year', 'day_of_month',
                     'day_of_week', 'hour', 'minute']
 
+    @property
+    def cron_string(self):
+        return '{0} {1} {2} {3} {4}'.format(
+            self.rfield(self.minute), self.rfield(self.hour),
+            self.rfield(self.day_of_week), self.rfield(self.day_of_month),
+            self.rfield(self.month_of_year),
+        )
+
     def rfield(self, s):
         return s and str(s).replace(' ', '') or '*'
 
@@ -50,6 +58,11 @@ class MessageSet(models.Model):
         Details about a set of messages that a recipient can be sent on
         a particular schedule
     """
+    CONTENT_TYPES = (
+        ("text", 'Text'),
+        ("audio", 'Audio')
+    )
+
     short_name = models.CharField(_('Short name'), max_length=20, unique=True)
     notes = models.TextField(_('Notes'), null=True, blank=True)
     next_set = models.ForeignKey('self',
@@ -58,6 +71,8 @@ class MessageSet(models.Model):
     default_schedule = models.ForeignKey(Schedule,
                                          related_name='message_sets',
                                          null=False)
+    content_type = models.CharField(choices=CONTENT_TYPES, max_length=20,
+                                    default='text')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
