@@ -13,8 +13,6 @@ from .models import Subscription, fire_sub_action_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import schedule_create
 
-from contentstore.models import Schedule, MessageSet
-
 
 class APITestCase(TestCase):
 
@@ -289,7 +287,7 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
                       status=200, content_type='application/json')
 
         result = schedule_create.apply_async(args=[str(existing.id)])
-        # self.assertEqual(int(result.get()), 11)
+        self.assertEqual(int(result.get()), 11)
 
         d = Subscription.objects.get(pk=existing.id)
         self.assertIsNotNone(d.id)

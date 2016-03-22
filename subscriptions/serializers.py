@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from .models import Subscription
-from contentstore.serializers import MessageSetSerializer
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

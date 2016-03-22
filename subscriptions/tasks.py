@@ -7,7 +7,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Subscription
 from scheduler.client import SchedulerApiClient
-from contentstore.models import Schedule, MessageSet
 
 logger = get_task_logger(__name__)
 
@@ -40,7 +39,6 @@ class Schedule_Create(Task):
         l.info("Creating schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
-            print ("GOT HERE OK")
             scheduler = self.scheduler_client()
             # get the subscription schedule/protocol from content store
             l.info("Loading contentstore schedule <%s>" % (
