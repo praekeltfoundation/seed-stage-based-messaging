@@ -40,13 +40,14 @@ class Schedule_Create(Task):
         l.info("Creating schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
+            print ("GOT HERE OK")
             scheduler = self.scheduler_client()
             # get the subscription schedule/protocol from content store
             l.info("Loading contentstore schedule <%s>" % (
                 subscription.schedule,))
-            csschedule = Schedule.objects.get(pk=subscription.schedule)
+            csschedule = subscription.schedule
             # get the messageset length for frequency
-            messageset = MessageSet.objects.get(pk=subscription.messageset_id)
+            messageset = subscription.messageset
             subscription.metadata["frequency"] = \
                 str(len(messageset.messages.all()))
             # Build the schedule POST create object
