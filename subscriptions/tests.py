@@ -267,31 +267,32 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
 
         # Create schedule
         schedule_post = {
-            "class": "seedproject.scheduler.Schedule",
-            "id": "11",
-            "cronDefinition": "1 6 1 * *",
-            "dateCreated": "2015-04-05T21:59:28Z",
+            "id": "6455245a-028b-4fa1-82fc-6b639c4e7710",
+            "cron_definition": "1 6 1 * *",
             "endpoint": "%s/%s/%s/send" % (
-                "http://seed-project/api/v1",
-                "subscriptions",
+                "http://seed-stage-based-messaging/api/v1",
+                "subscription",
                 str(existing.id)),
-            "frequency": 10,
+            "frequency": 2,
             "messages": None,
-            "nextSend": "2015-04-05T22:00:00Z",
-            "sendCounter": 0,
-            "subscriptionId": str(existing.id)
+            "triggered": 0,
+            "created_at": "2015-04-05T21:59:28Z",
+            "updated_at": "2015-04-05T21:59:28Z"
         }
         responses.add(responses.POST,
-                      "http://seed-project/api/v1/scheduler/schedules",
+                      "http://seed-scheduler/api/v1/schedule/",
                       json.dumps(schedule_post),
                       status=200, content_type='application/json')
 
         result = schedule_create.apply_async(args=[str(existing.id)])
-        self.assertEqual(int(result.get()), 11)
+        self.assertEqual(
+            str(result.get()), "6455245a-028b-4fa1-82fc-6b639c4e7710")
 
         d = Subscription.objects.get(pk=existing.id)
         self.assertIsNotNone(d.id)
-        self.assertEqual(d.metadata["scheduler_schedule_id"], "11")
+        self.assertEqual(
+            d.metadata["scheduler_schedule_id"],
+            "6455245a-028b-4fa1-82fc-6b639c4e7710")
 
 
 class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):

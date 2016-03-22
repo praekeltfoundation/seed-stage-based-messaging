@@ -40,20 +40,15 @@ class Schedule_Create(Task):
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             scheduler = self.scheduler_client()
-            # get the subscription schedule/protocol from content store
-            l.info("Loading contentstore schedule <%s>" % (
-                subscription.schedule,))
-            csschedule = subscription.schedule
-            # get the messageset length for frequency
-            messageset = subscription.messageset
-            subscription.metadata["frequency"] = \
-                str(len(messageset.messages.all()))
+            # get the messageset length for frequency calc
+            message_count = subscription.messageset.messages.all().count()
+            # next_sequence_number is for setting non-one start position
+            frequency = (message_count - subscription.next_sequence_number) + 1
             # Build the schedule POST create object
             schedule = {
-                "subscriptionId": str(subscription_id),
-                "frequency": subscription.metadata["frequency"],
-                "sendCounter": subscription.next_sequence_number,
-                "cronDefinition": self.schedule_to_cron(csschedule),
+                "frequency": frequency,
+                "cron_definition":
+                    self.schedule_to_cron(subscription.schedule),
                 "endpoint": "%s/%s/send" % (
                     settings.SUBSCRIPTIONS_URL, subscription_id)
             }

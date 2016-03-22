@@ -157,9 +157,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 
 djcelery.setup_loader()
 
-BASE_URL = 'http://seed-project/api/v1'
+SUBSCRIPTIONS_URL = os.environ.get("SUBSCRIPTIONS_URL", None)
 
-SUBSCRIPTIONS_URL = '%s/subscriptions' % BASE_URL
-
-SCHEDULER_URL = '%s/scheduler' % BASE_URL
-SCHEDULER_API_TOKEN = 'scheduler_api_token'
+SCHEDULER_URL = os.environ.get("SCHEDULER_URL", None)
+SCHEDULER_API_TOKEN = os.environ.get("SCHEDULER_API_TOKEN", "REPLACEME")
