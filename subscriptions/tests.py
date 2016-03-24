@@ -552,3 +552,125 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
+
+    @responses.activate
+    def test_send_message_task_to_other_text(self):
+        # Setup
+        existing = self.make_subscription()
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (  # noqa
+                "3f7c8851-5204-43f7-af7f-005059993333", ),
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ["+2345059993333"]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/" % (
+                existing.identity, ),
+            json={
+                "id": existing.identity,
+                "version": 1,
+                "details": {
+                    "default_addr_type": "msisdn",
+                    "addresses": {
+                        "msisdn": {
+                            "+2345059992222": {}
+                        }
+                    },
+                    "receiver_role": "mother",
+                    "linked_to": None,
+                    "preferred_msg_type": "text",
+                    "preferred_language": "en_ZA"
+                },
+                "communicate_through": "3f7c8851-5204-43f7-af7f-005059993333",
+                "created_at": "2015-07-10T06:13:29.693272Z",
+                "updated_at": "2015-07-10T06:13:29.693298Z"
+            },
+            status=200, content_type='application/json',
+        )
+
+        # mock identity address lookup - friend
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/" % (
+                "3f7c8851-5204-43f7-af7f-005059993333", ),
+            json={
+                "id": "3f7c8851-5204-43f7-af7f-005059993333",
+                "version": 1,
+                "details": {
+                    "default_addr_type": "msisdn",
+                    "addresses": {
+                        "msisdn": {
+                            "+2345059993333": {}
+                        }
+                    },
+                    "receiver_role": "friend",
+                    "linked_to": existing.identity,
+                    "preferred_msg_type": "text",
+                    "preferred_language": "en_ZA"
+                },
+                "created_at": "2015-07-10T06:13:29.693272Z",
+                "updated_at": "2015-07-10T06:13:29.693298Z"
+            },
+            status=200, content_type='application/json',
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059993333",
+                "vumi_message_id": None,
+                "content": "This is message 1",
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {},
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # make messages
+        message_data1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "en_ZA",
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data1)
+        message_data2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "en_ZA",
+            "text_content": "This is message 2",
+        }
+        Message.objects.create(**message_data2)
+
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/%s/send' % (
+            existing.id, ), content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
+        self.assertEqual(d.next_sequence_number, 2)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.process_status, 0)

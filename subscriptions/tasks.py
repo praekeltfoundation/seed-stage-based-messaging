@@ -70,11 +70,12 @@ class Send_Next_Message(Task):
             l.info("Loading Initial Recipient Identity")
             initial_id = self.get_identity(subscription.identity)
             if "communicate_through" in initial_id and \
-                    ["communicate_through"] is not None:
+                    initial_id["communicate_through"] is not None:
                 # we should not send messages to this ID. Load the listed one.
                 to_addr = self.get_identity_address(
                     initial_id["communicate_through"])
             else:
+                print("WTF")
                 # set recipient data
                 to_addr = self.get_identity_address(subscription.identity)
             if to_addr is not None:
