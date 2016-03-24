@@ -7,6 +7,8 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
 
+from contentstore.models import MessageSet, Schedule
+
 
 @python_2_unicode_compatible
 class Subscription(models.Model):
@@ -16,20 +18,22 @@ class Subscription(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     identity = models.CharField(max_length=36, null=False, blank=False)
     version = models.IntegerField(default=1)
-    messageset_id = models.IntegerField(null=False, blank=False)
+    messageset = models.ForeignKey(MessageSet, related_name='subscriptions',
+                                   null=False)
     next_sequence_number = models.IntegerField(default=1, null=False,
                                                blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
     active = models.BooleanField(default=True)
     completed = models.BooleanField(default=False)
-    schedule = models.IntegerField(default=1)
+    schedule = models.ForeignKey(Schedule, related_name='subscriptions',
+                                 null=False)
     process_status = models.IntegerField(default=0, null=False, blank=False)
     metadata = JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, related_name='registrations_created',
+    created_by = models.ForeignKey(User, related_name='subscriptions_created',
                                    null=True)
-    updated_by = models.ForeignKey(User, related_name='registrations_updated',
+    updated_by = models.ForeignKey(User, related_name='subscriptions_updated',
                                    null=True)
     user = property(lambda self: self.created_by)
 

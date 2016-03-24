@@ -22,15 +22,31 @@ class APITestCase(TestCase):
 
 class AuthenticatedAPITestCase(APITestCase):
 
+    def make_schedule(self):
+        # Create hourly schedule
+        schedule_data = {
+            'hour': 1
+        }
+        return Schedule.objects.create(**schedule_data)
+
+    def make_messageset(self):
+        messageset_data = {
+            'short_name': 'messageset_one',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule
+        }
+        return MessageSet.objects.create(**messageset_data)
+
     def make_subscription(self):
         post_data = {
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset_id": 2,
+            "messageset": self.messageset,
             "next_sequence_number": 1,
             "lang": "en_ZA",
             "active": True,
             "completed": False,
-            "schedule": 1,
+            "schedule": self.schedule,
             "process_status": 0,
             "metadata": {
                 "source": "RapidProVoice"
@@ -69,6 +85,8 @@ class AuthenticatedAPITestCase(APITestCase):
         token = Token.objects.create(user=self.user)
         self.token = token.key
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+        self.schedule = self.make_schedule()
+        self.messageset = self.make_messageset()
 
     def tearDown(self):
         self._restore_post_save_hooks()
@@ -99,12 +117,12 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         # Setup
         post_subscription = {
             "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset_id": 1,
+            "messageset": self.messageset.id,
             "next_sequence_number": 1,
             "lang": "en_ZA",
             "active": True,
             "completed": False,
-            "schedule": 1,
+            "schedule": self.schedule.id,
             "process_status": 0,
             "metadata": {
                 "source": "RapidProVoice"
@@ -119,12 +137,12 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         d = Subscription.objects.last()
         self.assertIsNotNone(d.id)
         self.assertEqual(d.version, 1)
-        self.assertEqual(d.messageset_id, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
         self.assertEqual(d.lang, "en_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
-        self.assertEqual(d.schedule, 1)
+        self.assertEqual(d.schedule.id, self.schedule.id)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
@@ -139,12 +157,12 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         d = Subscription.objects.last()
         self.assertIsNotNone(d.id)
         self.assertEqual(d.version, 1)
-        self.assertEqual(d.messageset_id, 2)
+        self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
         self.assertEqual(d.lang, "en_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
-        self.assertEqual(d.schedule, 1)
+        self.assertEqual(d.schedule.id, self.schedule.id)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
@@ -234,12 +252,12 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
         # make subscription
         post_data = {
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset_id": messageset.id,
+            "messageset": messageset,
             "next_sequence_number": 1,
             "lang": "en_ZA",
             "active": True,
             "completed": False,
-            "schedule": schedule.id,
+            "schedule": schedule,
             "process_status": 0,
             "metadata": {
                 "source": "RapidProVoice"
@@ -268,7 +286,7 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
                       json.dumps(schedule_post),
                       status=200, content_type='application/json')
 
-        result = schedule_create.apply_async(args=[existing.id])
+        result = schedule_create.apply_async(args=[str(existing.id)])
         self.assertEqual(int(result.get()), 11)
 
         d = Subscription.objects.get(pk=existing.id)
@@ -287,14 +305,14 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
                 "target": "http://example.com/api/v1/subscriptions/request"
             },
             "data": {
-                "messageset_id": 1,
+                "messageset": self.messageset.id,
                 "updated_at": "2016-02-17T07:59:42.831568+00:00",
                 "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
                 "lang": "en_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
                 "next_sequence_number": 1,
-                "schedule": 1
+                "schedule": self.schedule.id
             }
         }
         # Execute
@@ -302,16 +320,17 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
                                     json.dumps(post_webhook),
                                     content_type='application/json')
         # Check
+        print(response.json())
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         d = Subscription.objects.last()
         self.assertIsNotNone(d.id)
         self.assertEqual(d.version, 1)
-        self.assertEqual(d.messageset_id, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
         self.assertEqual(d.lang, "en_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
-        self.assertEqual(d.schedule, 1)
+        self.assertEqual(d.schedule.id, self.schedule.id)
         self.assertEqual(d.process_status, 0)
 
     def test_webhook_subscription_data_bad(self):
@@ -323,13 +342,13 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
                 "target": "http://example.com/api/v1/subscriptions/request"
             },
             "data": {
-                "messageset_id": 1,
+                "messageset": self.messageset.id,
                 "updated_at": "2016-02-17T07:59:42.831568+00:00",
                 "lang": "en_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
                 "next_sequence_number": 1,
-                "schedule": 1
+                "schedule": self.schedule.id
             }
         }
         # Execute

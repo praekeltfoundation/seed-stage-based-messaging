@@ -7,7 +7,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Subscription
 from scheduler.client import SchedulerApiClient
-from contentstore.models import Schedule, MessageSet
 
 logger = get_task_logger(__name__)
 
@@ -44,9 +43,9 @@ class Schedule_Create(Task):
             # get the subscription schedule/protocol from content store
             l.info("Loading contentstore schedule <%s>" % (
                 subscription.schedule,))
-            csschedule = Schedule.objects.get(pk=subscription.schedule)
+            csschedule = subscription.schedule
             # get the messageset length for frequency
-            messageset = MessageSet.objects.get(pk=subscription.messageset_id)
+            messageset = subscription.messageset
             subscription.metadata["frequency"] = \
                 str(len(messageset.messages.all()))
             # Build the schedule POST create object
