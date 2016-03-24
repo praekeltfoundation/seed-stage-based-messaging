@@ -30,7 +30,7 @@ class Send_Next_Message(Task):
         code.
         """
 
-    def get_identity(identity_uuid):
+    def get_identity(self, identity_uuid):
         url = "%s/%s/%s/" % (settings.IDENTITY_STORE_URL,
                              "identities", identity_uuid)
         headers = {'Authorization': ['Token %s' % (
@@ -39,7 +39,7 @@ class Send_Next_Message(Task):
         r = requests.get(url, headers=headers)
         return r.json()
 
-    def get_identity_address(identity_uuid):
+    def get_identity_address(self, identity_uuid):
         url = "%s/%s/%s/addresses/msisdn" % (settings.IDENTITY_STORE_URL,
                                              "identities", identity_uuid)
         params = {"default": True}
@@ -47,7 +47,7 @@ class Send_Next_Message(Task):
             settings.IDENTITY_STORE_TOKEN, )],
             'Content-Type': ['application/json']}
         r = requests.get(url, params=params, headers=headers).json()
-        if len(r["results"] > 0):
+        if len(r["results"]) > 0:
             return r["results"][0]
         else:
             return None
@@ -69,7 +69,8 @@ class Send_Next_Message(Task):
                 lang=subscription.lang)
             l.info("Loading Initial Recipient Identity")
             initial_id = self.get_identity(subscription.identity)
-            if initial_id["communicate_through"] is not None:
+            if "communicate_through" in initial_id and \
+                    ["communicate_through"] is not None:
                 # we should not send messages to this ID. Load the listed one.
                 to_addr = self.get_identity_address(
                     initial_id["communicate_through"])
@@ -91,7 +92,7 @@ class Send_Next_Message(Task):
                         message.binary_content.content
                 l.info("Sending message to Message Sender")
                 result = requests.post(
-                    url=settings.MESSAGE_SENDER_URL,
+                    url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
                     data=json.dumps(payload),
                     headers={
                         'Content-Type': 'application/json',
