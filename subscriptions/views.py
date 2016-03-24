@@ -6,6 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer
+from .tasks import send_next_message
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -23,7 +24,7 @@ class SubscriptionSend(APIView):
 
     """ Triggers a send for the next subscription message
     """
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Outbound message
@@ -32,26 +33,9 @@ class SubscriptionSend(APIView):
         subscription_id = kwargs["subscription_id"]
         try:
             subscription = Subscription.objects.get(id=subscription_id)
-            expect = ["message-id", "send-counter", "schedule-id"]
-            if set(expect).issubset(request.data.keys()):
-                # Set the next sequence number
-                subscription.next_sequence_number = request.data[
-                    "send-counter"]
-                # Keep the subscription up-to-date for acks later
-                subscription.metadata["scheduler_schedule_id"] = \
-                    request.data["schedule-id"]
-                subscription.metadata["scheduler_message_id"] = \
-                    request.data["message-id"]
-                subscription.save()
-                # TODO: add success signal for listener so message can be
-                # created
-                # Return
-                status = 201
-                accepted = {"accepted": True}
-            else:
-                status = 400
-                accepted = {"accepted": False,
-                            "reason": "Missing expected body keys"}
+            status = 201
+            accepted = {"accepted": True}
+            send_next_message.apply_async(args=[str(subscription.id)])
         except ObjectDoesNotExist:
             status = 400
             accepted = {"accepted": False,
