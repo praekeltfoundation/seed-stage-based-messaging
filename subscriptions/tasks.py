@@ -75,7 +75,6 @@ class Send_Next_Message(Task):
                 to_addr = self.get_identity_address(
                     initial_id["communicate_through"])
             else:
-                print("WTF")
                 # set recipient data
                 to_addr = self.get_identity_address(subscription.identity)
             if to_addr is not None:
@@ -88,9 +87,10 @@ class Send_Next_Message(Task):
                 if subscription.messageset.content_type == "text":
                     payload["content"] = message.text_content
                 else:
+                    # TODO - audio media handling on MC
                     # audio
                     payload["metadata"]["voice_speech_url"] = \
-                        message.binary_content.content
+                        message.binary_content.content.url
                 l.info("Sending message to Message Sender")
                 result = requests.post(
                     url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
@@ -105,7 +105,7 @@ class Send_Next_Message(Task):
                 l.info("Message queued for send. ID: <%s>" % str(result["id"]))
             else:
                 l.info("No valid recipient to_addr found")
-                subscription.subscription.process_status = -1  # Error
+                subscription.process_status = -1  # Error
                 subscription.save()
         except ObjectDoesNotExist:
             logger.error('Missing Message', exc_info=True)
@@ -158,7 +158,7 @@ class Post_Send_Process(Task):
                 messageset = subscription.messageset
                 if messageset.next_set:
                     # clone existing minus PK as recommended in
-                    # https://docs.djangoproject.com/en/1.6/topics/db/queries/
+                    # https://docs.djangoproject.com/en/1.9/topics/db/queries/
                     # copying-model-instances
                     subscription.pk = None
                     subscription.process_status = 0  # Ready
