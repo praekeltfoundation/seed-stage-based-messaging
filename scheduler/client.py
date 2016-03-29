@@ -18,13 +18,13 @@ class SchedulerApiClient(object):
 
     :param str api_url:
         The full URL of the API. Defaults to
-        ``http://seed-project/api/v1``.
+        ``http://seed-scheduler/api/v1``.
 
     """
 
     def __init__(self, api_token, api_url=None, session=None):
         if api_url is None:
-            api_url = "http://seed-project/api/v1"
+            api_url = "http://seed-scheduler/api/v1"
         self.api_url = api_url
         self.headers = {
             'Content-Type': 'application/json',
@@ -37,9 +37,9 @@ class SchedulerApiClient(object):
 
     def call(self, endpoint, method, obj=None, params=None, data=None):
         if obj is None:
-            url = '%s/%s' % (self.api_url.rstrip('/'), endpoint)
+            url = '%s/%s/' % (self.api_url.rstrip('/'), endpoint)
         else:
-            url = '%s/%s/%s' % (self.api_url.rstrip('/'), endpoint, obj)
+            url = '%s/%s/%s/' % (self.api_url.rstrip('/'), endpoint, obj)
         result = {
             'get': self.session.get,
             'post': self.session.post,
@@ -53,38 +53,18 @@ class SchedulerApiClient(object):
             return result.json()
 
     def get_schedules(self, params=None):
-        return self.call('schedules', 'get', params=params)
+        return self.call('schedule', 'get', params=params)
 
     def get_schedule(self, schedule_id):
-        return self.call('schedules', 'get', obj=schedule_id)
-
-    def get_schedule_messages(self, schedule_id):
-        return self.call('schedules', 'get',
-                         obj='%s/messages' % schedule_id)
+        return self.call('schedule', 'get', obj=schedule_id)
 
     def create_schedule(self, schedule):
-        return self.call('schedules', 'post', data=schedule)
+        return self.call('schedule', 'post', data=schedule)
 
     def update_schedule(self, schedule_id, schedule):
-        return self.call('schedules', 'put', obj=schedule_id,
+        return self.call('schedule', 'put', obj=schedule_id,
                          data=schedule)
 
     def delete_schedule(self, schedule_id):
         # Schedule messages must all be deleted first for FK reasons
-        return self.call('schedules', 'delete', obj=schedule_id)
-
-    def get_messages(self, params=None):
-        return self.call('messages', 'get', params=params)
-
-    def get_message(self, message_id):
-        return self.call('messages', 'get', obj=message_id)
-
-    def create_message(self, message):
-        return self.call('messages', 'post', data=message)
-
-    def update_message(self, message_id, message):
-        return self.call('messages', 'put', obj=message_id,
-                         data=message)
-
-    def delete_message(self, message_id):
-        return self.call('messages', 'delete', obj=message_id)
+        return self.call('schedule', 'delete', obj=schedule_id)

@@ -12,3 +12,12 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 CELERY_ALWAYS_EAGER = True
 BROKER_BACKEND = 'memory'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+
+SCHEDULER_URL = "http://seed-scheduler/api/v1"
+SCHEDULER_API_TOKEN = "REPLACEME"
+
+IDENTITY_STORE_URL = "http://seed-identity-store/api/v1"
+IDENTITY_STORE_TOKEN = "REPLACEME"
+
+MESSAGE_SENDER_URL = "http://seed-message-sender/api/v1"
+MESSAGE_SENDER_TOKEN = "REPLACEME"
