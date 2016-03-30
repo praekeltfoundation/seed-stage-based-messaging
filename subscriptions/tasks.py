@@ -85,12 +85,31 @@ class Send_Next_Message(Task):
                     "metadata": {}
                 }
                 if subscription.messageset.content_type == "text":
-                    payload["content"] = message.text_content
+                    if "prepend_next_delivery" in subscription.metadata and \
+                            subscription.metadata is not None:
+                        payload["content"] = "%s\n%s" % (
+                            subscription.metadata["prepend_next_delivery"],
+                            message.text_content)
+                        # clear prepend_next_delivery
+                        subscription.metadata["prepend_next_delivery"] = None
+                        subscription.save()
+                    else:
+                        payload["content"] = message.text_content
                 else:
                     # TODO - audio media handling on MC
                     # audio
-                    payload["metadata"]["voice_speech_url"] = \
-                        message.binary_content.content.url
+                    if "prepend_next_delivery" in subscription.metadata and \
+                            subscription.metadata is not None:
+                        payload["metadata"]["voice_speech_url"] = [
+                            subscription.metadata["prepend_next_delivery"],
+                            message.binary_content.content.url
+                        ]
+                        # clear prepend_next_delivery
+                        subscription.metadata["prepend_next_delivery"] = None
+                        subscription.save()
+                    else:
+                        payload["metadata"]["voice_speech_url"] = \
+                            message.binary_content.content.url
                 l.info("Sending message to Message Sender")
                 result = requests.post(
                     url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
