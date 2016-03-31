@@ -86,7 +86,7 @@ class Send_Next_Message(Task):
                 }
                 if subscription.messageset.content_type == "text":
                     if "prepend_next_delivery" in subscription.metadata and \
-                            subscription.metadata is not None:
+                            subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                         payload["content"] = "%s\n%s" % (
                             subscription.metadata["prepend_next_delivery"],
                             message.text_content)
@@ -99,7 +99,7 @@ class Send_Next_Message(Task):
                     # TODO - audio media handling on MC
                     # audio
                     if "prepend_next_delivery" in subscription.metadata and \
-                            subscription.metadata is not None:
+                            subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                         payload["metadata"]["voice_speech_url"] = [
                             subscription.metadata["prepend_next_delivery"],
                             message.binary_content.content.url
