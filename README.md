@@ -11,8 +11,7 @@ Seed Stage-Based Messaging Store
     * Subscription
 
 ## Metrics
+#### subscriptions.total.sum
 ---
-subscriptions.total.sum
----
-subscriptions.total.last
+### subscriptions.total.last
 ---
