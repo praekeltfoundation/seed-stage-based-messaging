@@ -12,8 +12,22 @@ from django.db.models import Max
 from .models import Subscription
 from contentstore.models import Message
 from scheduler.client import SchedulerApiClient
+from go_http.metrics import MetricsApiClient
 
 logger = get_task_logger(__name__)
+
+
+class FireMetric(Task):
+
+    """ Fires a metric by Posting to the metric store
+    """
+
+    def run(self, name, value):
+        MetricsApiClient
+
+
+
+fire_metric = FireMetric()
 
 
 class Send_Next_Message(Task):
@@ -268,3 +282,14 @@ class Schedule_Create(Task):
                 exc_info=True)
 
 schedule_create = Schedule_Create()
+
+
+class MetricsCreate(Task):
+
+    """ Task to fire metrics upon subscription creation
+    """
+    name = "seed_staged_based_messaging.subscription.tasks.metrics_create"
+
+    def run(self, subscription_id, **kwargs):
+
+        fire_metric("subscriptions.total.sum", 1)

@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 
 from .models import Subscription, fire_sub_action_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create
+from .tasks import schedule_create, fire_metrics_if_new
 
 
 class APITestCase(TestCase):
@@ -120,6 +120,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model has no post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
         post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -131,6 +132,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model still has post_save listeners. Make sure"
             " helpers removed them properly in earlier tests.")
         post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
