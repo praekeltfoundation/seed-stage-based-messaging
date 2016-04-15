@@ -76,12 +76,12 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         # Setup
         existing = self.make_schedule()
         # Execute
-        response = self.client.get('/api/v1/schedule/%s/' % existing.id,
+        response = self.client.get('/api/v1/schedule/',
                                    {'cron_string':  '* 1 * * *'},
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['id'], existing.id)
+        self.assertEqual(response.data['results'][0]['id'], existing.id)
 
     # MessageSet testing
     def test_create_messageset(self):
