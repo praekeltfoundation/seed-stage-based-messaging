@@ -291,3 +291,22 @@ class ScheduleCreate(Task):
                 exc_info=True)
 
 schedule_create = ScheduleCreate()
+
+
+class ScheduledMetrics(Task):
+
+    """ Compiles the scheduled metrics data and then fires them
+    """
+
+    def get_active_subscription_count(self):
+        active_subs = Subscription.objects.filter(active=True)
+        return active_subs.count()
+
+    def run(self):
+        metrics_to_fire = {
+            u'subscriptions.active.last': self.get_active_subscription_count()
+        }
+        return fire_metrics.apply_async(args=[metrics_to_fire])
+
+
+scheduled_metrics = ScheduledMetrics()

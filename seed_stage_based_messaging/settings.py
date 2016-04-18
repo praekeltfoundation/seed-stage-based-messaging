@@ -168,6 +168,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.fire_metrics': {
         'queue': 'metrics',
     },
+    'subscriptions.tasks.scheduled_metrics': {
+        'queue': 'scheduledmetrics',
+    },
 }
 
 CELERY_TASK_SERIALIZER = 'json'
