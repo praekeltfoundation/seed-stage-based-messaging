@@ -1102,9 +1102,10 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Setup
         # create 1 default, active subscription
         self.make_subscription()
-        # create an inactive subscription
+        # create an inactive, completed subscription
         sub = self.make_subscription()
         sub.active = False
+        sub.completed = True
         sub.save()
         # create a broken, active subscription
         sub = self.make_subscription()
@@ -1119,6 +1120,8 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async(args=[])
         # Check
-        self.assertTrue("'subscriptions.active.last': 2" in result.get().get())
-        self.assertTrue("'subscriptions.total.last': 3" in result.get().get())
-        self.assertTrue("'subscriptions.broken.last': 1" in result.get().get())
+        r = result.get().get()
+        self.assertTrue("'subscriptions.active.last': 2" in r)
+        self.assertTrue("'subscriptions.total.last': 3" in r)
+        self.assertTrue("'subscriptions.broken.last': 1" in r)
+        self.assertTrue("'subscriptions.completed.last': 1" in r)
