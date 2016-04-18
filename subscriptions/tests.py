@@ -9,9 +9,9 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from .models import Subscription, fire_sub_action_if_new
+from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create, fire_metrics_if_new
+from .tasks import schedule_create, fire_metrics
 
 
 class APITestCase(TestCase):
@@ -1048,3 +1048,23 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
+
+
+class TestMetrics(AuthenticatedAPITestCase):
+
+    @responses.activate
+    def test_direct_fire(self):
+        # Setup
+        metrics_to_fire = {
+            "foo.last": 1.0,
+            "bar.sum": 2.5
+        }
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo.last": 1.0,
+                            "bar.sum": 5.0},
+                      status=200, content_type='application/json')
+        # Execute
+        result = fire_metrics.apply_async(args=[metrics_to_fire])
+        # Check
+        self.assertEqual(result.get(), "Fired 2 metrics")

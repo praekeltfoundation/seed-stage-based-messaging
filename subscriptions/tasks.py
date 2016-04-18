@@ -17,17 +17,26 @@ from go_http.metrics import MetricsApiClient
 logger = get_task_logger(__name__)
 
 
-class FireMetric(Task):
+class FireMetrics(Task):
 
-    """ Fires a metric by Posting to the metric store
+    """ Fires a metric using the MetricsApiClient
     """
 
-    def run(self, name, value):
-        MetricsApiClient
+    def set_metric_client(self):
+        return MetricsApiClient(
+            auth_token=settings.METRICS_AUTH_TOKEN,
+            api_url=settings.METRICS_URL,
+            session=None)
 
+    def run(self, metrics, **kwargs):
+        try:
+            metric_client = self.set_metric_client()
+            metric_client.fire(metrics)
+            return "Fired %d metrics" % len(metrics)
+        except:
+            return "Metrics fire failure"
 
-
-fire_metric = FireMetric()
+fire_metrics = FireMetrics()
 
 
 class Send_Next_Message(Task):
@@ -282,14 +291,3 @@ class Schedule_Create(Task):
                 exc_info=True)
 
 schedule_create = Schedule_Create()
-
-
-class MetricsCreate(Task):
-
-    """ Task to fire metrics upon subscription creation
-    """
-    name = "seed_staged_based_messaging.subscription.tasks.metrics_create"
-
-    def run(self, subscription_id, **kwargs):
-
-        fire_metric("subscriptions.total.sum", 1)
