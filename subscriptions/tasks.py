@@ -306,10 +306,15 @@ class ScheduledMetrics(Task):
         total_subs = Subscription.objects.all()
         return total_subs.count()
 
+    def get_broken_subscription_count(self):
+        broken_subs = Subscription.objects.filter(process_status=-1)
+        return broken_subs.count()
+
     def run(self):
         metrics_to_fire = {
             u'subscriptions.active.last': self.get_active_subscription_count(),
             u'subscriptions.total.last': self.get_total_subscription_count(),
+            u'subscriptions.broken.last': self.get_broken_subscription_count(),
         }
         return fire_metrics.apply_async(args=[metrics_to_fire])
 

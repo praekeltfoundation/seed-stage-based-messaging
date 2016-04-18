@@ -1100,20 +1100,25 @@ class TestMetrics(AuthenticatedAPITestCase):
     @responses.activate
     def test_scheduled_metrics(self):
         # Setup
-        # create 2 active subscriptions
-        self.make_subscription()
+        # create 1 default, active subscription
         self.make_subscription()
         # create an inactive subscription
         sub = self.make_subscription()
         sub.active = False
         sub.save()
+        # create a broken, active subscription
+        sub = self.make_subscription()
+        sub.process_status = -1
+        sub.save()
+
         # add metric post response
         responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"subscriptions.total.sum": 1.0},
+                      "http://metrics-url/metrics/", json={"foo": "bar"},
                       status=200, content_type='application/json')
+
         # Execute
         result = scheduled_metrics.apply_async(args=[])
         # Check
         self.assertTrue("'subscriptions.active.last': 2" in result.get().get())
         self.assertTrue("'subscriptions.total.last': 3" in result.get().get())
+        self.assertTrue("'subscriptions.broken.last': 1" in result.get().get())
