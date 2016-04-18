@@ -32,7 +32,7 @@ class FireMetrics(Task):
         try:
             metric_client = self.set_metric_client()
             metric_client.fire(metrics)
-            return "Fired %d metrics" % len(metrics)
+            return "Fired metrics: %s" % metrics
         except:
             return "Metrics fire failure"
 

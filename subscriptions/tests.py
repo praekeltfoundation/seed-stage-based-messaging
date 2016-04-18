@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 
 from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create, fire_metrics
+from .tasks import schedule_create, fire_metrics, scheduled_metrics
 
 
 class APITestCase(TestCase):
@@ -1067,7 +1067,10 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = fire_metrics.apply_async(args=[metrics_to_fire])
         # Check
-        self.assertEqual(result.get(), "Fired 2 metrics")
+        self.assertEqual(
+            result.get(),
+            "Fired metrics: {'bar.sum': 2.5, 'foo.last': 1.0}"
+        )
 
     @responses.activate
     def test_created_metrics(self):
@@ -1095,3 +1098,27 @@ class TestMetrics(AuthenticatedAPITestCase):
             "http://metrics-url/metrics/")
         # remove post_save hooks to prevent teardown errors
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
+
+    @responses.activate
+    def test_scheduled_metrics(self):
+        # Setup
+        # create 2 active subscriptions
+        self.make_subscription()
+        self.make_subscription()
+        # create an inactive subscription
+        sub = self.make_subscription()
+        sub.active = False
+        sub.save()
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"subscriptions.total.sum": 1.0},
+                      status=200, content_type='application/json')
+        # Execute
+        result = scheduled_metrics.apply_async(args=[])
+        # Check
+        print(result.get().get())
+        self.assertEqual(
+            result.get().get(),
+            "Fired metrics: {'subscriptions.active.last': 2}"
+        )
