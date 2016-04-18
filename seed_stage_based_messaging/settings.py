@@ -151,6 +151,25 @@ CELERY_IMPORTS = (
     'subscriptions.tasks',
 )
 
+CELERY_CREATE_MISSING_QUEUES = True
+CELERY_ROUTES = {
+    'celery.backend_cleanup': {
+        'queue': 'mediumpriority',
+    },
+    'subscriptions.tasks.send_next_message': {
+        'queue': 'priority',
+    },
+    'subscriptions.tasks.post_send_process': {
+        'queue': 'priority',
+    },
+    'subscriptions.tasks.schedule_create': {
+        'queue': 'priority',
+    },
+    'subscriptions.tasks.fire_metrics': {
+        'queue': 'metrics',
+    },
+}
+
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
