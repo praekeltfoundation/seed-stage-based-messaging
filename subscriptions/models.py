@@ -54,5 +54,5 @@ def fire_metrics_if_new(sender, instance, created, **kwargs):
     from .tasks import fire_metrics
     if created:
         fire_metrics.apply_async({
-            "subscriptions.total.sum": 1.0
+            u'subscriptions.total.sum': 1.0
         })

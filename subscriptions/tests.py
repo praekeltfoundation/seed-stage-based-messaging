@@ -1,5 +1,6 @@
 import responses
 import json
+import logging
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -1068,3 +1069,30 @@ class TestMetrics(AuthenticatedAPITestCase):
         result = fire_metrics.apply_async(args=[metrics_to_fire])
         # Check
         self.assertEqual(result.get(), "Fired 2 metrics")
+
+    @responses.activate
+    def test_created_metrics(self):
+        # Setup
+        # reconnect metric post_save hook
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"subscriptions.total.sum": 1.0},
+                      status=200, content_type='application/json')
+
+        # Execute
+        self.make_subscription()
+        self.make_subscription()
+
+        # Check
+        # Test metric url has been posted to
+        self.assertEqual(len(responses.calls), 2)
+        self.assertEqual(
+            responses.calls[0].request.url,
+            "http://metrics-url/metrics/")
+        self.assertEqual(
+            responses.calls[1].request.url,
+            "http://metrics-url/metrics/")
+        # remove post_save hooks to prevent teardown errors
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
