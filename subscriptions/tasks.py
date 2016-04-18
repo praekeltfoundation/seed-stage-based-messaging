@@ -302,9 +302,14 @@ class ScheduledMetrics(Task):
         active_subs = Subscription.objects.filter(active=True)
         return active_subs.count()
 
+    def get_total_subscription_count(self):
+        total_subs = Subscription.objects.all()
+        return total_subs.count()
+
     def run(self):
         metrics_to_fire = {
-            u'subscriptions.active.last': self.get_active_subscription_count()
+            u'subscriptions.active.last': self.get_active_subscription_count(),
+            u'subscriptions.total.last': self.get_total_subscription_count(),
         }
         return fire_metrics.apply_async(args=[metrics_to_fire])
 

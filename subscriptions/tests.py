@@ -1067,10 +1067,8 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = fire_metrics.apply_async(args=[metrics_to_fire])
         # Check
-        self.assertEqual(
-            result.get(),
-            "Fired metrics: {'bar.sum': 2.5, 'foo.last': 1.0}"
-        )
+        self.assertTrue("'bar.sum': 2.5" in result.get())
+        self.assertTrue("'foo.last': 1.0" in result.get())
 
     @responses.activate
     def test_created_metrics(self):
@@ -1117,8 +1115,5 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async(args=[])
         # Check
-        print(result.get().get())
-        self.assertEqual(
-            result.get().get(),
-            "Fired metrics: {'subscriptions.active.last': 2}"
-        )
+        self.assertTrue("'subscriptions.active.last': 2" in result.get().get())
+        self.assertTrue("'subscriptions.total.last': 3" in result.get().get())
