@@ -13,3 +13,6 @@ Seed Stage-Based Messaging Store
 ## Metrics
 ##### subscriptions.total.sum
 `sum` Total number of subscriptions created
+
+##### subscriptions.active.last
+`last` Total number of active subscriptions
