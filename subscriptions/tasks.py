@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Max
 
 from .models import Subscription
-from contentstore.models import Message
+from contentstore.models import Message, MessageSet
 from scheduler.client import SchedulerApiClient
 from go_http.metrics import MetricsApiClient
 
@@ -314,6 +314,21 @@ class ScheduledMetrics(Task):
         completed_subs = Subscription.objects.filter(completed=True)
         return completed_subs.count()
 
+    def get_active_messageset_subs(self, msgset_id):
+        active_msgset_subs = Subscription.objects.filter(
+            messageset=msgset_id, active=True)
+        return active_msgset_subs.count()
+
+    def add_messageset_metrics(self, metrics_to_fire):
+        # get message sets
+        message_sets = MessageSet.objects.all()
+        for message_set in message_sets:
+            metrics_to_fire[
+                u'subscriptions.%s.active.last' %
+                message_set.short_name] = (
+                    self.get_active_messageset_subs(message_set.id))
+        return
+
     def run(self):
         metrics_to_fire = {
             u'subscriptions.active.last': self.get_active_subscription_count(),
@@ -322,6 +337,8 @@ class ScheduledMetrics(Task):
             u'subscriptions.completed.last':
                 self.get_completed_subscription_count(),
         }
+        self.add_messageset_metrics(metrics_to_fire)
+
         return fire_metrics.apply_async(args=[metrics_to_fire])
 
 

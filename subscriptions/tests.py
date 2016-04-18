@@ -1107,8 +1107,9 @@ class TestMetrics(AuthenticatedAPITestCase):
         sub.active = False
         sub.completed = True
         sub.save()
-        # create a broken, active subscription
+        # create a broken, active, messageset_two subscription
         sub = self.make_subscription()
+        sub.messageset = self.messageset_audio
         sub.process_status = -1
         sub.save()
 
@@ -1125,3 +1126,5 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.assertTrue("'subscriptions.total.last': 3" in r)
         self.assertTrue("'subscriptions.broken.last': 1" in r)
         self.assertTrue("'subscriptions.completed.last': 1" in r)
+        self.assertTrue("'subscriptions.messageset_one.active.last': 1" in r)
+        self.assertTrue("'subscriptions.messageset_two.active.last': 1" in r)
