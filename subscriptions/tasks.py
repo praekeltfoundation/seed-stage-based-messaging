@@ -17,26 +17,31 @@ from go_http.metrics import MetricsApiClient
 logger = get_task_logger(__name__)
 
 
-class FireMetrics(Task):
+class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
 
-    def set_metric_client(self):
+    def set_metric_client(self, session=None):
         return MetricsApiClient(
             auth_token=settings.METRICS_AUTH_TOKEN,
             api_url=settings.METRICS_URL,
-            session=None)
+            session=session)
 
-    def run(self, metrics, **kwargs):
+    def run(self, metric_name, metric_value, **kwargs):
+        metric_value = float(metric_value)
+        metric = {
+            metric_name: metric_value
+        }
         try:
             metric_client = self.set_metric_client()
-            metric_client.fire(metrics)
-            return "Fired %d metrics" % len(metrics)
+            metric_client.fire(metric)
+            return "Fired metric <%s> with value <%s>" % (
+                metric_name, metric_value)
         except:
-            return "Metrics fire failure"
+            return "Failed to fire metric <%s>" % metric_name
 
-fire_metrics = FireMetrics()
+fire_metric = FireMetric()
 
 
 class SendNextMessage(Task):
