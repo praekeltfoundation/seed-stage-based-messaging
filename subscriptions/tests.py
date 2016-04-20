@@ -1132,7 +1132,7 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Setup
         # add session
         response = [{
-            'name': 'subscriptions.total.sum',
+            'name': 'subscriptions.created.sum',
             'value': 1.0,
             'aggregator': 'sum',
         }]
@@ -1149,7 +1149,7 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Check
         self.check_request(
             adapter.request, 'POST',
-            data={"subscriptions.total.sum": 1.0}
+            data={"subscriptions.created.sum": 1.0}
         )
 
         # remove post_save hooks to prevent teardown errors
