@@ -17,26 +17,33 @@ from go_http.metrics import MetricsApiClient
 logger = get_task_logger(__name__)
 
 
-class FireMetrics(Task):
+def get_metric_client(self, session=None):
+    return MetricsApiClient(
+        auth_token=settings.METRICS_AUTH_TOKEN,
+        api_url=settings.METRICS_URL,
+        session=session)
+
+
+class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_metric"
 
-    def set_metric_client(self):
-        return MetricsApiClient(
-            auth_token=settings.METRICS_AUTH_TOKEN,
-            api_url=settings.METRICS_URL,
-            session=None)
-
-    def run(self, metrics, **kwargs):
+    def run(self, metric_name, metric_value, session=None, **kwargs):
+        metric_value = float(metric_value)
+        metric = {
+            metric_name: metric_value
+        }
         try:
-            metric_client = self.set_metric_client()
-            metric_client.fire(metrics)
-            return "Fired metrics: %s" % metrics
+            metric_client = get_metric_client(session=session)
+            metric_client.fire(metric)
+            return "Fired metric <%s> with value <%s>" % (
+                metric_name, metric_value)
         except:
-            return "Metrics fire failure"
+            return "Failed to fire metric <%s>" % metric_name
 
-fire_metrics = FireMetrics()
+fire_metric = FireMetric()
 
 
 class SendNextMessage(Task):
@@ -295,18 +302,38 @@ schedule_create = ScheduleCreate()
 
 class ScheduledMetrics(Task):
 
-    """ Compiles the scheduled metrics data and then fires them
+    """ Fires off tasks for all the metrics that should run
+        on a schedule
     """
+    name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
 
-    def get_active_subscription_count(self):
-        active_subs = Subscription.objects.filter(active=True)
-        return active_subs.count()
+    # def get_active_subscription_count(self):
+    #     active_subs = Subscription.objects.filter(active=True)
+    #     return active_subs.count()
+
+    # def run(self):
+    #     metrics_to_fire = {
+    #         u'subscriptions.active.last': self.get_active_subscription_count()
+    #     }
+    #     return fire_metrics.apply_async(args=[metrics_to_fire])
 
     def run(self):
-        metrics_to_fire = {
-            u'subscriptions.active.last': self.get_active_subscription_count()
-        }
-        return fire_metrics.apply_async(args=[metrics_to_fire])
-
+        fire_active_last.apply_async()
 
 scheduled_metrics = ScheduledMetrics()
+
+
+class FireActiveLast(Task):
+
+    """ Fires last active subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
+
+    def run(self):
+        active_subs = Subscription.objects.filter(active=True)
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.active.last',
+            "metric_value": active_subs.count()
+        })
+
+fire_active_last = FireActiveLast()
