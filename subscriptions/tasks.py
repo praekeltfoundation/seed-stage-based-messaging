@@ -34,13 +34,10 @@ class FireMetric(Task):
         metric = {
             metric_name: metric_value
         }
-        try:
-            metric_client = get_metric_client(session=session)
-            metric_client.fire(metric)
-            return "Fired metric <%s> with value <%s>" % (
-                metric_name, metric_value)
-        except:
-            return "Failed to fire metric <%s>" % metric_name
+        metric_client = get_metric_client(session=session)
+        metric_client.fire(metric)
+        return "Fired metric <%s> with value <%s>" % (
+            metric_name, metric_value)
 
 fire_metric = FireMetric()
 
