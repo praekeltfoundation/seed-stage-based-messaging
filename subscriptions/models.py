@@ -53,4 +53,7 @@ def fire_sub_action_if_new(sender, instance, created, **kwargs):
 def fire_metrics_if_new(sender, instance, created, **kwargs):
     from .tasks import fire_metric
     if created:
-        fire_metric.apply_async(args=['subscriptions.total.sum', 1.0])
+        fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.total.sum',
+            "metric_value": 1.0
+        })
