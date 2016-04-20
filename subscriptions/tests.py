@@ -1104,8 +1104,6 @@ class TestMetrics(AuthenticatedAPITestCase):
 
     def test_direct_fire(self):
         # Setup
-        # make sure original function is being used
-        # tasks.get_metric_client = self._restore_get_metric_client
         response = [{
             'name': 'foo.last',
             'value': 1.0,
@@ -1130,7 +1128,7 @@ class TestMetrics(AuthenticatedAPITestCase):
 
     def test_created_metrics(self):
         # Setup
-        # add session
+        # add session response
         response = [{
             'name': 'subscriptions.created.sum',
             'value': 1.0,
