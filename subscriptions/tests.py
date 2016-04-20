@@ -1,23 +1,44 @@
 import responses
 import json
 
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.db.models.signals import post_save
+from django.conf import settings
 
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
+from requests_testadapter import TestAdapter, TestSession
+from go_http.metrics import MetricsApiClient
 
-from .models import Subscription, fire_sub_action_if_new
+from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create
+from .tasks import schedule_create, fire_metric
+from subscriptions import tasks
+
+
+class RecordingAdapter(TestAdapter):
+
+    """ Record the request that was handled by the adapter.
+    """
+    request = None
+
+    def send(self, request, *args, **kw):
+        self.request = request
+        return super(RecordingAdapter, self).send(request, *args, **kw)
 
 
 class APITestCase(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        self.session = TestSession()
 
 
 class AuthenticatedAPITestCase(APITestCase):
@@ -113,6 +134,18 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Subscription.objects.create(**post_data)
 
+    def _replace_get_metric_client(self, session=None):
+        return MetricsApiClient(
+            auth_token=settings.METRICS_AUTH_TOKEN,
+            api_url=settings.METRICS_URL,
+            session=self.session)
+
+    def _restore_get_metric_client(self, session=None):
+        return MetricsApiClient(
+            auth_token=settings.METRICS_AUTH_TOKEN,
+            api_url=settings.METRICS_URL,
+            session=session)
+
     def _replace_post_save_hooks(self):
         def has_listeners():
             return post_save.has_listeners(Subscription)
@@ -120,6 +153,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model has no post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
         post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -131,6 +165,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model still has post_save listeners. Make sure"
             " helpers removed them properly in earlier tests.")
         post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -147,9 +182,11 @@ class AuthenticatedAPITestCase(APITestCase):
         self.schedule = self.make_schedule()
         self.messageset = self.make_messageset()
         self.messageset_audio = self.make_messageset_audio()
+        tasks.get_metric_client = self._replace_get_metric_client
 
     def tearDown(self):
         self._restore_post_save_hooks()
+        self._restore_get_metric_client()
 
 
 class TestLogin(AuthenticatedAPITestCase):
@@ -1046,3 +1083,72 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
+
+
+class TestMetrics(AuthenticatedAPITestCase):
+
+    def check_request(
+            self, request, method, params=None, data=None, headers=None):
+        self.assertEqual(request.method, method)
+        if params is not None:
+            url = urlparse.urlparse(request.url)
+            qs = urlparse.parse_qsl(url.query)
+            self.assertEqual(dict(qs), params)
+        if headers is not None:
+            for key, value in headers.items():
+                self.assertEqual(request.headers[key], value)
+        if data is None:
+            self.assertEqual(request.body, None)
+        else:
+            self.assertEqual(json.loads(request.body), data)
+
+    def test_direct_fire(self):
+        # Setup
+        response = [{
+            'name': 'foo.last',
+            'value': 1.0,
+            'aggregator': 'last',
+        }]
+        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
+        self.session.mount(
+            "http://metrics-url/metrics/", adapter)
+        # Execute
+        result = fire_metric.apply_async(kwargs={
+            "metric_name": 'foo.last',
+            "metric_value": 1,
+            "session": self.session
+        })
+        # Check
+        self.check_request(
+            adapter.request, 'POST',
+            data={"foo.last": 1.0}
+        )
+        self.assertEqual(result.get(),
+                         "Fired metric <foo.last> with value <1.0>")
+
+    def test_created_metrics(self):
+        # Setup
+        # add session response
+        response = [{
+            'name': 'subscriptions.created.sum',
+            'value': 1.0,
+            'aggregator': 'sum',
+        }]
+        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
+        self.session.mount(
+            "http://metrics-url/metrics/", adapter)
+
+        # reconnect metric post_save hook
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
+
+        # Execute
+        self.make_subscription()
+
+        # Check
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.created.sum": 1.0}
+        )
+
+        # remove post_save hooks to prevent teardown errors
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)

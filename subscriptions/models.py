@@ -47,3 +47,13 @@ def fire_sub_action_if_new(sender, instance, created, **kwargs):
     from .tasks import schedule_create
     if created:
         schedule_create.apply_async(args=[str(instance.id)])
+
+
+@receiver(post_save, sender=Subscription)
+def fire_metrics_if_new(sender, instance, created, **kwargs):
+    from .tasks import fire_metric
+    if created:
+        fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.created.sum',
+            "metric_value": 1.0
+        })

@@ -12,11 +12,37 @@ from django.db.models import Max
 from .models import Subscription
 from contentstore.models import Message
 from scheduler.client import SchedulerApiClient
+from go_http.metrics import MetricsApiClient
 
 logger = get_task_logger(__name__)
 
 
-class Send_Next_Message(Task):
+def get_metric_client(self, session=None):
+    return MetricsApiClient(
+        auth_token=settings.METRICS_AUTH_TOKEN,
+        api_url=settings.METRICS_URL,
+        session=session)
+
+
+class FireMetric(Task):
+
+    """ Fires a metric using the MetricsApiClient
+    """
+
+    def run(self, metric_name, metric_value, session=None, **kwargs):
+        metric_value = float(metric_value)
+        metric = {
+            metric_name: metric_value
+        }
+        metric_client = get_metric_client(session=session)
+        metric_client.fire(metric)
+        return "Fired metric <%s> with value <%s>" % (
+            metric_name, metric_value)
+
+fire_metric = FireMetric()
+
+
+class SendNextMessage(Task):
 
     """
     Task to load and contruct message and send them off
@@ -135,10 +161,10 @@ class Send_Next_Message(Task):
                  via Celery.',
                 exc_info=True)
 
-send_next_message = Send_Next_Message()
+send_next_message = SendNextMessage()
 
 
-class Post_Send_Process(Task):
+class PostSendProcess(Task):
 
     """
     Task to ensure subscription is bumped or converted
@@ -206,10 +232,10 @@ class Post_Send_Process(Task):
                  via Celery.',
                 exc_info=True)
 
-post_send_process = Post_Send_Process()
+post_send_process = PostSendProcess()
 
 
-class Schedule_Create(Task):
+class ScheduleCreate(Task):
 
     """ Task to tell scheduler a new subscription created
     """
@@ -267,4 +293,4 @@ class Schedule_Create(Task):
                  via Celery.',
                 exc_info=True)
 
-schedule_create = Schedule_Create()
+schedule_create = ScheduleCreate()
