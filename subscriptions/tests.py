@@ -1184,7 +1184,7 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "1 Scheduled metric launched")
+        self.assertEqual(result.get(), "1 Scheduled metrics launched")
         self.assertEqual(len(responses.calls), 1)
 
     def test_fire_active_last(self):

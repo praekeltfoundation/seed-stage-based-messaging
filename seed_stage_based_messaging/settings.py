@@ -173,6 +173,13 @@ CELERY_ROUTES = {
     },
 }
 
+METRICS_REALTIME = [
+    'subscriptions.created.sum'
+]
+METRICS_SCHEDULED = [
+    ('subscriptions.active.last', 'fire_active_last')
+]
+
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
