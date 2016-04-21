@@ -1,23 +1,45 @@
 import responses
 import json
 
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.db.models.signals import post_save
+from django.conf import settings
 
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
+from requests_testadapter import TestAdapter, TestSession
+from go_http.metrics import MetricsApiClient
 
 from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create, fire_metrics, scheduled_metrics
+from .tasks import (schedule_create, fire_metric, scheduled_metrics,
+                    fire_active_last)
+from subscriptions import tasks
+
+
+class RecordingAdapter(TestAdapter):
+
+    """ Record the request that was handled by the adapter.
+    """
+    request = None
+
+    def send(self, request, *args, **kw):
+        self.request = request
+        return super(RecordingAdapter, self).send(request, *args, **kw)
 
 
 class APITestCase(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        self.session = TestSession()
 
 
 class AuthenticatedAPITestCase(APITestCase):
@@ -113,6 +135,18 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Subscription.objects.create(**post_data)
 
+    def _replace_get_metric_client(self, session=None):
+        return MetricsApiClient(
+            auth_token=settings.METRICS_AUTH_TOKEN,
+            api_url=settings.METRICS_URL,
+            session=self.session)
+
+    def _restore_get_metric_client(self, session=None):
+        return MetricsApiClient(
+            auth_token=settings.METRICS_AUTH_TOKEN,
+            api_url=settings.METRICS_URL,
+            session=session)
+
     def _replace_post_save_hooks(self):
         def has_listeners():
             return post_save.has_listeners(Subscription)
@@ -149,9 +183,11 @@ class AuthenticatedAPITestCase(APITestCase):
         self.schedule = self.make_schedule()
         self.messageset = self.make_messageset()
         self.messageset_audio = self.make_messageset_audio()
+        tasks.get_metric_client = self._replace_get_metric_client
 
     def tearDown(self):
         self._restore_post_save_hooks()
+        self._restore_get_metric_client()
 
 
 class TestLogin(AuthenticatedAPITestCase):
@@ -1052,33 +1088,77 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
 class TestMetrics(AuthenticatedAPITestCase):
 
-    @responses.activate
+    def check_request(
+            self, request, method, params=None, data=None, headers=None):
+        self.assertEqual(request.method, method)
+        if params is not None:
+            url = urlparse.urlparse(request.url)
+            qs = urlparse.parse_qsl(url.query)
+            self.assertEqual(dict(qs), params)
+        if headers is not None:
+            for key, value in headers.items():
+                self.assertEqual(request.headers[key], value)
+        if data is None:
+            self.assertEqual(request.body, None)
+        else:
+            self.assertEqual(json.loads(request.body), data)
+
+    def _mount_session(self):
+        response = [{
+            'name': 'foo',
+            'value': 9000,
+            'aggregator': 'bar',
+        }]
+        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
+        self.session.mount(
+            "http://metrics-url/metrics/", adapter)
+        return adapter
+
     def test_direct_fire(self):
         # Setup
-        metrics_to_fire = {
-            "foo.last": 1.0,
-            "bar.sum": 2.5
-        }
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo.last": 1.0,
-                            "bar.sum": 5.0},
-                      status=200, content_type='application/json')
+        adapter = self._mount_session()
         # Execute
-        result = fire_metrics.apply_async(args=[metrics_to_fire])
+        result = fire_metric.apply_async(kwargs={
+            "metric_name": 'foo.last',
+            "metric_value": 1,
+            "session": self.session
+        })
         # Check
-        self.assertTrue("'bar.sum': 2.5" in result.get())
-        self.assertTrue("'foo.last': 1.0" in result.get())
+        self.check_request(
+            adapter.request, 'POST',
+            data={"foo.last": 1.0}
+        )
+        self.assertEqual(result.get(),
+                         "Fired metric <foo.last> with value <1.0>")
 
-    @responses.activate
     def test_created_metrics(self):
         # Setup
+        adapter = self._mount_session()
+        # reconnect metric post_save hook
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
+
+        # Execute
+        self.make_subscription()
+
+        # Check
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.created.sum": 1.0}
+        )
+        # remove post_save hooks to prevent teardown errors
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
+
+    @responses.activate
+    def test_multiple_created_metrics(self):
+        # Setup
+        # deactivate Testsession for this test
+        self.session = None
         # reconnect metric post_save hook
         post_save.connect(fire_metrics_if_new, sender=Subscription)
         # add metric post response
         responses.add(responses.POST,
                       "http://metrics-url/metrics/",
-                      json={"subscriptions.total.sum": 1.0},
+                      json={"foo": "bar"},
                       status=200, content_type='application/json')
 
         # Execute
@@ -1086,42 +1166,47 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.make_subscription()
 
         # Check
-        # Test metric url has been posted to
         self.assertEqual(len(responses.calls), 2)
-        self.assertEqual(
-            responses.calls[0].request.url,
-            "http://metrics-url/metrics/")
-        self.assertEqual(
-            responses.calls[1].request.url,
-            "http://metrics-url/metrics/")
         # remove post_save hooks to prevent teardown errors
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
 
     @responses.activate
     def test_scheduled_metrics(self):
         # Setup
-        # create 1 default, active subscription
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+
+        # Execute
+        result = scheduled_metrics.apply_async()
+        # Check
+        self.assertEqual(result.get(), "4 Scheduled metrics launched")
+        self.assertEqual(len(responses.calls), 4)
+
+    def test_fire_active_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two active and one inactive subscription
         self.make_subscription()
-        # create an inactive, completed subscription
+        self.make_subscription()
         sub = self.make_subscription()
         sub.active = False
         sub.completed = True
         sub.save()
-        # create a broken, active subscription
-        sub = self.make_subscription()
-        sub.process_status = -1
-        sub.save()
-
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/", json={"foo": "bar"},
-                      status=200, content_type='application/json')
 
         # Execute
-        result = scheduled_metrics.apply_async(args=[])
+        result = fire_active_last.apply_async()
+
         # Check
-        r = result.get().get()
-        self.assertTrue("'subscriptions.active.last': 2" in r)
-        self.assertTrue("'subscriptions.total.last': 3" in r)
-        self.assertTrue("'subscriptions.broken.last': 1" in r)
-        self.assertTrue("'subscriptions.completed.last': 1" in r)
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.active.last> with value <2.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.active.last": 2.0}
+        )
