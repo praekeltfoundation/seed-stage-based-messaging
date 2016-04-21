@@ -304,18 +304,9 @@ class ScheduledMetrics(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
 
-    # def get_active_subscription_count(self):
-    #     active_subs = Subscription.objects.filter(active=True)
-    #     return active_subs.count()
-
-    # def run(self):
-    #     metrics_to_fire = {
-    #         u'subscriptions.active.last': self.get_active_subscription_count()
-    #     }
-    #     return fire_metrics.apply_async(args=[metrics_to_fire])
-
     def run(self):
         fire_active_last.apply_async()
+        return "1 Scheduled metric launched"
 
 scheduled_metrics = ScheduledMetrics()
 

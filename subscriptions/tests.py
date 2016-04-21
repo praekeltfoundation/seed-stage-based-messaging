@@ -1103,16 +1103,20 @@ class TestMetrics(AuthenticatedAPITestCase):
         else:
             self.assertEqual(json.loads(request.body), data)
 
-    def test_direct_fire(self):
-        # Setup
+    def _mount_session(self):
         response = [{
-            'name': 'foo.last',
-            'value': 1.0,
-            'aggregator': 'last',
+            'name': 'foo',
+            'value': 9000,
+            'aggregator': 'bar',
         }]
         adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
         self.session.mount(
             "http://metrics-url/metrics/", adapter)
+        return adapter
+
+    def test_direct_fire(self):
+        # Setup
+        adapter = self._mount_session()
         # Execute
         result = fire_metric.apply_async(kwargs={
             "metric_name": 'foo.last',
@@ -1129,16 +1133,7 @@ class TestMetrics(AuthenticatedAPITestCase):
 
     def test_created_metrics(self):
         # Setup
-        # add session response
-        response = [{
-            'name': 'subscriptions.created.sum',
-            'value': 1.0,
-            'aggregator': 'sum',
-        }]
-        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
-        self.session.mount(
-            "http://metrics-url/metrics/", adapter)
-
+        adapter = self._mount_session()
         # reconnect metric post_save hook
         post_save.connect(fire_metrics_if_new, sender=Subscription)
 
@@ -1150,26 +1145,67 @@ class TestMetrics(AuthenticatedAPITestCase):
             adapter.request, 'POST',
             data={"subscriptions.created.sum": 1.0}
         )
+        # remove post_save hooks to prevent teardown errors
+        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
 
+    @responses.activate
+    def test_multiple_created_metrics(self):
+        # Setup
+        # deactivate Testsession for this test
+        self.session = None
+        # reconnect metric post_save hook
+        post_save.connect(fire_metrics_if_new, sender=Subscription)
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+
+        # Execute
+        self.make_subscription()
+        self.make_subscription()
+
+        # Check
+        self.assertEqual(len(responses.calls), 2)
         # remove post_save hooks to prevent teardown errors
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
 
     @responses.activate
     def test_scheduled_metrics(self):
         # Setup
-        # create 2 active subscriptions
-        self.make_subscription()
-        self.make_subscription()
-        # create an inactive subscription
-        sub = self.make_subscription()
-        sub.active = False
-        sub.save()
+        # deactivate Testsession for this test
+        self.session = None
         # add metric post response
         responses.add(responses.POST,
                       "http://metrics-url/metrics/",
-                      json={"subscriptions.total.sum": 1.0},
+                      json={"foo": "bar"},
                       status=200, content_type='application/json')
+
         # Execute
-        result = scheduled_metrics.apply_async(args=[])
+        result = scheduled_metrics.apply_async()
         # Check
-        self.assertTrue("'subscriptions.active.last': 2" in result.get().get())
+        self.assertEqual(result.get(), "1 Scheduled metric launched")
+        self.assertEqual(len(responses.calls), 1)
+
+    def test_fire_active_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two active and one inactive subscription
+        self.make_subscription()
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.active = False
+        sub.save()
+
+        # Execute
+        result = fire_active_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.active.last> with value <2.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.active.last": 2.0}
+        )
