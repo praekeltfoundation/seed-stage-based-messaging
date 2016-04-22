@@ -305,11 +305,12 @@ class ScheduledMetrics(Task):
     name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
 
     def run(self):
-        fire_active_last.apply_async()
-        fire_created_last.apply_async()
-        fire_broken_last.apply_async()
-        fire_completed_last.apply_async()
-        return "4 Scheduled metrics launched"
+        globs = globals()  # execute globals() outside for loop for efficiency
+        for metric in settings.METRICS_SCHEDULED:
+            globs[metric[1]].apply_async()  # metric[1] is the task name
+
+        return "%d Scheduled metrics launched" % len(
+            settings.METRICS_SCHEDULED)
 
 scheduled_metrics = ScheduledMetrics()
 
