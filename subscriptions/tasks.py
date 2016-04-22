@@ -321,11 +321,11 @@ class FireActiveLast(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
 
-    def run(self, **kwargs):
-        active_subs = Subscription.objects.filter(active=True)
+    def run(self):
+        active_subs = Subscription.objects.filter(active=True).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.active.last',
-            "metric_value": active_subs.count()
+            "metric_value": active_subs
         })
 
 fire_active_last = FireActiveLast()
@@ -337,11 +337,11 @@ class FireCreatedLast(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_created_last"
 
-    def run(self, **kwargs):
-        created_subs = Subscription.objects.filter()
+    def run(self):
+        created_subs = Subscription.objects.all().count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.created.last',
-            "metric_value": created_subs.count()
+            "metric_value": created_subs
         })
 
 fire_created_last = FireCreatedLast()
@@ -353,11 +353,11 @@ class FireBrokenLast(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_broken_last"
 
-    def run(self, **kwargs):
-        broken_subs = Subscription.objects.filter(process_status=-1)
+    def run(self):
+        broken_subs = Subscription.objects.filter(process_status=-1).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.broken.last',
-            "metric_value": broken_subs.count()
+            "metric_value": broken_subs
         })
 
 fire_broken_last = FireBrokenLast()
@@ -369,11 +369,11 @@ class FireCompletedLast(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_completed_last"  # noqa
 
-    def run(self, **kwargs):
-        completed_subs = Subscription.objects.filter(completed=True)
+    def run(self):
+        completed_subs = Subscription.objects.filter(completed=True).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.completed.last',
-            "metric_value": completed_subs.count()
+            "metric_value": completed_subs
         })
 
 fire_completed_last = FireCompletedLast()
@@ -405,10 +405,10 @@ class FireMessageSetLast(Task):
 
     def run(self, msgset_id, short_name, **kwargs):
         active_msgset_subs = Subscription.objects.filter(
-            messageset=msgset_id, active=True)
+            messageset=msgset_id, active=True).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.%s.active.last' % short_name,
-            "metric_value": active_msgset_subs.count()
+            "metric_value": active_msgset_subs
         })
 
 fire_messageset_last = FireMessageSetLast()
