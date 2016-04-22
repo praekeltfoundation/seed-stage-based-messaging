@@ -28,6 +28,7 @@ class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_metric"
 
     def run(self, metric_name, metric_value, session=None, **kwargs):
         metric_value = float(metric_value)
@@ -294,3 +295,37 @@ class ScheduleCreate(Task):
                 exc_info=True)
 
 schedule_create = ScheduleCreate()
+
+
+class ScheduledMetrics(Task):
+
+    """ Fires off tasks for all the metrics that should run
+        on a schedule
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
+
+    def run(self):
+        globs = globals()  # execute globals() outside for loop for efficiency
+        for metric in settings.METRICS_SCHEDULED:
+            globs[metric[1]].apply_async()  # metric[1] is the task name
+
+        return "%d Scheduled metrics launched" % len(
+            settings.METRICS_SCHEDULED)
+
+scheduled_metrics = ScheduledMetrics()
+
+
+class FireActiveLast(Task):
+
+    """ Fires last active subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
+
+    def run(self):
+        active_subs = Subscription.objects.filter(active=True)
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.active.last',
+            "metric_value": active_subs.count()
+        })
+
+fire_active_last = FireActiveLast()

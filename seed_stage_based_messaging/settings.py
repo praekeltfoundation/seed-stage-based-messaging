@@ -168,11 +168,22 @@ CELERY_ROUTES = {
     'subscriptions.tasks.fire_metrics': {
         'queue': 'metrics',
     },
+    'subscriptions.tasks.scheduled_metrics': {
+        'queue': 'scheduledmetrics',
+    },
 }
+
+METRICS_REALTIME = [
+    'subscriptions.created.sum'
+]
+METRICS_SCHEDULED = [
+    ('subscriptions.active.last', 'fire_active_last')
+]
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
+CELERY_IGNORE_RESULT = True
 
 djcelery.setup_loader()
 
