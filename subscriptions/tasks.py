@@ -322,10 +322,10 @@ class FireActiveLast(Task):
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
 
     def run(self):
-        active_subs = Subscription.objects.filter(active=True)
+        active_subs = Subscription.objects.filter(active=True).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.active.last',
-            "metric_value": active_subs.count()
+            "metric_value": active_subs
         })
 
 fire_active_last = FireActiveLast()
@@ -338,10 +338,10 @@ class FireCreatedLast(Task):
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_created_last"
 
     def run(self):
-        created_subs = Subscription.objects.filter()
+        created_subs = Subscription.objects.all().count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.created.last',
-            "metric_value": created_subs.count()
+            "metric_value": created_subs
         })
 
 fire_created_last = FireCreatedLast()
@@ -354,10 +354,10 @@ class FireBrokenLast(Task):
     name = "seed_staged_based_messaging.subscriptions.tasks.fire_broken_last"
 
     def run(self):
-        broken_subs = Subscription.objects.filter(process_status=-1)
+        broken_subs = Subscription.objects.filter(process_status=-1).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.broken.last',
-            "metric_value": broken_subs.count()
+            "metric_value": broken_subs
         })
 
 fire_broken_last = FireBrokenLast()
@@ -371,10 +371,10 @@ class FireCompletedLast(Task):
     "fire_completed_last"
 
     def run(self):
-        completed_subs = Subscription.objects.filter(completed=True)
+        completed_subs = Subscription.objects.filter(completed=True).count()
         return fire_metric.apply_async(kwargs={
             "metric_name": 'subscriptions.completed.last',
-            "metric_value": completed_subs.count()
+            "metric_value": completed_subs
         })
 
 fire_completed_last = FireCompletedLast()
