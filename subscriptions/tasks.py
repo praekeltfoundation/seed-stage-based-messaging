@@ -17,26 +17,30 @@ from go_http.metrics import MetricsApiClient
 logger = get_task_logger(__name__)
 
 
-class FireMetrics(Task):
+def get_metric_client(self, session=None):
+    return MetricsApiClient(
+        auth_token=settings.METRICS_AUTH_TOKEN,
+        api_url=settings.METRICS_URL,
+        session=session)
+
+
+class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_metric"
 
-    def set_metric_client(self):
-        return MetricsApiClient(
-            auth_token=settings.METRICS_AUTH_TOKEN,
-            api_url=settings.METRICS_URL,
-            session=None)
+    def run(self, metric_name, metric_value, session=None, **kwargs):
+        metric_value = float(metric_value)
+        metric = {
+            metric_name: metric_value
+        }
+        metric_client = get_metric_client(session=session)
+        metric_client.fire(metric)
+        return "Fired metric <%s> with value <%s>" % (
+            metric_name, metric_value)
 
-    def run(self, metrics, **kwargs):
-        try:
-            metric_client = self.set_metric_client()
-            metric_client.fire(metrics)
-            return "Fired metrics: %s" % metrics
-        except:
-            return "Metrics fire failure"
-
-fire_metrics = FireMetrics()
+fire_metric = FireMetric()
 
 
 class SendNextMessage(Task):
@@ -295,24 +299,88 @@ schedule_create = ScheduleCreate()
 
 class ScheduledMetrics(Task):
 
-    """ Compiles the scheduled metrics data and then fires them
+    """ Fires off tasks for all the metrics that should run
+        on a schedule
     """
+    name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
 
-    def get_active_subscription_count(self):
+    def run(self):
+        globs = globals()  # execute globals() outside for loop for efficiency
+        for metric in settings.METRICS_SCHEDULED:
+            globs[metric[1]].apply_async()  # metric[1] is the task name
+
+        return "%d Scheduled metrics launched" % len(
+            settings.METRICS_SCHEDULED)
+
+scheduled_metrics = ScheduledMetrics()
+
+
+class FireActiveLast(Task):
+
+    """ Fires last active subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
+
+    def run(self):
         active_subs = Subscription.objects.filter(active=True)
-        return active_subs.count()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.active.last',
+            "metric_value": active_subs.count()
+        })
 
-    def get_total_subscription_count(self):
-        total_subs = Subscription.objects.all()
-        return total_subs.count()
+fire_active_last = FireActiveLast()
 
-    def get_broken_subscription_count(self):
+
+class FireCreatedLast(Task):
+
+    """ Fires last created subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_created_last"
+
+    def run(self):
+        created_subs = Subscription.objects.filter()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.created.last',
+            "metric_value": created_subs.count()
+        })
+
+fire_created_last = FireCreatedLast()
+
+
+class FireBrokenLast(Task):
+
+    """ Fires last broken subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_broken_last"
+
+    def run(self):
         broken_subs = Subscription.objects.filter(process_status=-1)
-        return broken_subs.count()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.broken.last',
+            "metric_value": broken_subs.count()
+        })
 
-    def get_completed_subscription_count(self):
+fire_broken_last = FireBrokenLast()
+
+
+class FireCompletedLast(Task):
+
+    """ Fires last completed subscriptions count
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks."
+    "fire_completed_last"
+
+    def run(self):
         completed_subs = Subscription.objects.filter(completed=True)
-        return completed_subs.count()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.completed.last',
+            "metric_value": completed_subs.count()
+        })
+
+fire_completed_last = FireCompletedLast()
+
+
+class FireMessagesetLast(Task):
 
     def get_active_messageset_subs(self, msgset_id):
         active_msgset_subs = Subscription.objects.filter(
@@ -330,16 +398,6 @@ class ScheduledMetrics(Task):
         return
 
     def run(self):
-        metrics_to_fire = {
-            u'subscriptions.active.last': self.get_active_subscription_count(),
-            u'subscriptions.total.last': self.get_total_subscription_count(),
-            u'subscriptions.broken.last': self.get_broken_subscription_count(),
-            u'subscriptions.completed.last':
-                self.get_completed_subscription_count(),
-        }
-        self.add_messageset_metrics(metrics_to_fire)
+        return
 
-        return fire_metrics.apply_async(args=[metrics_to_fire])
-
-
-scheduled_metrics = ScheduledMetrics()
+fire_messageset_last = FireMessagesetLast()
