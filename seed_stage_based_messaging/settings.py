@@ -165,11 +165,23 @@ CELERY_ROUTES = {
     'subscriptions.tasks.schedule_create': {
         'queue': 'priority',
     },
-    'subscriptions.tasks.fire_metrics': {
+    'subscriptions.tasks.fire_metric': {
         'queue': 'metrics',
     },
     'subscriptions.tasks.scheduled_metrics': {
-        'queue': 'scheduledmetrics',
+        'queue': 'metrics',
+    },
+    'subscriptions.tasks.fire_active_last': {
+        'queue': 'metrics',
+    },
+    'subscriptions.tasks.fire_created_last': {
+        'queue': 'metrics',
+    },
+    'subscriptions.tasks.fire_broken_last': {
+        'queue': 'metrics',
+    },
+    'subscriptions.tasks.fire_completed_last': {
+        'queue': 'metrics',
     },
 }
 
@@ -177,7 +189,10 @@ METRICS_REALTIME = [
     'subscriptions.created.sum'
 ]
 METRICS_SCHEDULED = [
-    ('subscriptions.active.last', 'fire_active_last')
+    ('subscriptions.active.last', 'fire_active_last'),
+    ('subscriptions.created.last', 'fire_created_last'),
+    ('subscriptions.broken.last', 'fire_broken_last'),
+    ('subscriptions.completed.last', 'fire_completed_last'),
 ]
 
 CELERY_TASK_SERIALIZER = 'json'

@@ -19,9 +19,8 @@ from go_http.metrics import MetricsApiClient
 
 from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import (schedule_create, fire_metric, scheduled_metrics,
-                    fire_active_last)
-from subscriptions import tasks
+from .tasks import schedule_create, fire_metric, scheduled_metrics
+from . import tasks
 
 
 class RecordingAdapter(TestAdapter):
@@ -1184,8 +1183,8 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "1 Scheduled metrics launched")
-        self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(result.get(), "4 Scheduled metrics launched")
+        self.assertEqual(len(responses.calls), 4)
 
     def test_fire_active_last(self):
         # Setup
@@ -1195,10 +1194,11 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.make_subscription()
         sub = self.make_subscription()
         sub.active = False
+        sub.completed = True
         sub.save()
 
         # Execute
-        result = fire_active_last.apply_async()
+        result = tasks.fire_active_last.apply_async()
 
         # Check
         self.assertEqual(
@@ -1208,4 +1208,80 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.check_request(
             adapter.request, 'POST',
             data={"subscriptions.active.last": 2.0}
+        )
+
+    def test_fire_created_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two active and one inactive subscription
+        self.make_subscription()
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.active = False
+        sub.completed = True
+        sub.save()
+
+        # Execute
+        result = tasks.fire_created_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.created.last> with value <3.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.created.last": 3.0}
+        )
+
+    def test_fire_broken_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two healthy subscriptions
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.process_status = 1
+        sub.save()
+        # make two broken subscriptions
+        sub = self.make_subscription()
+        sub.process_status = -1
+        sub.save()
+        sub = self.make_subscription()
+        sub.process_status = -1
+        sub.save()
+
+        # Execute
+        result = tasks.fire_broken_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.broken.last> with value <2.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.broken.last": 2.0}
+        )
+
+    def test_fire_completed_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two incomplete and one complete subscription
+        self.make_subscription()
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.completed = True
+        sub.save()
+
+        # Execute
+        result = tasks.fire_completed_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.completed.last> with value <1.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.completed.last": 1.0}
         )
