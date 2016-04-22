@@ -193,6 +193,8 @@ METRICS_SCHEDULED = [
     ('subscriptions.created.last', 'fire_created_last'),
     ('subscriptions.broken.last', 'fire_broken_last'),
     ('subscriptions.completed.last', 'fire_completed_last'),
+    # collection of messageset metrics
+    ('subscriptions.<short_name>.active.last', 'fire_messagesets_tasks')
 ]
 
 CELERY_TASK_SERIALIZER = 'json'

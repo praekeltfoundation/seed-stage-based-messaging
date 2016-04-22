@@ -25,3 +25,6 @@ Seed Stage-Based Messaging Store
 
 ##### subscriptions.completed.last
 `last` Total number of completed subscriptions
+
+##### subscriptions.<messageset_shortname>.active.last
+`last` Total number of active subscriptions for each messageset
