@@ -1183,8 +1183,9 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "4 Scheduled metrics launched")
-        self.assertEqual(len(responses.calls), 4)
+        self.assertEqual(result.get(), "5 Scheduled metrics launched")
+        # fire_messagesets_tasks fires two metrics, therefore extra call
+        self.assertEqual(len(responses.calls), 6)
 
     def test_fire_active_last(self):
         # Setup
@@ -1247,6 +1248,7 @@ class TestMetrics(AuthenticatedAPITestCase):
         sub.process_status = -1
         sub.save()
         sub = self.make_subscription()
+        sub.messageset = self.messageset_audio
         sub.process_status = -1
         sub.save()
 
@@ -1284,4 +1286,40 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.check_request(
             adapter.request, 'POST',
             data={"subscriptions.completed.last": 1.0}
+        )
+
+    def test_messagesets_tasks(self):
+        # Setup
+        self._mount_session()
+        self.make_subscription()
+
+        # Execute
+        result = tasks.fire_messagesets_tasks.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get(),
+            "2 MessageSet metrics launched"
+        )
+
+    def test_mesageset_last(self):
+        # Setup
+        adapter = self._mount_session()
+        self.make_subscription()
+
+        # Execute
+        result = tasks.fire_messageset_last.apply_async(kwargs={
+            "msgset_id": self.messageset.id,
+            "short_name": self.messageset.short_name
+        })
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.messageset_one.active.last> with "
+            "value <1.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.messageset_one.active.last": 1.0}
         )

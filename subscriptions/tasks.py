@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Max
 
 from .models import Subscription
-from contentstore.models import Message
+from contentstore.models import Message, MessageSet
 from scheduler.client import SchedulerApiClient
 from go_http.metrics import MetricsApiClient
 
@@ -304,7 +304,7 @@ class ScheduledMetrics(Task):
     """
     name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
 
-    def run(self):
+    def run(self, **kwargs):
         globs = globals()  # execute globals() outside for loop for efficiency
         for metric in settings.METRICS_SCHEDULED:
             globs[metric[1]].apply_async()  # metric[1] is the task name
@@ -367,8 +367,7 @@ class FireCompletedLast(Task):
 
     """ Fires last completed subscriptions count
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks."
-    "fire_completed_last"
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_completed_last"  # noqa
 
     def run(self):
         completed_subs = Subscription.objects.filter(completed=True).count()
@@ -378,3 +377,38 @@ class FireCompletedLast(Task):
         })
 
 fire_completed_last = FireCompletedLast()
+
+
+class FireMessageSetsTasks(Task):
+
+    """ Fires off seperate tasks to count active subscriptions for each
+        messageset found
+    """
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_messagesets_tasks"  # noqa
+
+    def run(self, **kwargs):
+        # get message sets
+        messagesets = MessageSet.objects.all()
+        for messageset in messagesets:
+            fire_messageset_last.apply_async(kwargs={
+                "msgset_id": messageset.id,
+                "short_name": messageset.short_name
+            })
+        return "%d MessageSet metrics launched" % messagesets.count()
+
+fire_messagesets_tasks = FireMessageSetsTasks()
+
+
+class FireMessageSetLast(Task):
+
+    name = "seed_staged_based_messaging.subscriptions.tasks.fire_messageset_last"  # noqa
+
+    def run(self, msgset_id, short_name, **kwargs):
+        active_msgset_subs = Subscription.objects.filter(
+            messageset=msgset_id, active=True).count()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.%s.active.last' % short_name,
+            "metric_value": active_msgset_subs
+        })
+
+fire_messageset_last = FireMessageSetLast()
