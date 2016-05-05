@@ -48,8 +48,8 @@ INSTALLED_APPS = (
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
-    'contentstore',
     # us
+    'contentstore',
     'subscriptions',
 
 )

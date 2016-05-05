@@ -140,7 +140,7 @@ class AuthenticatedAPITestCase(APITestCase):
             api_url=settings.METRICS_URL,
             session=self.session)
 
-    def _restore_get_metric_client(self, session=None):
+    def _restore_get_metric_client(session=None):
         return MetricsApiClient(
             auth_token=settings.METRICS_AUTH_TOKEN,
             api_url=settings.METRICS_URL,
@@ -169,7 +169,9 @@ class AuthenticatedAPITestCase(APITestCase):
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
+
         self._replace_post_save_hooks()
+        tasks.get_metric_client = self._replace_get_metric_client
 
         self.username = 'testuser'
         self.password = 'testpass'
@@ -182,11 +184,10 @@ class AuthenticatedAPITestCase(APITestCase):
         self.schedule = self.make_schedule()
         self.messageset = self.make_messageset()
         self.messageset_audio = self.make_messageset_audio()
-        tasks.get_metric_client = self._replace_get_metric_client
 
     def tearDown(self):
         self._restore_post_save_hooks()
-        self._restore_get_metric_client()
+        tasks.get_metric_client = self._restore_get_metric_client()
 
 
 class TestLogin(AuthenticatedAPITestCase):

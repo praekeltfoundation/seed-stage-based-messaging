@@ -17,7 +17,7 @@ from go_http.metrics import MetricsApiClient
 logger = get_task_logger(__name__)
 
 
-def get_metric_client(self, session=None):
+def get_metric_client(session=None):
     return MetricsApiClient(
         auth_token=settings.METRICS_AUTH_TOKEN,
         api_url=settings.METRICS_URL,
