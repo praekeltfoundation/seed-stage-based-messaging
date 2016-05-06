@@ -188,13 +188,19 @@ CELERY_ROUTES = {
 METRICS_REALTIME = [
     'subscriptions.created.sum'
 ]
+# Note metrics with variable names of messageset short_names not included here
 METRICS_SCHEDULED = [
-    ('subscriptions.active.last', 'fire_active_last'),
-    ('subscriptions.created.last', 'fire_created_last'),
-    ('subscriptions.broken.last', 'fire_broken_last'),
-    ('subscriptions.completed.last', 'fire_completed_last'),
-    # collection of messageset metrics
-    ('subscriptions.<short_name>.active.last', 'fire_messagesets_tasks')
+    'subscriptions.active.last',
+    'subscriptions.created.last',
+    'subscriptions.broken.last',
+    'subscriptions.completed.last'
+]
+METRICS_SCHEDULED_TASKS = [
+    'fire_active_last',
+    'fire_created_last',
+    'fire_broken_last',
+    'fire_completed_last',
+    'fire_messagesets_tasks'
 ]
 
 CELERY_TASK_SERIALIZER = 'json'
