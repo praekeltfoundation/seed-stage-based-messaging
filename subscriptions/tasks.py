@@ -8,11 +8,12 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Max
+from go_http.metrics import MetricsApiClient
 
 from .models import Subscription
+from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet
 from scheduler.client import SchedulerApiClient
-from go_http.metrics import MetricsApiClient
 
 logger = get_task_logger(__name__)
 
@@ -28,7 +29,7 @@ class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_metric"
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_metric"
 
     def run(self, metric_name, metric_value, session=None, **kwargs):
         metric_value = float(metric_value)
@@ -57,28 +58,6 @@ class SendNextMessage(Task):
         code.
         """
 
-    def get_identity(self, identity_uuid):
-        url = "%s/%s/%s/" % (settings.IDENTITY_STORE_URL,
-                             "identities", identity_uuid)
-        headers = {'Authorization': ['Token %s' % (
-            settings.IDENTITY_STORE_TOKEN, )],
-            'Content-Type': ['application/json']}
-        r = requests.get(url, headers=headers)
-        return r.json()
-
-    def get_identity_address(self, identity_uuid):
-        url = "%s/%s/%s/addresses/msisdn" % (settings.IDENTITY_STORE_URL,
-                                             "identities", identity_uuid)
-        params = {"default": True}
-        headers = {'Authorization': ['Token %s' % (
-            settings.IDENTITY_STORE_TOKEN, )],
-            'Content-Type': ['application/json']}
-        r = requests.get(url, params=params, headers=headers).json()
-        if len(r["results"]) > 0:
-            return r["results"][0]
-        else:
-            return None
-
     def run(self, subscription_id, **kwargs):
         """
         Load and contruct message and send them off
@@ -95,15 +74,15 @@ class SendNextMessage(Task):
                 sequence_number=subscription.next_sequence_number,
                 lang=subscription.lang)
             l.info("Loading Initial Recipient Identity")
-            initial_id = self.get_identity(subscription.identity)
+            initial_id = utils.get_identity(subscription.identity)
             if "communicate_through" in initial_id and \
                     initial_id["communicate_through"] is not None:
                 # we should not send messages to this ID. Load the listed one.
-                to_addr = self.get_identity_address(
+                to_addr = utils.get_identity_address(
                     initial_id["communicate_through"])
             else:
                 # set recipient data
-                to_addr = self.get_identity_address(subscription.identity)
+                to_addr = utils.get_identity_address(subscription.identity)
             if to_addr is not None:
                 l.info("Preparing message payload with: %s" % message.id)
                 payload = {
@@ -240,7 +219,7 @@ class ScheduleCreate(Task):
 
     """ Task to tell scheduler a new subscription created
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.schedule_create"
+    name = "seed_stage_based_messaging.subscriptions.tasks.schedule_create"
 
     def scheduler_client(self):
         return SchedulerApiClient(
@@ -302,7 +281,7 @@ class ScheduledMetrics(Task):
     """ Fires off tasks for all the metrics that should run
         on a schedule
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.scheduled_metrics"
+    name = "seed_stage_based_messaging.subscriptions.tasks.scheduled_metrics"
 
     def run(self, **kwargs):
         globs = globals()  # execute globals() outside for loop for efficiency
@@ -319,7 +298,7 @@ class FireActiveLast(Task):
 
     """ Fires last active subscriptions count
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_active_last"
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_active_last"
 
     def run(self):
         active_subs = Subscription.objects.filter(active=True).count()
@@ -335,7 +314,7 @@ class FireCreatedLast(Task):
 
     """ Fires last created subscriptions count
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_created_last"
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_created_last"
 
     def run(self):
         created_subs = Subscription.objects.all().count()
@@ -351,7 +330,7 @@ class FireBrokenLast(Task):
 
     """ Fires last broken subscriptions count
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_broken_last"
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_broken_last"
 
     def run(self):
         broken_subs = Subscription.objects.filter(process_status=-1).count()
@@ -367,7 +346,7 @@ class FireCompletedLast(Task):
 
     """ Fires last completed subscriptions count
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_completed_last"  # noqa
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_completed_last"  # noqa
 
     def run(self):
         completed_subs = Subscription.objects.filter(completed=True).count()
@@ -384,7 +363,7 @@ class FireMessageSetsTasks(Task):
     """ Fires off seperate tasks to count active subscriptions for each
         messageset found
     """
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_messagesets_tasks"  # noqa
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_messagesets_tasks"  # noqa
 
     def run(self, **kwargs):
         # get message sets
@@ -401,7 +380,7 @@ fire_messagesets_tasks = FireMessageSetsTasks()
 
 class FireMessageSetLast(Task):
 
-    name = "seed_staged_based_messaging.subscriptions.tasks.fire_messageset_last"  # noqa
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_messageset_last"  # noqa
 
     def run(self, msgset_id, short_name, **kwargs):
         active_msgset_subs = Subscription.objects.filter(
