@@ -1362,4 +1362,3 @@ class TestMetrics(AuthenticatedAPITestCase):
             adapter.request, 'POST',
             data={"subscriptions.messageset_one.active.last": 1.0}
         )
-
