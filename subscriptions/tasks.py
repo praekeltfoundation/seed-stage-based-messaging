@@ -285,11 +285,11 @@ class ScheduledMetrics(Task):
 
     def run(self, **kwargs):
         globs = globals()  # execute globals() outside for loop for efficiency
-        for metric in settings.METRICS_SCHEDULED:
-            globs[metric[1]].apply_async()  # metric[1] is the task name
+        for metric in settings.METRICS_SCHEDULED_TASKS:
+            globs[metric].apply_async()
 
         return "%d Scheduled metrics launched" % len(
-            settings.METRICS_SCHEDULED)
+            settings.METRICS_SCHEDULED_TASKS)
 
 scheduled_metrics = ScheduledMetrics()
 

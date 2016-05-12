@@ -6,7 +6,8 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer
-from .tasks import send_next_message
+from .tasks import send_next_message, scheduled_metrics
+from seed_stage_based_messaging.utils import get_available_metrics
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -62,3 +63,25 @@ class SubscriptionRequest(APIView):
             status = 201
             accepted = {"accepted": True}
             return Response(accepted, status=status)
+
+
+class MetricsView(APIView):
+
+    """ Metrics Interaction
+        GET - returns list of all available metrics on the service
+        POST - starts up the task that fires all the scheduled metrics
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        status = 200
+        resp = {
+            "metrics_available": get_available_metrics()
+        }
+        return Response(resp, status=status)
+
+    def post(self, request, *args, **kwargs):
+        status = 201
+        scheduled_metrics.apply_async()
+        resp = {"scheduled_metrics_initiated": True}
+        return Response(resp, status=status)
