@@ -276,14 +276,6 @@ class ScheduleCreate(Task):
 schedule_create = ScheduleCreate()
 
 
-# class MetricsAvailable(Task):
-#     """ Task to gather a list of available metrics
-#     """
-#     name = "seed_stage_based_messaging.subscriptions.tasks.metrics_available"
-
-#     def run(self, **kwargs):
-
-
 class ScheduledMetrics(Task):
 
     """ Fires off tasks for all the metrics that should run
