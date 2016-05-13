@@ -63,7 +63,7 @@ class MessageSet(models.Model):
         ("audio", 'Audio')
     )
 
-    short_name = models.CharField(_('Short name'), max_length=20, unique=True)
+    short_name = models.CharField(_('Short name'), max_length=100, unique=True)
     notes = models.TextField(_('Notes'), null=True, blank=True)
     next_set = models.ForeignKey('self',
                                  null=True,

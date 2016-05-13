@@ -88,7 +88,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         # Setup
         existing_schedule = self.make_schedule()
         messageset_data = {
-            'short_name': 'messageset_one',
+            'short_name': 'messageset_one_but_very_longname_and_cool_yeah',
             'notes': None,
             'next_set': None,
             'default_schedule': existing_schedule.id
@@ -101,7 +101,8 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         d = MessageSet.objects.last()
         self.assertIsNotNone(d.id)
-        self.assertEqual(d.short_name, 'messageset_one')
+        self.assertEqual(d.short_name,
+                         'messageset_one_but_very_longname_and_cool_yeah')
         self.assertEqual(d.notes, None)
         self.assertEqual(d.next_set, None)
         self.assertEqual(d.default_schedule, existing_schedule)
