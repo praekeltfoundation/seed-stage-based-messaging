@@ -398,21 +398,26 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
     def test_webhook_subscription_data_good(self):
         # Setup
         post_webhook = {
-            "hook": {
-                "id": 5,
-                "event": "subscriptionrequest.added",
-                "target": "http://example.com/api/v1/subscriptions/request"
+            "hook_id": 1,
+            "instance_id": "c8061a9c-dbfa-4d8f-ac34-8f827db618de",
+            "payload": {
+                "hook": {
+                    "id": 5,
+                    "event": "subscriptionrequest.added",
+                    "target": "http://example.com/api/v1/subscriptions/request"
+                },
+                "data": {
+                    "messageset": self.messageset.id,
+                    "updated_at": "2016-02-17T07:59:42.831568+00:00",
+                    "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
+                    "lang": "en_ZA",
+                    "created_at": "2016-02-17T07:59:42.831533+00:00",
+                    "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
+                    "next_sequence_number": 1,
+                    "schedule": self.schedule.id
+                }
             },
-            "data": {
-                "messageset": self.messageset.id,
-                "updated_at": "2016-02-17T07:59:42.831568+00:00",
-                "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
-                "lang": "en_ZA",
-                "created_at": "2016-02-17T07:59:42.831533+00:00",
-                "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
-                "next_sequence_number": 1,
-                "schedule": self.schedule.id
-            }
+            "target": "http://stagebasedmessaging/api/v1/subscription/request"
         }
         # Execute
         response = self.client.post('/api/v1/subscriptions/request',
@@ -434,20 +439,25 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
     def test_webhook_subscription_data_bad(self):
         # Setup with missing identity
         post_webhook = {
-            "hook": {
-                "id": 5,
-                "event": "subscriptionrequest.added",
-                "target": "http://example.com/api/v1/subscriptions/request"
+            "hook_id": 2,
+            "instance_id": "c8061a9c-dbfa-4d8f-ac34-8f827db618de",
+            "payload": {
+                "hook": {
+                    "id": 5,
+                    "event": "subscriptionrequest.added",
+                    "target": "http://example.com/api/v1/subscriptions/request"
+                },
+                "data": {
+                    "messageset": self.messageset.id,
+                    "updated_at": "2016-02-17T07:59:42.831568+00:00",
+                    "lang": "en_ZA",
+                    "created_at": "2016-02-17T07:59:42.831533+00:00",
+                    "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
+                    "next_sequence_number": 1,
+                    "schedule": self.schedule.id
+                }
             },
-            "data": {
-                "messageset": self.messageset.id,
-                "updated_at": "2016-02-17T07:59:42.831568+00:00",
-                "lang": "en_ZA",
-                "created_at": "2016-02-17T07:59:42.831533+00:00",
-                "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
-                "next_sequence_number": 1,
-                "schedule": self.schedule.id
-            }
+            "target": "http://stagebasedmessaging/api/v1/subscription/request"
         }
         # Execute
         response = self.client.post('/api/v1/subscriptions/request',
