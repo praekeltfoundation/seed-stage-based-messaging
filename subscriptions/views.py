@@ -54,9 +54,9 @@ class SubscriptionRequest(APIView):
         """ Validates subscription data before creating Subscription message
         """
         # This is a workaround for JSONField not liking blank/null refs
-        if "metadata" not in request.data["data"]:
-            request.data["data"]["metadata"] = {}
-        subscription = SubscriptionSerializer(data=request.data["data"])
+        if "metadata" not in request.data["payload"]["data"]:
+            request.data["payload"]["data"]["metadata"] = {}
+        subscription = SubscriptionSerializer(data=request.data["payload"]["data"])
         if subscription.is_valid(raise_exception=True):
             subscription.save()
             # Return
