@@ -14,7 +14,7 @@ Seed Stage-Based Messaging Store
 ##### subscriptions.created.sum
 `sum` Total number of subscriptions created
 
-##### subscriptions.created.last
+##### subscriptions.total.last
 `last` Total number of subscriptions created
 
 ##### subscriptions.active.last
