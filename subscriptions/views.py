@@ -57,12 +57,15 @@ class SubscriptionRequest(APIView):
         if "metadata" not in request.data["data"]:
             request.data["data"]["metadata"] = {}
         subscription = SubscriptionSerializer(data=request.data["data"])
-        if subscription.is_valid(raise_exception=True):
+        if subscription.is_valid():
             subscription.save()
             # Return
             status = 201
             accepted = {"accepted": True}
             return Response(accepted, status=status)
+        else:
+            status = 400
+            return Response(subscription.errors, status=status)
 
 
 class MetricsView(APIView):
