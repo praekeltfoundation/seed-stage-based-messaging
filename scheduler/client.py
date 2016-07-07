@@ -28,7 +28,7 @@ class SchedulerApiClient(object):
         self.api_url = api_url
         self.headers = {
             'Content-Type': 'application/json',
-            'Authorisation': 'Token %s' % api_token
+            'Authorization': 'Token %s' % api_token
         }
         if session is None:
             session = requests.Session()
