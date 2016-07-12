@@ -24,6 +24,7 @@ class MessageSetViewSet(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = MessageSet.objects.all()
     serializer_class = MessageSetSerializer
+    filter_fields = ('short_name', 'content_type', )
 
 
 class MessageViewSet(ModelViewSet):
