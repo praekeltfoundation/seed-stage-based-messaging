@@ -24,7 +24,7 @@ def get_identity_address(identity_uuid):
     }
     r = requests.get(url, params=params, headers=headers).json()
     if len(r["results"]) > 0:
-        return r["results"][0]
+        return r["results"][0]["address"]
     else:
         return None
 

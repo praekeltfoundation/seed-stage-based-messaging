@@ -474,7 +474,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059992222"]
+                "results": [{"address": "+2345059992222"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
@@ -568,7 +568,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059992222"]
+                "results": [{"address": "+2345059992222"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
@@ -665,7 +665,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059992222"]
+                "results": [{"address": "+2345059992222"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
@@ -760,7 +760,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059993333"]
+                "results": [{"address": "+2345059993333"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
@@ -881,7 +881,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059992222"]
+                "results": [{"address": "+2345059992222"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
@@ -988,7 +988,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "count": 1,
                 "next": None,
                 "previous": None,
-                "results": ["+2345059992222"]
+                "results": [{"address": "+2345059992222"}]
             },
             status=200, content_type='application/json',
             match_querystring=True
