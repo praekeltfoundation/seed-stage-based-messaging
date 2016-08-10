@@ -182,19 +182,13 @@ class PostSendProcess(Task):
                 # If next set defined create new subscription
                 messageset = subscription.messageset
                 if messageset.next_set:
-                    # clone existing minus PK as recommended in
-                    # https://docs.djangoproject.com/en/1.9/topics/db/queries/
-                    # copying-model-instances
-                    subscription.pk = None
-                    subscription.process_status = 0  # Ready
-                    subscription.active = True
-                    subscription.completed = False
-                    subscription.next_sequence_number = 1
-                    subscription = subscription
-                    subscription.message_set = messageset.next_set
-                    subscription.schedule = (
-                        subscription.messageset.default_schedule)
-                    subscription.save()
+                    newsub = Subscription.objects.create(
+                        identity=subscription.identity,
+                        lang=subscription.lang,
+                        messageset=messageset.next_set,
+                        schedule=messageset.next_set.default_schedule
+                    )
+                    l.info("Created Subscription <%s>" % newsub.id)
             else:
                 # More in this set so interate by one
                 subscription.next_sequence_number += 1
@@ -260,7 +254,10 @@ class ScheduleCreate(Task):
             result = scheduler.create_schedule(schedule)
             l.info("Created schedule <%s> on scheduler for sub <%s>" % (
                 result["id"], subscription_id))
-            subscription.metadata["scheduler_schedule_id"] = result["id"]
+            if subscription.metadata is None:
+                subscription.metadata = {"scheduler_schedule_id": result["id"]}
+            else:
+                subscription.metadata["scheduler_schedule_id"] = result["id"]
             subscription.save()
             return result["id"]
 
