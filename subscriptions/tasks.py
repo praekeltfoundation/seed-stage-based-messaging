@@ -186,7 +186,7 @@ class PostSendProcess(Task):
                         identity=subscription.identity,
                         lang=subscription.lang,
                         messageset=messageset.next_set,
-                        schedule=subscription.messageset.default_schedule
+                        schedule=messageset.default_schedule
                     )
                     l.info("Created Subscription <%s>" % newsub.id)
             else:
