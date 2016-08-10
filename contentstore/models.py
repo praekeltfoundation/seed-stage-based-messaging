@@ -115,7 +115,7 @@ class Message(models.Model):
     text_content = models.TextField(null=True, blank=True)
     binary_content = models.ForeignKey(BinaryContent,
                                        related_name='message',
-                                       null=True)
+                                       null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
