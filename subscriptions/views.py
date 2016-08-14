@@ -1,11 +1,13 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.models import User
 
 from .models import Subscription
-from .serializers import SubscriptionSerializer
+from .serializers import SubscriptionSerializer, CreateUserSerializer
 from .tasks import send_next_message, scheduled_metrics
 from seed_stage_based_messaging.utils import get_available_metrics
 
@@ -68,6 +70,29 @@ class SubscriptionRequest(APIView):
             return Response(subscription.errors, status=status)
 
 
+class UserView(APIView):
+    """ API endpoint that allows users creation and returns their token.
+    Only admin users can do this to avoid permissions escalation.
+    """
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request):
+        '''Create a user and token, given an email. If user exists just
+        provide the token.'''
+        serializer = CreateUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data.get('email')
+        try:
+            user = User.objects.get(username=email)
+        except User.DoesNotExist:
+            user = User.objects.create_user(email, email=email)
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response(
+            status=status.HTTP_201_CREATED, data={'token': token.key})
+
+
 class MetricsView(APIView):
 
     """ Metrics Interaction
@@ -87,4 +112,22 @@ class MetricsView(APIView):
         status = 201
         scheduled_metrics.apply_async()
         resp = {"scheduled_metrics_initiated": True}
+        return Response(resp, status=status)
+
+
+class HealthcheckView(APIView):
+
+    """ Healthcheck Interaction
+        GET - returns service up - getting auth'd requires DB
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        status = 200
+        resp = {
+            "up": True,
+            "result": {
+                "database": "Accessible"
+            }
+        }
         return Response(resp, status=status)

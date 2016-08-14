@@ -13,4 +13,6 @@ urlpatterns = [
         views.SubscriptionSend.as_view()),
     url(r'^api/v1/subscriptions/request$',
         views.SubscriptionRequest.as_view()),
+    url(r'^api/v1/user/token/$', views.UserView.as_view(),
+        name='create-user-token'),
 ]
