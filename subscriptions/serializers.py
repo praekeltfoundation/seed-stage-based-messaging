@@ -3,6 +3,10 @@ from rest_framework import serializers
 from .models import Subscription
 
 
+class CreateUserSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
