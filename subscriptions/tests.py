@@ -1370,6 +1370,7 @@ class TestMetrics(AuthenticatedAPITestCase):
             data={"subscriptions.messageset_one.active.last": 1.0}
         )
 
+
 class TestUserCreation(AuthenticatedAPITestCase):
 
     def test_create_user_and_token(self):
