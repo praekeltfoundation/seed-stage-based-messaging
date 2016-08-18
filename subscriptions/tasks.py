@@ -91,8 +91,9 @@ class SendNextMessage(Task):
                     "metadata": {}
                 }
                 if subscription.messageset.content_type == "text":
-                    if "prepend_next_delivery" in subscription.metadata and \
-                            subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                    if subscription.metadata is not None and \
+                            "prepend_next_delivery" in subscription.metadata \
+                            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                         payload["content"] = "%s\n%s" % (
                             subscription.metadata["prepend_next_delivery"],
                             message.text_content)
