@@ -25,6 +25,18 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Schedule.objects.create(**schedule_data)
 
+    def make_messageset(self, short_name='messageset_one', notes=None,
+                        next_set=None, schedule=None):
+        if schedule is None:
+            schedule = self.make_schedule()
+        messageset_data = {
+            'short_name': short_name,
+            'notes': notes,
+            'next_set': next_set,
+            'default_schedule': schedule
+        }
+        return MessageSet.objects.create(**messageset_data)
+
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
 
@@ -84,14 +96,31 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         self.assertEqual(response.data['results'][0]['id'], existing.id)
 
     # MessageSet testing
+    def test_read_messageset(self):
+        # Setup
+        schedule = self.make_schedule()
+        messageset = self.make_messageset(schedule=schedule)
+        # Execute
+        response = self.client.get('/api/v1/messageset/%s/' % messageset.id,
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        d = MessageSet.objects.last()
+        self.assertIsNotNone(d.id)
+        self.assertEqual(d.short_name, 'messageset_one')
+        self.assertEqual(d.notes, None)
+        self.assertEqual(d.next_set, None)
+        self.assertEqual(d.default_schedule, schedule)
+        self.assertEqual(d.content_type, 'text')
+
     def test_create_messageset(self):
         # Setup
-        existing_schedule = self.make_schedule()
+        schedule = self.make_schedule()
         messageset_data = {
             'short_name': 'messageset_one_but_very_longname_and_cool_yeah',
             'notes': None,
             'next_set': None,
-            'default_schedule': existing_schedule.id
+            'default_schedule': schedule.id
         }
         # Execute
         response = self.client.post('/api/v1/messageset/',
@@ -105,5 +134,20 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                          'messageset_one_but_very_longname_and_cool_yeah')
         self.assertEqual(d.notes, None)
         self.assertEqual(d.next_set, None)
-        self.assertEqual(d.default_schedule, existing_schedule)
+        self.assertEqual(d.default_schedule, schedule)
         self.assertEqual(d.content_type, 'text')
+
+    def test_list_messagesets(self):
+        # Setup
+        self.make_messageset()
+        self.make_messageset(short_name='messageset_two')
+        # Execute
+        response = self.client.get('/api/v1/messageset/',
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 2)
+        self.assertEqual(response.data["results"][0]["short_name"],
+                         "messageset_one")
+        self.assertEqual(response.data["results"][1]["short_name"],
+                         "messageset_two")
