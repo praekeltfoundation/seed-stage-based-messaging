@@ -1239,6 +1239,7 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
         self.assertEqual(
             response.data["metrics_available"], [
                 'subscriptions.created.sum',
+                'subscriptions.send_next_message_errored.sum',
                 'subscriptions.active.last',
                 'subscriptions.created.last',
                 'subscriptions.broken.last',

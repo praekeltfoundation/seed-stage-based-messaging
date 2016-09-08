@@ -145,6 +145,10 @@ class SendNextMessage(Task):
                     l.info("No valid recipient to_addr found")
                     subscription.process_status = -1  # Error
                     subscription.save()
+                    fire_metric.apply_async(kwargs={
+                        "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
+                        "metric_value": 1.0
+                    })
             else:
                 l.info("Message sending aborted - busy, broken, completed or "
                        "inactive")

@@ -14,6 +14,9 @@ Seed Stage-Based Messaging Store
 ##### subscriptions.created.sum
 `sum` Total number of subscriptions created
 
+##### subscriptions.send_next_message_errored.sum
+`sum` Total number of subscriptions that broke on send_next_message task
+
 ##### subscriptions.total.last
 `last` Total number of subscriptions created
 
