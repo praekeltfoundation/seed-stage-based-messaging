@@ -7,7 +7,6 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Max
 from go_http.metrics import MetricsApiClient
 
 from .models import Subscription
@@ -68,78 +67,95 @@ class SendNextMessage(Task):
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             # start here
-            l.info("Loading Message")
-            message = Message.objects.get(
-                messageset=subscription.messageset,
-                sequence_number=subscription.next_sequence_number,
-                lang=subscription.lang)
-            l.info("Loading Initial Recipient Identity")
-            initial_id = utils.get_identity(subscription.identity)
-            if "communicate_through" in initial_id and \
-                    initial_id["communicate_through"] is not None:
-                # we should not send messages to this ID. Load the listed one.
-                to_addr = utils.get_identity_address(
-                    initial_id["communicate_through"])
-            else:
-                # set recipient data
-                to_addr = utils.get_identity_address(subscription.identity)
-            if to_addr is not None:
-                l.info("Preparing message payload with: %s" % message.id)
-                payload = {
-                    "to_addr": to_addr,
-                    "delivered": "false",
-                    "metadata": {}
-                }
-                if subscription.messageset.content_type == "text":
-                    if subscription.metadata is not None and \
-                            "prepend_next_delivery" in subscription.metadata \
-                            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                        payload["content"] = "%s\n%s" % (
-                            subscription.metadata["prepend_next_delivery"],
-                            message.text_content)
-                        # clear prepend_next_delivery
-                        subscription.metadata["prepend_next_delivery"] = None
-                        subscription.save()
-                    else:
-                        payload["content"] = message.text_content
-                else:
-                    # TODO - audio media handling on MC
-                    # audio
-                    if "prepend_next_delivery" in subscription.metadata and \
-                            subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                        payload["metadata"]["voice_speech_url"] = [
-                            subscription.metadata["prepend_next_delivery"],
-                            message.binary_content.content.url
-                        ]
-                        # clear prepend_next_delivery
-                        subscription.metadata["prepend_next_delivery"] = None
-                        subscription.save()
-                    else:
-                        payload["metadata"]["voice_speech_url"] = \
-                            message.binary_content.content.url
-                l.info("Sending message to Message Sender")
-                result = requests.post(
-                    url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
-                    data=json.dumps(payload),
-                    headers={
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Token %s' % (
-                            settings.MESSAGE_SENDER_TOKEN,)
-                    }
-                ).json()
-                post_send_process.apply_async(args=[subscription_id])
-                l.info("Message queued for send. ID: <%s>" % str(result["id"]))
-            else:
-                l.info("No valid recipient to_addr found")
-                subscription.process_status = -1  # Error
+            if subscription.process_status == 0 and \
+               subscription.completed is not True and \
+               subscription.active is True:
+
+                subscription.process_status = 1  # in process
                 subscription.save()
+                l.info("Loading Message")
+                message = Message.objects.get(
+                    messageset=subscription.messageset,
+                    sequence_number=subscription.next_sequence_number,
+                    lang=subscription.lang)
+                l.info("Loading Initial Recipient Identity")
+                initial_id = utils.get_identity(subscription.identity)
+                if "communicate_through" in initial_id and \
+                        initial_id["communicate_through"] is not None:
+                    # we should not send messages to this ID. Load listed ID.
+                    to_addr = utils.get_identity_address(
+                        initial_id["communicate_through"])
+                else:
+                    # set recipient data
+                    to_addr = utils.get_identity_address(subscription.identity)
+                if to_addr is not None:
+                    l.info("Preparing message payload with: %s" % message.id)
+                    payload = {
+                        "to_addr": to_addr,
+                        "delivered": "false",
+                        "metadata": {}
+                    }
+                    if subscription.messageset.content_type == "text":
+                        if subscription.metadata is not None and \
+                           "prepend_next_delivery" in subscription.metadata \
+                           and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                            payload["content"] = "%s\n%s" % (
+                                subscription.metadata["prepend_next_delivery"],
+                                message.text_content)
+                            # clear prepend_next_delivery
+                            subscription.metadata[
+                                "prepend_next_delivery"] = None
+                            subscription.save()
+                        else:
+                            payload["content"] = message.text_content
+                    else:
+                        # TODO - audio media handling on MC
+                        # audio
+                        if subscription.metadata is not None and \
+                           "prepend_next_delivery" in subscription.metadata \
+                           and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                            payload["metadata"]["voice_speech_url"] = [
+                                subscription.metadata["prepend_next_delivery"],
+                                message.binary_content.content.url
+                            ]
+                            # clear prepend_next_delivery
+                            subscription.metadata[
+                                "prepend_next_delivery"] = None
+                            subscription.save()
+                        else:
+                            payload["metadata"]["voice_speech_url"] = \
+                                message.binary_content.content.url
+                    l.info("Sending message to Message Sender")
+                    result = requests.post(
+                        url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
+                        data=json.dumps(payload),
+                        headers={
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Token %s' % (
+                                settings.MESSAGE_SENDER_TOKEN,)
+                        }
+                    ).json()
+
+                    subscription.process_status = 0  # ready
+                    subscription.save()
+
+                    post_send_process.apply_async(args=[subscription_id])
+                    l.info("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
+                else:
+                    l.info("No valid recipient to_addr found")
+                    subscription.process_status = -1  # Error
+                    subscription.save()
+            else:
+                l.info("Message sending aborted - busy, broken, completed or "
+                       "inactive")
+                # TODO: retry if busy (process_status = 1), specify problem
         except ObjectDoesNotExist:
             logger.error('Missing Message', exc_info=True)
 
         except SoftTimeLimitExceeded:
             logger.error(
-                'Soft time limit exceed processing message send search \
-                 via Celery.',
+                'Soft time limit exceed processing message send search '
+                'via Celery.',
                 exc_info=True)
 
 send_next_message = SendNextMessage()
@@ -169,10 +185,11 @@ class PostSendProcess(Task):
         # Process moving to next message, next set or finished
         try:
             subscription = Subscription.objects.get(id=subscription_id)
+            subscription.process_status = 1  # in process
+            subscription.save()
             # Get set max
-            set_max = Message.objects.filter(
-                messageset=subscription.messageset
-            ).aggregate(Max('sequence_number'))["sequence_number__max"]
+            set_max = subscription.messageset.messages.filter(
+                lang=subscription.lang).count()
             # Compare user position to max
             if subscription.next_sequence_number == set_max:
                 # Mark current as completed
@@ -193,6 +210,7 @@ class PostSendProcess(Task):
             else:
                 # More in this set so interate by one
                 subscription.next_sequence_number += 1
+                subscription.process_status = 0
                 subscription.save()
             # return response
             return "Subscription for %s updated" % str(subscription.id)
@@ -203,8 +221,8 @@ class PostSendProcess(Task):
 
         except SoftTimeLimitExceeded:
             logger.error(
-                'Soft time limit exceed processing message send search \
-                 via Celery.',
+                'Soft time limit exceed processing message send search '
+                'via Celery.',
                 exc_info=True)
 
 post_send_process = PostSendProcess()
@@ -240,8 +258,10 @@ class ScheduleCreate(Task):
             subscription = Subscription.objects.get(id=subscription_id)
             scheduler = self.scheduler_client()
             # get the messageset length for frequency calc
-            message_count = subscription.messageset.messages.all().count()
+            message_count = subscription.messageset.messages.filter(
+                lang=subscription.lang).count()
             # next_sequence_number is for setting non-one start position
+            # frequency is the number of messages that should be sent
             frequency = (message_count - subscription.next_sequence_number) + 1
             # Build the schedule POST create object
             schedule = {
@@ -267,8 +287,8 @@ class ScheduleCreate(Task):
 
         except SoftTimeLimitExceeded:
             logger.error(
-                'Soft time limit exceed processing schedule create \
-                 via Celery.',
+                'Soft time limit exceed processing schedule create '
+                'via Celery.',
                 exc_info=True)
 
 schedule_create = ScheduleCreate()
