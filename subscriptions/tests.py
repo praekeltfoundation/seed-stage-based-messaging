@@ -470,8 +470,24 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
     @responses.activate
     def test_send_message_task_to_mother_text(self):
+        post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        # mock schedule sending
+        responses.add(
+            responses.POST,
+            "http://seed-scheduler/api/v1/schedule/",
+            json={
+                "id": "1234"
+            },
+            status=201, content_type='application/json'
+        )
         # Setup
         existing = self.make_subscription()
+
+        # Precheck
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
 
         # mock identity address lookup
         responses.add(
@@ -534,20 +550,48 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         )
 
         # make messages
-        message_data1 = {
+        message_data_eng_1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
             "lang": "en_ZA",
             "text_content": "This is message 1",
         }
-        Message.objects.create(**message_data1)
-        message_data2 = {
+        Message.objects.create(**message_data_eng_1)
+        message_data_eng_2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
             "lang": "en_ZA",
             "text_content": "This is message 2",
         }
-        Message.objects.create(**message_data2)
+        Message.objects.create(**message_data_eng_2)
+        message_data_eng_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "en_ZA",
+            "text_content": "This is message 3",
+        }
+        Message.objects.create(**message_data_eng_3)
+        message_data_zul_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 1",
+        }
+        Message.objects.create(**message_data_zul_1)
+        message_data_zul_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 2",
+        }
+        Message.objects.create(**message_data_zul_2)
+        message_data_zul_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 3",
+        }
+        Message.objects.create(**message_data_zul_3)
 
         # Execute
         response = self.client.post('/api/v1/subscriptions/%s/send' % (
@@ -561,6 +605,18 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+        self.assertEqual(len(responses.calls), 4)
+
+        # Check the message_count / set_max count
+        message_count = existing.messageset.messages.filter(
+            lang=existing.lang).count()
+        self.assertEqual(message_count, 3)
+
+        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_mother_text_welcome(self):
@@ -752,6 +808,84 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
+
+    @responses.activate
+    def test_send_message_task_to_mother_text_in_process(self):
+        # Setup
+        existing = self.make_subscription()
+        existing.process_status = 1
+        existing.save()
+
+        # Precheck for comparison
+        self.assertEqual(existing.next_sequence_number, 1)
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+
+        # make messages
+        message_data_eng_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "en_ZA",
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data_eng_1)
+        message_data_eng_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "en_ZA",
+            "text_content": "This is message 2",
+        }
+        Message.objects.create(**message_data_eng_2)
+        message_data_eng_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "en_ZA",
+            "text_content": "This is message 3",
+        }
+        Message.objects.create(**message_data_eng_3)
+        message_data_zul_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 1",
+        }
+        Message.objects.create(**message_data_zul_1)
+        message_data_zul_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 2",
+        }
+        Message.objects.create(**message_data_zul_2)
+        message_data_zul_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 3",
+        }
+        Message.objects.create(**message_data_zul_3)
+
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/%s/send' % (
+            existing.id, ), content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
+        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.process_status, 1)
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+        self.assertEqual(len(responses.calls), 0)
+
+        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_other_text(self):
@@ -1105,6 +1239,7 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
         self.assertEqual(
             response.data["metrics_available"], [
                 'subscriptions.created.sum',
+                'subscriptions.send_next_message_errored.sum',
                 'subscriptions.active.last',
                 'subscriptions.created.last',
                 'subscriptions.broken.last',

@@ -194,7 +194,8 @@ CELERY_ROUTES = {
 }
 
 METRICS_REALTIME = [
-    'subscriptions.created.sum'
+    'subscriptions.created.sum',
+    'subscriptions.send_next_message_errored.sum'
 ]
 # Note metrics with variable names of messageset short_names not included here
 METRICS_SCHEDULED = [
