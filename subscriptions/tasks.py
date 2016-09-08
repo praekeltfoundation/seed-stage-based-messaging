@@ -63,7 +63,7 @@ class SendNextMessage(Task):
         """
         l = self.get_logger(**kwargs)
 
-        l.info("SNM: Loading Subscription")
+        l.info("Loading Subscription")
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             # start here
@@ -71,17 +71,17 @@ class SendNextMessage(Task):
                subscription.completed is not True and \
                subscription.active is True:
 
-                l.debug("SNM: setting process status to 1")
+                l.debug("setting process status to 1")
                 subscription.process_status = 1  # in process
-                l.debug("SNM: saving subscription")
+                l.debug("saving subscription")
                 subscription.save()
-                l.info("SNM: Loading Message")
+                l.info("Loading Message")
                 message = Message.objects.get(
                     messageset=subscription.messageset,
                     sequence_number=subscription.next_sequence_number,
                     lang=subscription.lang)
 
-                l.info("SNM: Loading Initial Recipient Identity")
+                l.info("Loading Initial Recipient Identity")
                 to_addr = None
                 initial_id = utils.get_identity(subscription.identity)
                 if "communicate_through" in initial_id and \
@@ -92,33 +92,33 @@ class SendNextMessage(Task):
                 else:
                     # set recipient data
                     to_addr = utils.get_identity_address(subscription.identity)
-                l.debug("SNM: to_addr determined - %s" % to_addr)
+                l.debug("to_addr determined - %s" % to_addr)
 
                 if to_addr is not None:
-                    l.info("SNM: Preparing message payload with: %s" % message.id)  # noqa
+                    l.info("Preparing message payload with: %s" % message.id)  # noqa
                     payload = {
                         "to_addr": to_addr,
                         "delivered": "false",
                         "metadata": {}
                     }
                     if subscription.messageset.content_type == "text":
-                        l.debug("SNM: Determining payload content")
+                        l.debug("Determining payload content")
                         if subscription.metadata is not None and \
                            "prepend_next_delivery" in subscription.metadata \
                            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                            l.debug("SNM: Prepending next delivery")
+                            l.debug("Prepending next delivery")
                             payload["content"] = "%s\n%s" % (
                                 subscription.metadata["prepend_next_delivery"],
                                 message.text_content)
                             # clear prepend_next_delivery
-                            l.debug("SNM: Clearing prepended message")
+                            l.debug("Clearing prepended message")
                             subscription.metadata[
                                 "prepend_next_delivery"] = None
                             subscription.save()
                         else:
-                            l.debug("SNM: Loading default content")
+                            l.debug("Loading default content")
                             payload["content"] = message.text_content
-                        l.debug("SNM: text content loaded")
+                        l.debug("text content loaded")
                     else:
                         # TODO - audio media handling on MC
                         # audio
@@ -148,29 +148,29 @@ class SendNextMessage(Task):
                         }
                     ).json()
 
-                    l.debug("NSM: setting process status back to 0")
+                    l.debug("setting process status back to 0")
                     subscription.process_status = 0  # ready
-                    l.debug("NSM: saving subscription")
+                    l.debug("saving subscription")
                     subscription.save()
 
-                    l.debug("NSM: firing post_send_process task")
+                    l.debug("firing post_send_process task")
                     post_send_process.apply_async(args=[subscription_id])
-                    l.debug("NSM: fired post_send_process task")
+                    l.debug("fired post_send_process task")
 
-                    l.debug("NSM: Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
-                    return "NSM: Message queued for send. ID: <%s>" % str(result["id"])  # noqa
+                    l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
+                    return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
                 else:
-                    l.info("NSM: No valid recipient to_addr found")
+                    l.info("No valid recipient to_addr found")
                     subscription.process_status = -1  # Error
-                    l.debug("NSM: saving subscription")
+                    l.debug("saving subscription")
                     subscription.save()
-                    l.debug("NSM: Firing error metric")
+                    l.debug("Firing error metric")
                     fire_metric.apply_async(kwargs={
                         "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
                         "metric_value": 1.0
                     })
-                    l.debug("NSM: Fired error metric")
-                    return "NSM: Valid recipient could not be found"
+                    l.debug("Fired error metric")
+                    return "Valid recipient could not be found"
 
             else:
                 l.info("Message sending aborted - busy, broken, completed or "
@@ -212,34 +212,34 @@ class PostSendProcess(Task):
         """
         l = self.get_logger(**kwargs)
 
-        l.info("PSP: Loading Subscription")
+        l.info("Loading Subscription")
         # Process moving to next message, next set or finished
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             if subscription.process_status == 0:
-                l.debug("PSP: setting process status to 1")
+                l.debug("setting process status to 1")
                 subscription.process_status = 1  # in process
-                l.debug("PSP: saving subscription")
+                l.debug("saving subscription")
                 subscription.save()
                 # Get set max
                 set_max = subscription.messageset.messages.filter(
                     lang=subscription.lang).count()
-                l.debug("PSP: set_max calculated - %s" % set_max)
+                l.debug("set_max calculated - %s" % set_max)
                 # Compare user position to max
                 if subscription.next_sequence_number == set_max:
                     # Mark current as completed
-                    l.debug("PSP: setting subscription completed")
+                    l.debug("setting subscription completed")
                     subscription.completed = True
-                    l.debug("PSP: setting subscription inactive")
+                    l.debug("setting subscription inactive")
                     subscription.active = False
-                    l.debug("PSP: setting process status to 2")
+                    l.debug("setting process status to 2")
                     subscription.process_status = 2  # Completed
-                    l.debug("PSP: saving subscription")
+                    l.debug("saving subscription")
                     subscription.save()
                     # If next set defined create new subscription
                     messageset = subscription.messageset
                     if messageset.next_set:
-                        l.info("PSP: Creating new subscription for next set")
+                        l.info("Creating new subscription for next set")
                         newsub = Subscription.objects.create(
                             identity=subscription.identity,
                             lang=subscription.lang,
@@ -249,25 +249,25 @@ class PostSendProcess(Task):
                         l.debug("Created Subscription <%s>" % newsub.id)
                 else:
                     # More in this set so interate by one
-                    l.debug("PSP: incrementing next_sequence_number")
+                    l.debug("incrementing next_sequence_number")
                     subscription.next_sequence_number += 1
-                    l.debug("PSP: setting process status back to 0")
+                    l.debug("setting process status back to 0")
                     subscription.process_status = 0
-                    l.debug("PSP: saving subscription")
+                    l.debug("saving subscription")
                     subscription.save()
                 # return response
-                return "PSP: Subscription for %s updated" % str(
+                return "Subscription for %s updated" % str(
                     subscription.id)
             else:
-                l.info("PSP: post_send_process not executed")
-                return "PSP: post_send_process not executed"
+                l.info("post_send_process not executed")
+                return "post_send_process not executed"
 
         except ObjectDoesNotExist:
-            l.debug("PSP: subscription errored")
+            l.debug("subscription errored")
             subscription.process_status = -1  # Errored
-            l.debug("PSP: saving subscription")
+            l.debug("saving subscription")
             subscription.save()
-            logger.error('PSP: Unexpected error', exc_info=True)
+            logger.error('Unexpected error', exc_info=True)
 
         except SoftTimeLimitExceeded:
             logger.error(
