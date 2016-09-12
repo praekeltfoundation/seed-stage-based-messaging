@@ -121,6 +121,7 @@ class Message(models.Model):
 
     class Meta:
         ordering = ['sequence_number']
+        unique_together = ('messageset', 'sequence_number', 'lang')
 
     def clean(self):
         # Don't allow messages to have neither a text or binary content
