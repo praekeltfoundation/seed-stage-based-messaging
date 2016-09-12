@@ -2,12 +2,13 @@ import json
 
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from .models import Schedule, MessageSet
+from .models import Schedule, MessageSet, Message
 
 
 class APITestCase(TestCase):
@@ -151,3 +152,56 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                          "messageset_one")
         self.assertEqual(response.data["results"][1]["short_name"],
                          "messageset_two")
+
+    def test_create_message(self):
+        """
+        A POST request should create a message object for a messageset.
+        """
+        messageset = self.make_messageset()
+
+        data = {
+            'messageset': messageset.pk,
+            'sequence_number': 1,
+            'lang': 'en',
+            'text_content': 'Foo',
+        }
+
+        self.client.post(
+            reverse('message-list'), json.dumps(data),
+            content_type='application/json')
+
+        [msg] = Message.objects.all()
+        self.assertEqual(msg.messageset, messageset)
+        self.assertEqual(msg.sequence_number, 1)
+        self.assertEqual(msg.lang, 'en')
+        self.assertEqual(msg.text_content, 'Foo')
+
+    def test_create_message_constraint(self):
+        """
+        When creating a message, if creating a second message with matching
+        messageset, sequence_number, and lang fields, it should not be
+        created.
+        """
+        messageset = self.make_messageset()
+        Message.objects.create(
+            messageset=messageset, sequence_number=1, lang='en',
+            text_content="Foo")
+
+        data = {
+            'messageset': messageset.pk,
+            'sequence_number': 1,
+            'lang': 'en',
+            'text_content': 'Bar',
+        }
+
+        response = self.client.post(
+            reverse('message-list'), json.dumps(data),
+            content_type='application/json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {
+            'non_field_errors': [
+                "The fields messageset, sequence_number, lang must make a "
+                "unique set."]
+        })
+        self.assertEqual(Message.objects.all().count(), 1)

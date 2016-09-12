@@ -24,3 +24,5 @@ MESSAGE_SENDER_TOKEN = "REPLACEME"
 
 METRICS_URL = "http://metrics-url"
 METRICS_AUTH_TOKEN = "REPLACEME"
+
+PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
