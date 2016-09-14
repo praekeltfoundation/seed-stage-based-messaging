@@ -47,6 +47,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     # 3rd party
     'djcelery',
     'raven.contrib.django.raven_compat',
@@ -68,6 +69,9 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
+
+SITE_ID = 1
+USE_SSL = os.environ.get('USE_SSL', 'false').lower() == 'true'
 
 ROOT_URLCONF = 'seed_stage_based_messaging.urls'
 
