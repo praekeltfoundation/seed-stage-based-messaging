@@ -1,5 +1,9 @@
 import requests
 import json
+try:
+    from urlparse import urlunparse
+except ImportError:
+    from urllib.parse import urlunparse
 
 from celery.task import Task
 from celery.utils.log import get_task_logger
@@ -7,6 +11,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.sites.shortcuts import get_current_site
 from go_http.metrics import MetricsApiClient
 
 from .models import Subscription
@@ -22,6 +27,16 @@ def get_metric_client(session=None):
         auth_token=settings.METRICS_AUTH_TOKEN,
         api_url=settings.METRICS_URL,
         session=session)
+
+
+def make_absolute_url(path):
+    # NOTE: We're using the default site as set by
+    #       settings.SITE_ID and the Sites framework
+    site = get_current_site(None)
+    return urlunparse(
+        ('https' if settings.USE_SSL else 'http',
+         site.domain, path,
+         '', '', ''))
 
 
 class FireMetric(Task):
@@ -122,12 +137,14 @@ class SendNextMessage(Task):
                     else:
                         # TODO - audio media handling on MC
                         # audio
+
                         if subscription.metadata is not None and \
                            "prepend_next_delivery" in subscription.metadata \
                            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                             payload["metadata"]["voice_speech_url"] = [
                                 subscription.metadata["prepend_next_delivery"],
-                                message.binary_content.content.url
+                                make_absolute_url(
+                                    message.binary_content.content.url),
                             ]
                             # clear prepend_next_delivery
                             subscription.metadata[
@@ -135,7 +152,8 @@ class SendNextMessage(Task):
                             subscription.save()
                         else:
                             payload["metadata"]["voice_speech_url"] = \
-                                message.binary_content.content.url
+                                make_absolute_url(
+                                    message.binary_content.content.url)
 
                     l.info("Sending message to Message Sender")
                     result = requests.post(

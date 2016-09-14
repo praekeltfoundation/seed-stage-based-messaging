@@ -7,7 +7,7 @@ except ImportError:
     from urlparse import urlparse
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.db.models.signals import post_save
 from django.conf import settings
 
@@ -1225,6 +1225,24 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
+
+    @override_settings(USE_SSL=True)
+    def test_make_absolute_url(self):
+        self.assertEqual(
+            tasks.make_absolute_url('foo'),
+            'https://example.com/foo')
+        self.assertEqual(
+            tasks.make_absolute_url('/foo'),
+            'https://example.com/foo')
+
+    @override_settings(USE_SSL=False)
+    def test_make_absolute_url_ssl(self):
+        self.assertEqual(
+            tasks.make_absolute_url('foo'),
+            'http://example.com/foo')
+        self.assertEqual(
+            tasks.make_absolute_url('/foo'),
+            'http://example.com/foo')
 
 
 class TestMetricsAPI(AuthenticatedAPITestCase):
