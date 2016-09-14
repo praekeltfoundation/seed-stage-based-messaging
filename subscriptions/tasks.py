@@ -1,6 +1,9 @@
 import requests
 import json
-from urlparse import urlunparse
+try:
+    from urlparse import urlunparse
+except ImportError:
+    from urllib.parse import urlunparse
 
 from celery.task import Task
 from celery.utils.log import get_task_logger
