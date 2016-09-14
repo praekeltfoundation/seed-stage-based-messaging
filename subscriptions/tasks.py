@@ -26,7 +26,7 @@ def get_metric_client(session=None):
         session=session)
 
 
-def absolute_url(path):
+def make_absolute_url(path):
     # NOTE: We're using the default site as set by
     #       settings.SITE_ID and the Sites framework
     site = get_current_site(None)
@@ -140,7 +140,7 @@ class SendNextMessage(Task):
                            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                             payload["metadata"]["voice_speech_url"] = [
                                 subscription.metadata["prepend_next_delivery"],
-                                absolute_url(
+                                make_absolute_url(
                                     message.binary_content.content.url),
                             ]
                             # clear prepend_next_delivery
@@ -149,7 +149,7 @@ class SendNextMessage(Task):
                             subscription.save()
                         else:
                             payload["metadata"]["voice_speech_url"] = \
-                                absolute_url(
+                                make_absolute_url(
                                     message.binary_content.content.url)
 
                     l.info("Sending message to Message Sender")
