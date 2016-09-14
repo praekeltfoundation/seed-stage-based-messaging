@@ -1227,14 +1227,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
 
     @override_settings(USE_SSL=True)
-    def test_make_absolute_url_ssl(self):
+    def test_make_absolute_url(self):
         self.assertEqual(
             tasks.make_absolute_url('foo'),
             'https://example.com/foo')
         self.assertEqual(
             tasks.make_absolute_url('/foo'),
             'https://example.com/foo')
-
 
     @override_settings(USE_SSL=False)
     def test_make_absolute_url_ssl(self):
@@ -1244,7 +1243,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(
             tasks.make_absolute_url('/foo'),
             'http://example.com/foo')
-
 
 
 class TestMetricsAPI(AuthenticatedAPITestCase):
