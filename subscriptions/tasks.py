@@ -190,10 +190,16 @@ class SendNextMessage(Task):
                     l.debug("Fired error metric")
                     return "Valid recipient could not be found"
 
+            elif (subscription.process_status == 2 or
+                  subscription.completed is True):
+                # Disable the subscription's scheduler
+                schedule_disable.apply_async(subscription.id)
+
             else:
                 l.info("Message sending aborted - busy, broken, completed or "
                        "inactive")
-                # TODO: retry if busy (process_status = 1), specify problem
+                # TODO: retry if busy (process_status = 1)
+                # TODO: be more specific about why it aborted
                 return "Message sending aborted"
 
         except ObjectDoesNotExist:
@@ -296,6 +302,47 @@ class PostSendProcess(Task):
         return False
 
 post_send_process = PostSendProcess()
+
+
+class ScheduleDisable(Task):
+
+    """ Task to disable a subscription's schedule
+    """
+    name = "seed_stage_based_messaging.subscriptions.tasks.schedule_disable"
+
+    def scheduler_client(self):
+        return SchedulerApiClient(
+            api_token=settings.SCHEDULER_API_TOKEN,
+            api_url=settings.SCHEDULER_URL)
+
+    def run(self, subscription_id, **kwargs):
+        l = self.get_logger(**kwargs)
+        l.info("Creating schedule for <%s>" % (subscription_id,))
+        try:
+            subscription = Subscription.objects.get(id=subscription_id)
+            schedule_id = subscription.metadata["scheduler_schedule_id"]
+            if schedule_id:
+                scheduler = self.scheduler_client()
+                scheduler.update_schedule(
+                    subscription.metadata["scheduler_schedule_id"],
+                    {"enabled": False}
+                )
+                l.info("Disabled schedule <%s> on scheduler for sub <%s>" % (
+                    schedule_id, subscription_id))
+                return True
+            else:
+                l.info("Schedule could not be located")
+                return False
+        except ObjectDoesNotExist:
+            logger.error('Missing Subscription', exc_info=True)
+        except SoftTimeLimitExceeded:
+            logger.error(
+                'Soft time limit exceed processing schedule create '
+                'via Celery.',
+                exc_info=True)
+        return False
+
+schedule_disable = ScheduleDisable()
 
 
 class ScheduleCreate(Task):

@@ -177,6 +177,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.schedule_create': {
         'queue': 'priority',
     },
+    'subscriptions.tasks.schedule_disable': {
+        'queue': 'priority',
+    },
     'subscriptions.tasks.fire_metric': {
         'queue': 'metrics',
     },

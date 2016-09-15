@@ -17,7 +17,8 @@ from rest_framework.authtoken.models import Token
 from requests_testadapter import TestAdapter, TestSession
 from go_http.metrics import MetricsApiClient
 
-from .models import Subscription, fire_sub_action_if_new, fire_metrics_if_new
+from .models import (Subscription, fire_sub_action_if_new,
+                     disable_schedule_if_complete, fire_metrics_if_new)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import schedule_create, fire_metric, scheduled_metrics
 from . import tasks
@@ -154,6 +155,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model has no post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
         post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+        post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
@@ -166,6 +168,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "Subscription model still has post_save listeners. Make sure"
             " helpers removed them properly in earlier tests.")
         post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        post_save.connect(disable_schedule_if_complete, sender=Subscription)
         post_save.connect(fire_metrics_if_new, sender=Subscription)
 
     def setUp(self):
