@@ -43,7 +43,7 @@ class SchedulerApiClient(object):
         result = {
             'get': self.session.get,
             'post': self.session.post,
-            'put': self.session.post,
+            'patch': self.session.patch,
             'delete': self.session.delete,
         }.get(method, None)(url, params=params, data=json.dumps(data))
         result.raise_for_status()
@@ -62,7 +62,7 @@ class SchedulerApiClient(object):
         return self.call('schedule', 'post', data=schedule)
 
     def update_schedule(self, schedule_id, schedule):
-        return self.call('schedule', 'put', obj=schedule_id,
+        return self.call('schedule', 'patch', obj=schedule_id,
                          data=schedule)
 
     def delete_schedule(self, schedule_id):
