@@ -271,6 +271,26 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
+    def test_filter_subscription_data(self):
+        # Setup
+        sub_active = self.make_subscription()
+        sub_inactive = self.make_subscription()
+        sub_inactive.active = False
+        sub_inactive.save()
+        # Precheck
+        self.assertEqual(sub_active.active, True)
+        self.assertEqual(sub_inactive.active, False)
+        # Execute
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+             "active": "True"},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
+
     def test_update_subscription_data(self):
         # Setup
         existing = self.make_subscription()

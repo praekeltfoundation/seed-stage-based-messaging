@@ -153,6 +153,20 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         self.assertEqual(response.data["results"][1]["short_name"],
                          "messageset_two")
 
+    def test_filter_messagesets(self):
+        # Setup
+        self.make_messageset()
+        self.make_messageset(short_name='messageset_two')
+        # Execute
+        response = self.client.get('/api/v1/messageset/',
+                                   {'short_name': 'messageset_two'},
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["short_name"],
+                         "messageset_two")
+
     def test_create_message(self):
         """
         A POST request should create a message object for a messageset.
