@@ -402,7 +402,7 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
                 "http://seed-stage-based-messaging/api/v1",
                 "subscription",
                 str(existing.id)),
-            "frequency": 2,
+            "frequency": None,
             "messages": None,
             "triggered": 0,
             "created_at": "2015-04-05T21:59:28Z",

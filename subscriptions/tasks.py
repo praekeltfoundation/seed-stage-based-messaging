@@ -378,23 +378,15 @@ class ScheduleCreate(Task):
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             if subscription.process_status == 0:
-                scheduler = self.scheduler_client()
-                # get the messageset length for frequency calc
-                message_count = subscription.messageset.messages.filter(
-                    lang=subscription.lang).count()
-                # next_sequence_number is for setting non-one start position
-                # frequency is the number of messages that should be sent
-                frequency = (
-                    message_count - subscription.next_sequence_number) + 1
-                # Build the schedule POST create object
                 schedule = {
-                    "frequency": frequency,
+                    "frequency": None,
                     "cron_definition":
                         self.schedule_to_cron(subscription.schedule),
                     "endpoint": "%s/%s/send" % (
                         settings.STAGE_BASED_MESSAGING_URL, subscription_id),
                     "auth_token": settings.SCHEDULER_INBOUND_API_TOKEN
                 }
+                scheduler = self.scheduler_client()
                 result = scheduler.create_schedule(schedule)
                 l.info("Created schedule <%s> on scheduler for sub <%s>" % (
                     result["id"], subscription_id))
