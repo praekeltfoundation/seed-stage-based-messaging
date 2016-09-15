@@ -20,7 +20,8 @@ from go_http.metrics import MetricsApiClient
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete, fire_metrics_if_new)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_create, fire_metric, scheduled_metrics
+from .tasks import (schedule_create, schedule_disable, fire_metric,
+                    scheduled_metrics)
 from . import tasks
 
 
@@ -422,6 +423,28 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
             d.metadata["scheduler_schedule_id"],
             "6455245a-028b-4fa1-82fc-6b639c4e7710")
 
+    @responses.activate
+    def test_disable_schedule_task(self):
+        # Setup
+        subscription = self.make_subscription()
+        schedule_id = "6455245a-028b-4fa1-82fc-6b639c4e7710"
+        subscription.metadata["scheduler_schedule_id"] = schedule_id
+        subscription.save()
+
+        # mock schedule update
+        responses.add(
+            responses.PATCH,
+            "http://seed-scheduler/api/v1/schedule/%s/" % schedule_id,
+            json.dumps({"enabled": False}),
+            status=200, content_type='application/json')
+
+        # Execute
+        result = schedule_disable.apply_async(args=[str(subscription.id)])
+
+        # Check
+        self.assertEqual(result.get(), True)
+        self.assertEqual(len(responses.calls), 1)
+
 
 class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
 
@@ -739,7 +762,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
     @responses.activate
     def test_send_message_task_to_mother_text_last(self):
         # Setup
+        post_save.connect(disable_schedule_if_complete, sender=Subscription)
+        schedule_id = "6455245a-028b-4fa1-82fc-6b639c4e7710"
         existing = self.make_subscription()
+        existing.metadata["scheduler_schedule_id"] = schedule_id
         existing.next_sequence_number = 2  # fast forward to end
         existing.save()
 
@@ -783,7 +809,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json',
         )
 
-        # Create message sender call
+        # mock message sender call
         responses.add(
             responses.POST,
             "http://seed-message-sender/api/v1/outbound/",
@@ -802,6 +828,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json'
         )
+
+        # mock schedule update
+        responses.add(
+            responses.PATCH,
+            "http://seed-scheduler/api/v1/schedule/%s/" % schedule_id,
+            json.dumps({"enabled": False}),
+            status=200, content_type='application/json')
 
         # make messages
         message_data1 = {
@@ -831,6 +864,9 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
+        self.assertEqual(len(responses.calls), 4)
+
+        post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_mother_text_in_process(self):

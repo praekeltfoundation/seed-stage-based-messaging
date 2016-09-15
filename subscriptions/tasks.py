@@ -194,10 +194,11 @@ class SendNextMessage(Task):
                   subscription.completed is True):
                 # Disable the subscription's scheduler
                 schedule_disable.apply_async(subscription.id)
+                l.info("Scheduler deactivation task fired")
+                return "Schedule deactivation task fired"
 
             else:
-                l.info("Message sending aborted - busy, broken, completed or "
-                       "inactive")
+                l.info("Message sending aborted - busy, broken or inactive")
                 # TODO: retry if busy (process_status = 1)
                 # TODO: be more specific about why it aborted
                 return "Message sending aborted"
@@ -317,10 +318,13 @@ class ScheduleDisable(Task):
 
     def run(self, subscription_id, **kwargs):
         l = self.get_logger(**kwargs)
-        l.info("Creating schedule for <%s>" % (subscription_id,))
+        l.info("Disabling schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
-            schedule_id = subscription.metadata["scheduler_schedule_id"]
+            try:
+                schedule_id = subscription.metadata["scheduler_schedule_id"]
+            except:
+                schedule_id = None
             if schedule_id:
                 scheduler = self.scheduler_client()
                 scheduler.update_schedule(
@@ -331,7 +335,7 @@ class ScheduleDisable(Task):
                     schedule_id, subscription_id))
                 return True
             else:
-                l.info("Schedule could not be located")
+                l.info("Schedule id not saved in subscription metadata")
                 return False
         except ObjectDoesNotExist:
             logger.error('Missing Subscription', exc_info=True)
