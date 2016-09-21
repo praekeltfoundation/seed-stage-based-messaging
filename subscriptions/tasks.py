@@ -323,9 +323,6 @@ class ScheduleDisable(Task):
             subscription = Subscription.objects.get(id=subscription_id)
             try:
                 schedule_id = subscription.metadata["scheduler_schedule_id"]
-            except:
-                schedule_id = None
-            if schedule_id:
                 scheduler = self.scheduler_client()
                 scheduler.update_schedule(
                     subscription.metadata["scheduler_schedule_id"],
@@ -334,7 +331,7 @@ class ScheduleDisable(Task):
                 l.info("Disabled schedule <%s> on scheduler for sub <%s>" % (
                     schedule_id, subscription_id))
                 return True
-            else:
+            except:
                 l.info("Schedule id not saved in subscription metadata")
                 return False
         except ObjectDoesNotExist:
