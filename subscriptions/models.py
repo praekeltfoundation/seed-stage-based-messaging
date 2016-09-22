@@ -49,6 +49,14 @@ def fire_sub_action_if_new(sender, instance, created, **kwargs):
         schedule_create.apply_async(args=[str(instance.id)])
 
 
+# Deactivate the schedule for this subscription when completed
+@receiver(post_save, sender=Subscription)
+def disable_schedule_if_complete(sender, instance, created, **kwargs):
+    from .tasks import schedule_disable
+    if instance.completed is True or instance.process_status == 2:
+        schedule_disable.apply_async(args=[str(instance.id)])
+
+
 @receiver(post_save, sender=Subscription)
 def fire_metrics_if_new(sender, instance, created, **kwargs):
     from .tasks import fire_metric

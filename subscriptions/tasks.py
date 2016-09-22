@@ -190,10 +190,17 @@ class SendNextMessage(Task):
                     l.debug("Fired error metric")
                     return "Valid recipient could not be found"
 
+            elif (subscription.process_status == 2 or
+                  subscription.completed is True):
+                # Disable the subscription's scheduler
+                schedule_disable.apply_async(subscription.id)
+                l.info("Scheduler deactivation task fired")
+                return "Schedule deactivation task fired"
+
             else:
-                l.info("Message sending aborted - busy, broken, completed or "
-                       "inactive")
-                # TODO: retry if busy (process_status = 1), specify problem
+                l.info("Message sending aborted - busy, broken or inactive")
+                # TODO: retry if busy (process_status = 1)
+                # TODO: be more specific about why it aborted
                 return "Message sending aborted"
 
         except ObjectDoesNotExist:
@@ -298,6 +305,47 @@ class PostSendProcess(Task):
 post_send_process = PostSendProcess()
 
 
+class ScheduleDisable(Task):
+
+    """ Task to disable a subscription's schedule
+    """
+    name = "seed_stage_based_messaging.subscriptions.tasks.schedule_disable"
+
+    def scheduler_client(self):
+        return SchedulerApiClient(
+            api_token=settings.SCHEDULER_API_TOKEN,
+            api_url=settings.SCHEDULER_URL)
+
+    def run(self, subscription_id, **kwargs):
+        l = self.get_logger(**kwargs)
+        l.info("Disabling schedule for <%s>" % (subscription_id,))
+        try:
+            subscription = Subscription.objects.get(id=subscription_id)
+            try:
+                schedule_id = subscription.metadata["scheduler_schedule_id"]
+                scheduler = self.scheduler_client()
+                scheduler.update_schedule(
+                    subscription.metadata["scheduler_schedule_id"],
+                    {"enabled": False}
+                )
+                l.info("Disabled schedule <%s> on scheduler for sub <%s>" % (
+                    schedule_id, subscription_id))
+                return True
+            except:
+                l.info("Schedule id not saved in subscription metadata")
+                return False
+        except ObjectDoesNotExist:
+            logger.error('Missing Subscription', exc_info=True)
+        except SoftTimeLimitExceeded:
+            logger.error(
+                'Soft time limit exceed processing schedule create '
+                'via Celery.',
+                exc_info=True)
+        return False
+
+schedule_disable = ScheduleDisable()
+
+
 class ScheduleCreate(Task):
 
     """ Task to tell scheduler a new subscription created
@@ -327,23 +375,15 @@ class ScheduleCreate(Task):
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             if subscription.process_status == 0:
-                scheduler = self.scheduler_client()
-                # get the messageset length for frequency calc
-                message_count = subscription.messageset.messages.filter(
-                    lang=subscription.lang).count()
-                # next_sequence_number is for setting non-one start position
-                # frequency is the number of messages that should be sent
-                frequency = (
-                    message_count - subscription.next_sequence_number) + 1
-                # Build the schedule POST create object
                 schedule = {
-                    "frequency": frequency,
+                    "frequency": None,
                     "cron_definition":
                         self.schedule_to_cron(subscription.schedule),
                     "endpoint": "%s/%s/send" % (
                         settings.STAGE_BASED_MESSAGING_URL, subscription_id),
                     "auth_token": settings.SCHEDULER_INBOUND_API_TOKEN
                 }
+                scheduler = self.scheduler_client()
                 result = scheduler.create_schedule(schedule)
                 l.info("Created schedule <%s> on scheduler for sub <%s>" % (
                     result["id"], subscription_id))
