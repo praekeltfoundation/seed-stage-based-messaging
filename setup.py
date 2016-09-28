@@ -23,7 +23,8 @@ setup(
         'redis==2.10.5',
         'pytz==2015.7',
         'requests==2.9.1',
-        'go-http==0.3.0'
+        'go-http==0.3.0',
+		'drfdocs==0.0.11',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
