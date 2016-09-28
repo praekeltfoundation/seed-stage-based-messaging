@@ -48,6 +48,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+	# documentation
+	'rest_framework_docs',
     # 3rd party
     'djcelery',
     'raven.contrib.django.raven_compat',
