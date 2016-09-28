@@ -14,6 +14,7 @@ urlpatterns = patterns(
         include('rest_framework.urls', namespace='rest_framework')),
     url(r'^api/token-auth/',
         'rest_framework.authtoken.views.obtain_auth_token'),
+    url(r'^docs/', include('rest_framework_docs.urls')),
     url(r'^api/metrics/', views.MetricsView.as_view()),
     url(r'^api/health/', views.HealthcheckView.as_view()),
     url(r'^', include('subscriptions.urls')),
