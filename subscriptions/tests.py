@@ -1708,6 +1708,7 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
 
     def test_noop(self):
         stdout, stderr = StringIO(), StringIO()
+        self.make_subscription()
         call_command('remove_duplicate_subscriptions',
                      stdout=stdout, stderr=stderr)
         self.assertEqual(stderr.getvalue(), '')
