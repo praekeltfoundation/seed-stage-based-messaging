@@ -37,6 +37,9 @@ class Subscription(models.Model):
                                    null=True)
     user = property(lambda self: self.created_by)
 
+    def get_scheduler_id(self):
+        return self.metadata.get("scheduler_schedule_id")
+
     def __str__(self):
         return str(self.id)
 

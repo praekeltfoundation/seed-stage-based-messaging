@@ -1,5 +1,11 @@
 import responses
 import json
+from requests.exceptions import HTTPError
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 try:
     from urllib.parse import urlparse
@@ -7,6 +13,7 @@ except ImportError:
     from urlparse import urlparse
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.db.models.signals import post_save
 from django.conf import settings
@@ -1690,3 +1697,107 @@ class TestHealthcheckAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["up"], True)
         self.assertEqual(response.data["result"]["database"], "Accessible")
+
+
+@override_settings(
+    SCHEDULER_URL='http://scheduler/',
+    SCHEDULER_API_TOKEN='scheduler_token'
+)
+class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
+
+    def test_noop(self):
+        stdout, stderr = StringIO(), StringIO()
+        call_command('remove_duplicate_subscriptions',
+                     stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue(),
+            'Removed 0 duplicate subscriptions\n')
+
+    def test_duplicate_removal_dry_run(self):
+        sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
+
+        stdout, stderr = StringIO(), StringIO()
+
+        call_command('remove_duplicate_subscriptions',
+                     stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            set(stdout.getvalue().strip().split('\n')),
+            set([
+                'Not removing %s, use --fix to actually remove.' % (sub2,),
+                'Not removing %s, use --fix to actually remove.' % (sub3,),
+                'Removed 2 duplicate subscriptions',
+            ]))
+        self.assertEqual(Subscription.objects.count(), 3)
+
+    @responses.activate
+    def test_duplicate_removal(self):
+
+        # Canary, if this is called something's going wrong
+        responses.add(
+            responses.GET, 'http://scheduler/schedule/schedule-id-2/',
+            body=HTTPError('This should not have been called'))
+
+        responses.add(
+            responses.DELETE,
+            'http://scheduler/schedule/schedule-id-2/')
+        responses.add(
+            responses.DELETE,
+            'http://scheduler/schedule/schedule-id-3/')
+
+        sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
+
+        sub1.metadata["scheduler_schedule_id"] = "schedule-id-1"
+        sub1.save()
+
+        sub2.metadata["scheduler_schedule_id"] = "schedule-id-2"
+        sub2.save()
+
+        sub3.metadata["scheduler_schedule_id"] = "schedule-id-3"
+        sub3.save()
+
+        stdout, stderr = StringIO(), StringIO()
+
+        call_command('remove_duplicate_subscriptions', '--fix',
+                     stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            'Removed 2 duplicate subscriptions')
+        self.assertEqual(Subscription.objects.count(), 1)
+
+    @responses.activate
+    def test_duplicate_removal_without_scheduler(self):
+
+        # Canary, if this is called something's going wrong
+        responses.add(
+            responses.GET, 'http://scheduler/schedule/schedule-id-2/',
+            body=HTTPError('This should not have been called'))
+
+        responses.add(
+            responses.DELETE,
+            'http://scheduler/schedule/schedule-id-2/')
+        responses.add(
+            responses.DELETE,
+            'http://scheduler/schedule/schedule-id-3/')
+
+        sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
+
+        # only have one of the subs a have a schedule id for some reason
+        sub1.metadata["scheduler_schedule_id"] = "schedule-id-1"
+        sub1.save()
+
+        stdout, stderr = StringIO(), StringIO()
+
+        call_command('remove_duplicate_subscriptions', '--fix',
+                     stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            set(stdout.getvalue().strip().split('\n')),
+            set([
+                'Subscription %s had no scheduler_id' % (sub2,),
+                'Subscription %s had no scheduler_id' % (sub3,),
+                'Removed 2 duplicate subscriptions',
+            ]))
+        self.assertEqual(Subscription.objects.count(), 1)
