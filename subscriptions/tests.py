@@ -1,6 +1,7 @@
 import responses
 import json
 from requests.exceptions import HTTPError
+from datetime import timedelta
 
 try:
     from StringIO import StringIO
@@ -1711,8 +1712,8 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
                      stdout=stdout, stderr=stderr)
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
-            stdout.getvalue(),
-            'Removed 0 duplicate subscriptions\n')
+            stdout.getvalue().strip(),
+            'Removed 0 duplicate subscriptions.')
 
     def test_duplicate_removal_dry_run(self):
         sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
@@ -1727,7 +1728,7 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
             set([
                 'Not removing %s, use --fix to actually remove.' % (sub2,),
                 'Not removing %s, use --fix to actually remove.' % (sub3,),
-                'Removed 2 duplicate subscriptions',
+                'Removed 2 duplicate subscriptions.',
             ]))
         self.assertEqual(Subscription.objects.count(), 3)
 
@@ -1764,8 +1765,36 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            'Removed 2 duplicate subscriptions')
+            'Removed 2 duplicate subscriptions.')
         self.assertEqual(Subscription.objects.count(), 1)
+
+    @responses.activate
+    def test_retain_duplicates_outside_time_delta(self):
+
+        # Canary, if this is called something's going wrong
+        responses.add(
+            responses.GET, 'http://scheduler/schedule/',
+            body=HTTPError('This should not have been called'))
+
+        sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
+        sub1.save()
+
+        sub3.created_at = sub1.created_at + timedelta(seconds=22)
+        sub3.save()
+
+        stdout, stderr = StringIO(), StringIO()
+
+        call_command('remove_duplicate_subscriptions', '--fix',
+                     '--time-delta', '20',
+                     stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            '\n'.join([
+                'Subscription %s has no scheduler_id.' % (sub2,),
+                'Removed 1 duplicate subscriptions.',
+            ]))
+        self.assertEqual(Subscription.objects.count(), 2)
 
     @responses.activate
     def test_duplicate_removal_without_scheduler(self):
@@ -1796,8 +1825,8 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
         self.assertEqual(
             set(stdout.getvalue().strip().split('\n')),
             set([
-                'Subscription %s had no scheduler_id' % (sub2,),
-                'Subscription %s had no scheduler_id' % (sub3,),
-                'Removed 2 duplicate subscriptions',
+                'Subscription %s has no scheduler_id.' % (sub2,),
+                'Subscription %s has no scheduler_id.' % (sub3,),
+                'Removed 2 duplicate subscriptions.',
             ]))
         self.assertEqual(Subscription.objects.count(), 1)

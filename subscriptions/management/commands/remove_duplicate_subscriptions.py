@@ -97,7 +97,7 @@ class Command(BaseCommand):
                             scheduler_client.delete_schedule(scheduler_id)
                         else:
                             self.warning(
-                                'Subscription %s had no scheduler_id' % (
+                                'Subscription %s has no scheduler_id.' % (
                                     sub_str,))
                     else:
                         self.warning(
@@ -107,7 +107,7 @@ class Command(BaseCommand):
                     removed += 1
                 dates.append(sub.created_at)
 
-        self.success('Removed %d duplicate subscriptions\n' % (removed,))
+        self.success('Removed %d duplicate subscriptions.' % (removed,))
 
     def log(self, level, msg):
         self.stdout.write(level(msg))
