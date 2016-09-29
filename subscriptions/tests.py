@@ -1738,7 +1738,7 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
 
         # Canary, if this is called something's going wrong
         responses.add(
-            responses.GET, 'http://scheduler/schedule/schedule-id-2/',
+            responses.DELETE, 'http://scheduler/schedule/schedule-id-1/',
             body=HTTPError('This should not have been called'))
 
         responses.add(
@@ -1774,13 +1774,21 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
 
         # Canary, if this is called something's going wrong
         responses.add(
-            responses.GET, 'http://scheduler/schedule/',
+            responses.DELETE, 'http://scheduler/schedule/schedule-id-3/',
             body=HTTPError('This should not have been called'))
 
+        responses.add(
+            responses.DELETE, 'http://scheduler/schedule/schedule-id-2/')
+
         sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
+        sub1.metadata['scheduler_schedule_id'] = 'schedule-id-1'
         sub1.save()
 
+        sub2.metadata['scheduler_schedule_id'] = 'schedule-id-2'
+        sub2.save()
+
         sub3.created_at = sub1.created_at + timedelta(seconds=22)
+        sub3.metadata['scheduler_schedule_id'] = 'schedule-id-3'
         sub3.save()
 
         stdout, stderr = StringIO(), StringIO()
@@ -1791,27 +1799,11 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            '\n'.join([
-                'Subscription %s has no scheduler_id.' % (sub2,),
-                'Removed 1 duplicate subscriptions.',
-            ]))
+            'Removed 1 duplicate subscriptions.')
         self.assertEqual(Subscription.objects.count(), 2)
 
     @responses.activate
     def test_duplicate_removal_without_scheduler(self):
-
-        # Canary, if this is called something's going wrong
-        responses.add(
-            responses.GET, 'http://scheduler/schedule/schedule-id-2/',
-            body=HTTPError('This should not have been called'))
-
-        responses.add(
-            responses.DELETE,
-            'http://scheduler/schedule/schedule-id-2/')
-        responses.add(
-            responses.DELETE,
-            'http://scheduler/schedule/schedule-id-3/')
-
         sub1, sub2, sub3 = [self.make_subscription() for i in range(3)]
 
         # only have one of the subs a have a schedule id for some reason
