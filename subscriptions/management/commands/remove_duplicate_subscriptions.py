@@ -3,7 +3,7 @@ from django.core.validators import URLValidator
 from django.conf import settings
 
 from subscriptions.models import Subscription
-from scheduler.client import SchedulerApiClient
+from seed_services_client import SchedulerApiClient
 
 
 def url_validator(url_str):
