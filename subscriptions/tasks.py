@@ -17,7 +17,7 @@ from go_http.metrics import MetricsApiClient
 from .models import Subscription
 from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet
-from scheduler.client import SchedulerApiClient
+from seed_services_client import SchedulerApiClient
 
 logger = get_task_logger(__name__)
 
