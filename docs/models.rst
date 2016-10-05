@@ -113,14 +113,19 @@ Fields
     An auto incrementing integer unique identifier for the record.
 
 **messageset**
+    A reference to the MessageSet this message belongs to.
 
 **sequence_number**
+    A required integer representing the order of this message in the set.
 
 **lang**
+    An ISO639-3 language code.
 
 **text_content**
+    Optional text content for the message.
 
 **binary_content**
+    Optional reference to a BinaryContent.
 
 **created_at**
     A date and time field of when the record was created.
@@ -145,24 +150,40 @@ Fields
     A UUID 4 unique identifier for the record.
 
 **identity**
+    A UUID reference to an Identity stored in the Seed Identity Store.
 
 **version**
+    An integer version number of the Subscription schema used.
 
 **messageset**
+    A reference to the MessageSet for this Subscription.
 
 **next_sequence_number**
+    The integer Message sequence number to use for this Subscription.
 
 **lang**
+    An ISO639-3 language code representing the preferred language for this
+    Subscription.
 
 **active**
+    A boolean of the active status.
 
 **completed**
+    A boolean of the complete status.
 
 **schedule**
+    A reference to the Schedule to use for this Subscription.
 
 **process_status**
+    A integer flag representing the process status of this subscription.
+
+    | -1 = error
+    | 0 = ready
+    | 1 = in process
+    | 2 = completed
 
 **metadata**
+    A JSON field of `metadata` to be stored with the Subscription.
 
 **created_at**
     A date and time field of when the record was created.
