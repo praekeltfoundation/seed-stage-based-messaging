@@ -14,16 +14,32 @@ Fields
 ~~~~~~
 
 **id**
+    An auto incrementing integer unique identifier for the record.
 
 **minute**
+    A character field representing the minute portion of the schedule.
+    Defaults to ``*`` but can be a comma separated list of numbers between 0
+    and 59.
 
 **hour**
+    A character field representing the hour portion of the schedule.
+    Defaults to ``*`` but can be a comma separated list of numbers between 0
+    and 23.
 
 **day_of_week**
+    A character field representing the day of the week portion of the schedule.
+    Defaults to ``*`` but can be a comma separated list of numbers between 1
+    and 7 where 1 = Monday and 7 = Sunday.
 
 **day_of_month**
+    A character field representing the day of the month portion of the
+    schedule. Defaults to ``*`` but can be a comma separated list of numbers
+    between 1 and 31.
 
 **month_of_year**
+    A character field representing the month of the year portion of the
+    schedule. Defaults to ``*`` but can be a comma separated list of numbers
+    between 1 and 12.
 
 MessageSet
 ----------
@@ -35,16 +51,24 @@ Fields
 ~~~~~~
 
 **id**
+    An auto incrementing integer unique identifier for the record.
 
 **short_name**
+    A unique name that identifies this MessageSet.
 
 **notes**
+    An optional free text field for notes about this MessageSet.
 
 **next_set**
+    An optional self-referencing link to a MessageSet that should follow from
+    this one.
 
 **default_schedule**
+    A reference to a Schedule used as the default for this MessageSet.
 
 **content_type**
+    A choice field between `audio` and `text` representing the type of content
+    this MessageSet contains.
 
 **created_at**
     A date and time field of when the record was created.
@@ -63,8 +87,10 @@ Fields
 ~~~~~~
 
 **id**
+    An auto incrementing integer unique identifier for the record.
 
 **content**
+    A FileField that represents the binary content's location on disk.
 
 **created_at**
     A date and time field of when the record was created.
@@ -84,6 +110,7 @@ Fields
 ~~~~~~
 
 **id**
+    An auto incrementing integer unique identifier for the record.
 
 **messageset**
 
@@ -115,6 +142,27 @@ Fields
 ~~~~~~
 
 **id**
+    A UUID 4 unique identifier for the record.
+
+**identity**
+
+**version**
+
+**messageset**
+
+**next_sequence_number**
+
+**lang**
+
+**active**
+
+**completed**
+
+**schedule**
+
+**process_status**
+
+**metadata**
 
 **created_at**
     A date and time field of when the record was created.
