@@ -23,5 +23,7 @@ developing the Seed Stage-Based Messaging Store:
 * Read about the :doc:`Authorization <auth>` requirements.
 * Browse the :doc:`API Documentation <apis>` for the available endpoints and
   parameters.
+* Read about the :doc:`Integrations <integrations>` this service has with the
+  other Seed Stack services.
 * Learn about what is required when running the service in
   :doc:`Production <production>`

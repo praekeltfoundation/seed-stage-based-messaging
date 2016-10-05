@@ -88,8 +88,8 @@ The following environmental variables can be used to override some default setti
 
 .. envvar:: STAGE_BASED_MESSAGING_URL
 
-    The URL to the instance of the Seed Stage-based Messaging API that will be
-    used for creating POST-back hooks to this service.
+    The URL of the instance of the Seed Stage-based Messaging API that will be
+    used when creating POST-back hooks to this service from other Seed services.
 
 .. envvar:: SCHEDULER_URL
 
