@@ -60,9 +60,6 @@ Core
 The root URL for all of the core endpoints includes the version prefix
 (:samp:`https://{<stage-based-messaging-store-domain>}/api/v1/`)
 
-Content
-~~~~~~~
-
 .. http:post:: /user/token/
 
     Creates a user and token for the given email address.
@@ -100,70 +97,152 @@ Content
             "token": "c05fbab6d5f912429052830c77eeb022249324cb"
         }
 
+Content
+~~~~~~~
 
 .. http:get:: /schedule/
 
+    Returns a list of Schedules.
+
 .. http:post:: /schedule/
+
+    Creates a new Schedule.
 
 .. http:get:: /schedule/(int:schedule_id)/
 
+    Retuns the Schedule record for a given schedule_id.
+
 .. http:put:: /schedule/(int:schedule_id)/
+
+    Updates the Schedule record for a given schedule_id.
 
 .. http:delete:: /schedule/(int:schedule_id)/
 
+    Deletes the Schedule record for a given schedule_id.
 
 .. http:get:: /messageset/
 
+    Returns a list of MessageSets.
+
 .. http:post:: /messageset/
+
+    Creates a new MessageSet.
 
 .. http:get:: /messageset/(int:messageset_id)/
 
+    Retuns the MessageSet record for a given messageset_id.
+
 .. http:put:: /messageset/(int:messageset_id)/
+
+    Updates the MessageSet record for a given messageset_id.
 
 .. http:delete:: /messageset/(int:messageset_id)/
 
+    Deletes the MessageSet record for a given messageset_id.
+
 .. http:get:: /messageset/(int:messageset_id)/messages/
+
+    Returns a list of Messages for a given messageset_id.
 
 
 .. http:get:: /message/
 
+    Returns a list of Messages.
+
 .. http:post:: /message/
+
+    Create a new Message record.
 
 .. http:get:: /message/(int:message_id)/
 
+    Returns the Message record for a given message_id.
+
 .. http:put:: /message/(int:message_id)/
+
+    Updates the Message record for a given message_id.
 
 .. http:delete:: /message/(int:message_id)/
 
+    Deletes the Message record for a given message_id.
+
 .. http:get:: /message/(int:message_id)/content/
+
+    Returns the content for a given message_id.
 
 
 .. http:get:: /binarycontent/
 
+    Returns a list of BinaryContent records.
+
 .. http:post:: /binarycontent/
+
+    Creates a new BinaryContent record.
 
 .. http:get:: /binarycontent/(int:binarycontent_id)/
 
+    Returns the BinaryContent record for a given binarycontent_id.
+
 .. http:put:: /binarycontent/(int:binarycontent_id)/
 
+    Updates the BinaryContent record for a given binarycontent_id.
+
 .. http:delete:: /binarycontent/(int:binarycontent_id)/
+
+    Deletes the BinaryContent record for a given binarycontent_id.
 
 Subscriptions
 ~~~~~~~~~~~~~
 
 .. http:get:: /subscriptions/
 
+    Returns a list of Subscriptions.
+
 .. http:post:: /subscriptions/
 
-.. http:get:: /subscriptions/(int:subscriptions_id)/
+    Creates a new Subscription record.
 
-.. http:put:: /subscriptions/(int:subscriptions_id)/
+.. http:get:: /subscriptions/(int:subscription_id)/
 
-.. http:delete:: /subscriptions/(int:subscriptions_id)/
+    Returns the Subscription record for a given subscription_id.
 
-.. http:get:: /subscriptions/(int:subscriptions_id)/send/
+.. http:put:: /subscriptions/(int:subscription_id)/
 
-.. http:get:: /subscriptions/(int:subscriptions_id)/request/
+    Updates the Subscription record for a given subscription_id.
+
+.. http:delete:: /subscriptions/(int:subscription_id)/
+
+    Deletes the Subscription record for a given subscription_id.
+
+.. http:post:: /subscriptions/(int:subscription_id)/send
+
+    Triggers a send for the next Subscription message for the given
+    subscription_id.
+
+    The actual sending is processed asynchronously by a Celery worker.
+
+    :>json boolean accepted: Whether send for subscription_id is accepted.
+    :>json string reason: An optional reason why the request was not accepted.
+
+    :status 201: request to send the next message accepted.
+    :status 400: invalid subscription_id given.
+
+.. http:post:: /subscriptions/request
+
+    Creates a new subscription.
+
+    This endpoint is called as a webhook request from the project
+    Hub service when a new registration is created that requires a
+    subscription.
+
+    As such the entire payload is expected to be provided as an object
+    in the data parameter.
+
+    :<json json data: a JSON representation of a Subscription object.
+
+    :>json boolean accepted: Whether new subscription was created.
+
+    :status 201: subscription created.
+    :status 400: invalid request.
 
 Helpers
 -------
