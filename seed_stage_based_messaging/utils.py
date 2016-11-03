@@ -47,7 +47,12 @@ def get_available_metrics():
 
     messagesets = MessageSet.objects.all()
     for messageset in messagesets:
+        messageset_name = normalise_metric_name(messageset.short_name)
         available_metrics.append(
             "subscriptions.%s.active.last" % messageset.short_name)
+        available_metrics.append(
+            "subscriptions.message_set.{}.sum".format(messageset_name))
+        available_metrics.append(
+            "subscriptions.message_set.{}.total.last".format(messageset_name))
 
     return available_metrics

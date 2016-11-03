@@ -1356,7 +1356,7 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            response.data["metrics_available"], [
+            sorted(response.data["metrics_available"]), sorted([
                 'subscriptions.created.sum',
                 'subscriptions.send_next_message_errored.sum',
                 'subscriptions.active.last',
@@ -1364,8 +1364,12 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.broken.last',
                 'subscriptions.completed.last',
                 'subscriptions.messageset_one.active.last',
-                'subscriptions.messageset_two.active.last'
-            ]
+                'subscriptions.messageset_two.active.last',
+                'subscriptions.message_set.messageset_one.sum',
+                'subscriptions.message_set.messageset_two.sum',
+                'subscriptions.message_set.messageset_one.total.last',
+                'subscriptions.message_set.messageset_two.total.last',
+            ])
         )
 
     @responses.activate
