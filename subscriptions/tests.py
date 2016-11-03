@@ -27,7 +27,8 @@ from go_http.metrics import MetricsApiClient
 
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete,
-                     disable_schedule_if_deactivated, fire_metrics_if_new)
+                     disable_schedule_if_deactivated, fire_metrics_if_new,
+                     fire_metric_per_message_set)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -169,6 +170,7 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.disconnect(disable_schedule_if_deactivated,
                              sender=Subscription)
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -183,6 +185,7 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(disable_schedule_if_complete, sender=Subscription)
         post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
         post_save.connect(fire_metrics_if_new, sender=Subscription)
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -1483,6 +1486,58 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.assertEqual(result.get(), "5 Scheduled metrics launched")
         # fire_messagesets_tasks fires two metrics, therefore extra call
         self.assertEqual(len(responses.calls), 6)
+
+    @responses.activate
+    def test_metric_per_message_set_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's message set.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.message_set.messageset_one.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_message_set_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that message set.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.message_set.messageset_one.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.message_set.messageset_one.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
 
     def test_fire_active_last(self):
         # Setup
