@@ -90,12 +90,3 @@ class Command(BaseCommand):
                 self.stderr.write("Error: %s" % '; '.join(e.messages))
                 val = None
         return val
-
-    def log(self, level, msg):
-        self.stdout.write(level(msg))
-
-    def warning(self, msg):
-        self.log(self.style.WARNING, msg)
-
-    def success(self, msg):
-        self.log(self.style.SUCCESS, msg)
