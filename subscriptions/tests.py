@@ -28,7 +28,7 @@ from go_http.metrics import MetricsApiClient
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
-                     fire_metric_per_message_set)
+                     fire_metric_per_message_set, fire_metric_per_lang)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -171,6 +171,7 @@ class AuthenticatedAPITestCase(APITestCase):
                              sender=Subscription)
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -186,6 +187,7 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
         post_save.connect(fire_metrics_if_new, sender=Subscription)
         post_save.connect(fire_metric_per_message_set, sender=Subscription)
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -1350,11 +1352,13 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
 
     def test_metrics_read(self):
         # Setup
+        self.make_subscription()
         # Execute
         response = self.client.get('/api/metrics/',
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
         self.assertEqual(
             sorted(response.data["metrics_available"]), sorted([
                 'subscriptions.created.sum',
@@ -1369,6 +1373,8 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.message_set.messageset_two.sum',
                 'subscriptions.message_set.messageset_one.total.last',
                 'subscriptions.message_set.messageset_two.total.last',
+                'subscriptions.language.en_ZA.sum',
+                'subscriptions.language.en_ZA.total.last',
             ])
         )
 
@@ -1542,6 +1548,58 @@ class TestMetrics(AuthenticatedAPITestCase):
         })
 
         post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_language_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's language.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.language.en_ZA.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_language_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that language.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.language.en_ZA.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.language.en_ZA.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
 
     def test_fire_active_last(self):
         # Setup

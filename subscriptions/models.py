@@ -105,6 +105,30 @@ def fire_metric_per_message_set(sender, instance, created, **kwargs):
         })
 
 
+@receiver(post_save, sender=Subscription)
+def fire_metric_per_lang(sender, instance, created, **kwargs):
+    """
+    Fires metrics according to the language of the subscription.
+    """
+    from .tasks import fire_metric
+    if created:
+        lang = instance.lang
+        fire_metric.apply_async(kwargs={
+            "metric_name": "subscriptions.language.{}.sum".format(lang),
+            "metric_value": 1.0,
+        })
+
+        total_key = 'subscriptions.language.{}.total.last'.format(lang)
+        total = get_or_incr_cache(
+            total_key,
+            Subscription.objects.filter(
+                lang=lang).count)
+        fire_metric.apply_async(kwargs={
+            "metric_name": total_key,
+            "metric_value": total,
+        })
+
+
 def get_or_incr_cache(key, func):
     """
     Used to either get and increment a value from the cache, or if the value
