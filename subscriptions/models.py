@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.postgres.fields import JSONField
+from django.core.cache import cache
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -76,3 +77,45 @@ def fire_metrics_if_new(sender, instance, created, **kwargs):
             "metric_name": 'subscriptions.created.sum',
             "metric_value": 1.0
         })
+
+
+@receiver(post_save, sender=Subscription)
+def fire_metric_per_message_set(sender, instance, created, **kwargs):
+    """
+    Fires metrics according to the message set of the subscription.
+    """
+    from .tasks import fire_metric
+    from seed_stage_based_messaging.utils import normalise_metric_name
+    if created:
+        ms_name = normalise_metric_name(instance.messageset.short_name)
+        fire_metric.apply_async(kwargs={
+            "metric_name":
+                "subscriptions.message_set.{}.sum".format(ms_name),
+            "metric_value": 1.0,
+        })
+
+        total_key = 'subscriptions.message_set.{}.total.last'.format(ms_name)
+        total = get_or_incr_cache(
+            total_key,
+            Subscription.objects.filter(
+                messageset=instance.messageset).count)
+        fire_metric.apply_async(kwargs={
+            "metric_name": total_key,
+            "metric_value": total,
+        })
+
+
+def get_or_incr_cache(key, func):
+    """
+    Used to either get and increment a value from the cache, or if the value
+    doesn't exist in the cache, run the function to get a value to use to
+    populate the cache
+    """
+    value = cache.get(key)
+    if value is None:
+        value = func()
+        cache.set(key, value)
+    else:
+        cache.incr(key)
+        value += 1
+    return value
