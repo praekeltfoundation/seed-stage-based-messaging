@@ -28,7 +28,7 @@ from go_http.metrics import MetricsApiClient
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
-                     fire_metric_per_message_set, fire_metric_per_lang)
+                     fire_metric_per_message_set, fire_metric_per_lang, fire_metric_per_message_format)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -172,6 +172,7 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
         post_save.disconnect(fire_metric_per_lang, sender=Subscription)
+        post_save.disconnect(fire_metric_per_message_format, sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -188,6 +189,7 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(fire_metrics_if_new, sender=Subscription)
         post_save.connect(fire_metric_per_message_set, sender=Subscription)
         post_save.connect(fire_metric_per_lang, sender=Subscription)
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -1375,6 +1377,10 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.message_set.messageset_two.total.last',
                 'subscriptions.language.en_ZA.sum',
                 'subscriptions.language.en_ZA.total.last',
+                'subscriptions.message_format.text.sum',
+                'subscriptions.message_format.text.total.last',
+                'subscriptions.message_format.audio.sum',
+                'subscriptions.message_format.audio.total.last',
             ])
         )
 
