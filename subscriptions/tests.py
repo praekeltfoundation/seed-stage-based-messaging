@@ -28,7 +28,8 @@ from go_http.metrics import MetricsApiClient
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
-                     fire_metric_per_message_set, fire_metric_per_lang, fire_metric_per_message_format)
+                     fire_metric_per_message_set, fire_metric_per_lang,
+                     fire_metric_per_message_format)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -172,7 +173,8 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
         post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
         post_save.disconnect(fire_metric_per_lang, sender=Subscription)
-        post_save.disconnect(fire_metric_per_message_format, sender=Subscription)
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
