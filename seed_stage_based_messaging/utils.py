@@ -2,6 +2,7 @@ import re
 import requests
 from django.conf import settings
 from contentstore.models import MessageSet
+from subscriptions.models import Subscription
 
 
 NORMALISE_METRIC_RE = re.compile(r'\W+')
@@ -54,5 +55,14 @@ def get_available_metrics():
             "subscriptions.message_set.{}.sum".format(messageset_name))
         available_metrics.append(
             "subscriptions.message_set.{}.total.last".format(messageset_name))
+
+    languages = Subscription.objects.order_by('lang').distinct('lang')\
+        .values_list('lang', flat=True)
+    for lang in languages:
+        lang_normal = normalise_metric_name(lang)
+        available_metrics.append(
+            "subscriptions.language.{}.sum".format(lang_normal))
+        available_metrics.append(
+            "subscriptions.language.{}.total.last".format(lang_normal))
 
     return available_metrics
