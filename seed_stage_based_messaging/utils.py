@@ -56,13 +56,13 @@ def get_available_metrics():
         available_metrics.append(
             "subscriptions.message_set.{}.total.last".format(messageset_name))
 
-    subscriptions = Subscription.objects.all()
-    for subscription in subscriptions:
-        lang_key = "subscriptions.language.{}.sum".format(subscription.lang)
-        if (lang_key not in available_metrics):
-            available_metrics.append(lang_key)
-            available_metrics.append(
-                "subscriptions.language.{}.total.last"
-                .format(subscription.lang))
+    languages = Subscription.objects.order_by('lang').distinct('lang')\
+        .values_list('lang', flat=True)
+    for lang in languages:
+        lang_normal = normalise_metric_name(lang)
+        available_metrics.append(
+            "subscriptions.language.{}.sum".format(lang_normal))
+        available_metrics.append(
+            "subscriptions.language.{}.total.last".format(lang_normal))
 
     return available_metrics
