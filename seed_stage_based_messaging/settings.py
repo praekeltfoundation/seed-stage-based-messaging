@@ -202,6 +202,13 @@ CELERY_ROUTES = {
     },
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': None,
+    },
+}
+
 METRICS_REALTIME = [
     'subscriptions.created.sum',
     'subscriptions.send_next_message_errored.sum'

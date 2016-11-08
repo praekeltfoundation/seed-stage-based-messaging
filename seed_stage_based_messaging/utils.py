@@ -1,6 +1,10 @@
+import re
 import requests
 from django.conf import settings
 from contentstore.models import MessageSet
+
+
+NORMALISE_METRIC_RE = re.compile(r'\W+')
 
 
 def get_identity(identity_uuid):
@@ -12,6 +16,13 @@ def get_identity(identity_uuid):
     }
     r = requests.get(url, headers=headers)
     return r.json()
+
+
+def normalise_metric_name(name):
+    """
+    Replaces all non-alphanumeric characters with underscores.
+    """
+    return NORMALISE_METRIC_RE.sub('_', name).rstrip('_').lstrip('_')
 
 
 def get_identity_address(identity_uuid):
@@ -36,7 +47,12 @@ def get_available_metrics():
 
     messagesets = MessageSet.objects.all()
     for messageset in messagesets:
+        messageset_name = normalise_metric_name(messageset.short_name)
         available_metrics.append(
             "subscriptions.%s.active.last" % messageset.short_name)
+        available_metrics.append(
+            "subscriptions.message_set.{}.sum".format(messageset_name))
+        available_metrics.append(
+            "subscriptions.message_set.{}.total.last".format(messageset_name))
 
     return available_metrics
