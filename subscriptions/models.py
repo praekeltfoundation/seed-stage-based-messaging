@@ -123,7 +123,36 @@ def fire_metric_per_lang(sender, instance, created, **kwargs):
         total = get_or_incr_cache(
             total_key,
             Subscription.objects.filter(
-                lang=lang).count)
+                lang=instance.lang).count)
+        fire_metric.apply_async(kwargs={
+            "metric_name": total_key,
+            "metric_value": total,
+        })
+
+
+@receiver(post_save, sender=Subscription)
+def fire_metric_per_message_format(sender, instance, created, **kwargs):
+    """
+    Fires metrics according to the content type of the subscription.
+    """
+    from .tasks import fire_metric
+    from seed_stage_based_messaging.utils import normalise_metric_name
+    if created:
+        content_type = normalise_metric_name(instance.messageset.content_type)
+        fire_metric.apply_async(kwargs={
+            "metric_name":
+                "subscriptions.message_format.{}.sum".format(content_type),
+            "metric_value": 1.0,
+        })
+
+        total_key = 'subscriptions.message_format.{}.total.last'.format(
+            content_type)
+        total = get_or_incr_cache(
+            total_key,
+            Subscription.objects.filter(
+                messageset__content_type=instance.messageset.content_type
+                ).count)
+
         fire_metric.apply_async(kwargs={
             "metric_name": total_key,
             "metric_value": total,

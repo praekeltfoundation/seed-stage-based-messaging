@@ -65,4 +65,12 @@ def get_available_metrics():
         available_metrics.append(
             "subscriptions.language.{}.total.last".format(lang_normal))
 
+    content_types = MessageSet._meta.get_field('content_type').choices
+    for content_type in content_types:
+        type_normal = normalise_metric_name(content_type[0])
+        available_metrics.append(
+            "subscriptions.message_format.{}.sum".format(type_normal))
+        available_metrics.append(
+            "subscriptions.message_format.{}.total.last".format(type_normal))
+
     return available_metrics
