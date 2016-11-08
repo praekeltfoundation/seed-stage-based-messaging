@@ -10,7 +10,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django==1.9.1',
+        'Django==1.9.11',
         'djangorestframework==3.3.2',
         'dj-database-url==0.3.0',
         'psycopg2==2.6.2',
@@ -18,7 +18,7 @@ setup(
         'gunicorn==19.4.5',
         'django-filter==0.12.0',
         'dj-static==0.0.6',
-        'celery==3.1.19',
+        'celery==3.1.24',
         'django-celery==3.1.17',
         'redis==2.10.5',
         'pytz==2015.7',
