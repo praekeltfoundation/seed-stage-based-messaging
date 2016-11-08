@@ -147,11 +147,11 @@ def fire_metric_per_message_format(sender, instance, created, **kwargs):
 
         total_key = 'subscriptions.message_format.{}.total.last'.format(
             content_type)
-        messagesets = MessageSet.objects.filter(
-            content_type=instance.messageset.content_type)
         total = get_or_incr_cache(
             total_key,
-            Subscription.objects.filter(messageset__in=messagesets).count)
+            Subscription.objects.filter(
+                messageset__content_type=instance.messageset.content_type
+                ).count)
 
         fire_metric.apply_async(kwargs={
             "metric_name": total_key,

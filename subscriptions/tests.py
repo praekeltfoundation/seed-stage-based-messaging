@@ -1609,6 +1609,64 @@ class TestMetrics(AuthenticatedAPITestCase):
 
         post_save.disconnect(fire_metric_per_lang, sender=Subscription)
 
+    @responses.activate
+    def test_metric_per_message_format_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's message format.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.message_format.text.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_message_format_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that message format.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription_audio()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2, _, last_call3] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.message_format.text.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.message_format.audio.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call3.request.body), {
+            "subscriptions.message_format.text.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
+
     def test_fire_active_last(self):
         # Setup
         adapter = self._mount_session()
