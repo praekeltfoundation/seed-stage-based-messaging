@@ -175,6 +175,17 @@ class SendNextMessage(Task):
                     post_send_process.apply_async(args=[subscription_id])
                     l.debug("fired post_send_process task")
 
+                    l.debug("Firing SMS/OBD calls sent per message set metric")
+                    send_type = utils.normalise_metric_name(
+                                    subscription.messageset.content_type)
+                    ms_name = utils.normalise_metric_name(
+                                    subscription.messageset.short_name)
+                    fire_metric.apply_async(kwargs={
+                        "metric_name":
+                            'message.{}.{}.sum'.format(send_type, ms_name),
+                        "metric_value": 1.0
+                    })
+
                     l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
                     return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
                 else:
