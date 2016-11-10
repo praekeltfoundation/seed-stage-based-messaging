@@ -625,6 +625,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json; charset=utf-8'
         )
 
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
         # make messages
         message_data_eng_1 = {
             "messageset": existing.messageset,
@@ -685,12 +692,17 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 5)
+        self.assertEqual(len(responses.calls), 6)
 
         # Check the request body of metric call
         metric_call = responses.calls[4]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[5]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
         })
 
         # Check the message_count / set_max count
@@ -774,6 +786,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -808,6 +827,11 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
         })
 
     @responses.activate
@@ -896,6 +920,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={'foo': "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -924,12 +955,16 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
-        self.assertEqual(len(responses.calls), 5)
+        self.assertEqual(len(responses.calls), 6)
 
         # Check the request body of metric call
         metric_call = responses.calls[4]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
+        })
+        metric_call = responses.calls[5]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
         })
 
         post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
@@ -1114,6 +1149,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -1147,6 +1189,11 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
         })
 
     @responses.activate
@@ -1227,6 +1274,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make binarycontent
         binarycontent_data1 = {
             "content": "fakefilename.mp3",
@@ -1269,6 +1323,11 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.audio.messageset_two.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.sum": 1.0
         })
 
     @responses.activate
@@ -1344,6 +1403,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
         # Create metrics call - deactivate TestSession for this
         self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         responses.add(
             responses.POST,
             "http://metrics-url/metrics/",
@@ -1477,6 +1543,8 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'message.audio.messageset_one.sum',
                 'message.text.messageset_two.sum',
                 'message.audio.messageset_two.sum',
+                'message.text.sum',
+                'message.audio.sum',
             ])
         )
 

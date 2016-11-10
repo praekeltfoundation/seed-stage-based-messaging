@@ -185,6 +185,11 @@ class SendNextMessage(Task):
                             'message.{}.{}.sum'.format(send_type, ms_name),
                         "metric_value": 1.0
                     })
+                    fire_metric.apply_async(kwargs={
+                        "metric_name":
+                            'message.{}.sum'.format(send_type),
+                        "metric_value": 1.0
+                    })
 
                     l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
                     return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
