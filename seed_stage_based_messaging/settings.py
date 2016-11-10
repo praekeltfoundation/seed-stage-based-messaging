@@ -124,9 +124,11 @@ MEDIA_URL = '/media/'
 # )
 
 # Sentry configuration
+STAGE_BASED_MESSAGING_SENTRY_DSN = os.environ.get(
+    'STAGE_BASED_MESSAGING_SENTRY_DSN', None)
 RAVEN_CONFIG = {
     # DevOps will supply you with this.
-    'dsn': os.environ.get('STAGE_BASED_MESSAGING_SENTRY_DSN', None),
+    'dsn': STAGE_BASED_MESSAGING_SENTRY_DSN,
 }
 
 # REST Framework conf defaults
