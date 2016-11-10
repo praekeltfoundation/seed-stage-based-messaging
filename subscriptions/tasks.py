@@ -501,6 +501,22 @@ class FireCompletedLast(Task):
 fire_completed_last = FireCompletedLast()
 
 
+class FireIncompleteLast(Task):
+
+    """ Fires last incomplete subscriptions count
+    """
+    name = "seed_stage_based_messaging.subscriptions.tasks.fire_incomplete_last"  # noqa
+
+    def run(self):
+        incomplete_subs = Subscription.objects.filter(completed=False).count()
+        return fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.incomplete.last',
+            "metric_value": incomplete_subs
+        })
+
+fire_incomplete_last = FireIncompleteLast()
+
+
 class FireMessageSetsTasks(Task):
 
     """ Fires off seperate tasks to count active subscriptions for each
