@@ -202,6 +202,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.fire_completed_last': {
         'queue': 'metrics',
     },
+    'subscriptions.tasks.fire_incomplete_last': {
+        'queue': 'metrics',
+    },
 }
 
 CACHES = {
@@ -227,6 +230,7 @@ METRICS_SCHEDULED_TASKS = [
     'fire_created_last',
     'fire_broken_last',
     'fire_completed_last',
+    'fire_incomplete_last',
     'fire_messagesets_tasks'
 ]
 

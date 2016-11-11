@@ -1663,9 +1663,9 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "5 Scheduled metrics launched")
+        self.assertEqual(result.get(), "6 Scheduled metrics launched")
         # fire_messagesets_tasks fires two metrics, therefore extra call
-        self.assertEqual(len(responses.calls), 6)
+        self.assertEqual(len(responses.calls), 7)
 
     @responses.activate
     def test_metric_per_message_set_sum(self):
@@ -1928,6 +1928,29 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.check_request(
             adapter.request, 'POST',
             data={"subscriptions.completed.last": 1.0}
+        )
+
+    def test_fire_incomplete_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two incomplete and one complete subscription
+        self.make_subscription()
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.completed = True
+        sub.save()
+
+        # Execute
+        result = tasks.fire_incomplete_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.incomplete.last> with value <2.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.incomplete.last": 2.0}
         )
 
     def test_messagesets_tasks(self):
