@@ -209,7 +209,7 @@ class SendNextMessage(Task):
             elif (subscription.process_status == 2 or
                   subscription.completed is True):
                 # Disable the subscription's scheduler
-                schedule_disable.apply_async(subscription.id)
+                schedule_disable.apply_async(args=[subscription_id])
                 l.info("Scheduler deactivation task fired")
                 return "Schedule deactivation task fired"
 
