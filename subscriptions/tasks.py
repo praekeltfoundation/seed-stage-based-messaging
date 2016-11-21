@@ -43,7 +43,7 @@ class FireMetric(Task):
 
     """ Fires a metric using the MetricsApiClient
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_metric"
+    name = "subscriptions.tasks.fire_metric"
 
     def run(self, metric_name, metric_value, session=None, **kwargs):
         metric_value = float(metric_value)
@@ -309,7 +309,7 @@ class ScheduleDisable(Task):
 
     """ Task to disable a subscription's schedule
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.schedule_disable"
+    name = "subscriptions.tasks.schedule_disable"
 
     def scheduler_client(self):
         return SchedulerApiClient(
@@ -350,7 +350,7 @@ class ScheduleCreate(Task):
 
     """ Task to tell scheduler a new subscription created
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.schedule_create"
+    name = "subscriptions.tasks.schedule_create"
 
     def scheduler_client(self):
         return SchedulerApiClient(
@@ -413,7 +413,7 @@ class ScheduledMetrics(Task):
     """ Fires off tasks for all the metrics that should run
         on a schedule
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.scheduled_metrics"
+    name = "subscriptions.tasks.scheduled_metrics"
 
     def run(self, **kwargs):
         globs = globals()  # execute globals() outside for loop for efficiency
@@ -430,7 +430,7 @@ class FireActiveLast(Task):
 
     """ Fires last active subscriptions count
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_active_last"
+    name = "subscriptions.tasks.fire_active_last"
 
     def run(self):
         active_subs = Subscription.objects.filter(active=True).count()
@@ -446,7 +446,7 @@ class FireCreatedLast(Task):
 
     """ Fires last created subscriptions count
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_created_last"
+    name = "subscriptions.tasks.fire_created_last"
 
     def run(self):
         created_subs = Subscription.objects.all().count()
@@ -462,7 +462,7 @@ class FireBrokenLast(Task):
 
     """ Fires last broken subscriptions count
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_broken_last"
+    name = "subscriptions.tasks.fire_broken_last"
 
     def run(self):
         broken_subs = Subscription.objects.filter(process_status=-1).count()
@@ -478,7 +478,7 @@ class FireCompletedLast(Task):
 
     """ Fires last completed subscriptions count
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_completed_last"  # noqa
+    name = "subscriptions.tasks.fire_completed_last"  # noqa
 
     def run(self):
         completed_subs = Subscription.objects.filter(completed=True).count()
@@ -495,7 +495,7 @@ class FireMessageSetsTasks(Task):
     """ Fires off seperate tasks to count active subscriptions for each
         messageset found
     """
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_messagesets_tasks"  # noqa
+    name = "subscriptions.tasks.fire_messagesets_tasks"  # noqa
 
     def run(self, **kwargs):
         # get message sets
@@ -512,7 +512,7 @@ fire_messagesets_tasks = FireMessageSetsTasks()
 
 class FireMessageSetLast(Task):
 
-    name = "seed_stage_based_messaging.subscriptions.tasks.fire_messageset_last"  # noqa
+    name = "subscriptions.tasks.fire_messageset_last"  # noqa
 
     def run(self, msgset_id, short_name, **kwargs):
         active_msgset_subs = Subscription.objects.filter(
