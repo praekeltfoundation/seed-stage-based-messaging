@@ -124,9 +124,11 @@ MEDIA_URL = '/media/'
 # )
 
 # Sentry configuration
+STAGE_BASED_MESSAGING_SENTRY_DSN = os.environ.get(
+    'STAGE_BASED_MESSAGING_SENTRY_DSN', None)
 RAVEN_CONFIG = {
     # DevOps will supply you with this.
-    'dsn': os.environ.get('STAGE_BASED_MESSAGING_SENTRY_DSN', None),
+    'dsn': STAGE_BASED_MESSAGING_SENTRY_DSN,
 }
 
 # REST Framework conf defaults
@@ -200,6 +202,16 @@ CELERY_ROUTES = {
     'subscriptions.tasks.fire_completed_last': {
         'queue': 'metrics',
     },
+    'subscriptions.tasks.fire_incomplete_last': {
+        'queue': 'metrics',
+    },
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': None,
+    },
 }
 
 METRICS_REALTIME = [
@@ -218,6 +230,7 @@ METRICS_SCHEDULED_TASKS = [
     'fire_created_last',
     'fire_broken_last',
     'fire_completed_last',
+    'fire_incomplete_last',
     'fire_messagesets_tasks'
 ]
 

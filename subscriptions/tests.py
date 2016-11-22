@@ -27,7 +27,9 @@ from go_http.metrics import MetricsApiClient
 
 from .models import (Subscription, fire_sub_action_if_new,
                      disable_schedule_if_complete,
-                     disable_schedule_if_deactivated, fire_metrics_if_new)
+                     disable_schedule_if_deactivated, fire_metrics_if_new,
+                     fire_metric_per_message_set, fire_metric_per_lang,
+                     fire_metric_per_message_format)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -169,6 +171,10 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.disconnect(disable_schedule_if_deactivated,
                              sender=Subscription)
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -183,6 +189,9 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(disable_schedule_if_complete, sender=Subscription)
         post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
         post_save.connect(fire_metrics_if_new, sender=Subscription)
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -607,6 +616,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
         # make messages
         message_data_eng_1 = {
             "messageset": existing.messageset,
@@ -667,7 +692,18 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 4)
+        self.assertEqual(len(responses.calls), 6)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[5]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
+        })
 
         # Check the message_count / set_max count
         message_count = existing.messageset.messages.filter(
@@ -741,6 +777,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -770,6 +822,17 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
+        })
 
     @responses.activate
     def test_send_message_task_to_mother_text_last(self):
@@ -848,6 +911,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             json.dumps({"enabled": False}),
             status=200, content_type='application/json')
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={'foo': "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={'foo': "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -876,7 +955,17 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
-        self.assertEqual(len(responses.calls), 4)
+        self.assertEqual(len(responses.calls), 6)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.messageset_one.sum": 1.0
+        })
+        metric_call = responses.calls[5]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
+        })
 
         post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
 
@@ -1051,6 +1140,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make messages
         message_data1 = {
             "messageset": existing.messageset,
@@ -1079,6 +1184,17 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
+        })
 
     @responses.activate
     def test_send_message_task_to_mother_audio(self):
@@ -1149,6 +1265,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make binarycontent
         binarycontent_data1 = {
             "content": "fakefilename.mp3",
@@ -1186,6 +1318,17 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.messageset_two.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.sum": 1.0
+        })
 
     @responses.activate
     def test_send_message_task_to_mother_audio_first_with_welcome(self):
@@ -1258,6 +1401,22 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
         # make binarycontent
         binarycontent_data1 = {
             "content": "fakefilename.mp3",
@@ -1296,6 +1455,12 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.messageset_two.sum": 1.0
+        })
 
     @override_settings(USE_SSL=True)
     def test_make_absolute_url(self):
@@ -1347,13 +1512,15 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
 
     def test_metrics_read(self):
         # Setup
+        self.make_subscription()
         # Execute
         response = self.client.get('/api/metrics/',
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
         self.assertEqual(
-            response.data["metrics_available"], [
+            sorted(response.data["metrics_available"]), sorted([
                 'subscriptions.created.sum',
                 'subscriptions.send_next_message_errored.sum',
                 'subscriptions.active.last',
@@ -1361,8 +1528,24 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.broken.last',
                 'subscriptions.completed.last',
                 'subscriptions.messageset_one.active.last',
-                'subscriptions.messageset_two.active.last'
-            ]
+                'subscriptions.messageset_two.active.last',
+                'subscriptions.message_set.messageset_one.sum',
+                'subscriptions.message_set.messageset_two.sum',
+                'subscriptions.message_set.messageset_one.total.last',
+                'subscriptions.message_set.messageset_two.total.last',
+                'subscriptions.language.en_ZA.sum',
+                'subscriptions.language.en_ZA.total.last',
+                'subscriptions.message_format.text.sum',
+                'subscriptions.message_format.text.total.last',
+                'subscriptions.message_format.audio.sum',
+                'subscriptions.message_format.audio.total.last',
+                'message.text.messageset_one.sum',
+                'message.audio.messageset_one.sum',
+                'message.text.messageset_two.sum',
+                'message.audio.messageset_two.sum',
+                'message.text.sum',
+                'message.audio.sum',
+            ])
         )
 
     @responses.activate
@@ -1480,9 +1663,171 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "5 Scheduled metrics launched")
+        self.assertEqual(result.get(), "6 Scheduled metrics launched")
         # fire_messagesets_tasks fires two metrics, therefore extra call
-        self.assertEqual(len(responses.calls), 6)
+        self.assertEqual(len(responses.calls), 7)
+
+    @responses.activate
+    def test_metric_per_message_set_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's message set.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.message_set.messageset_one.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_message_set_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that message set.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_set, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.message_set.messageset_one.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.message_set.messageset_one.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_language_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's language.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.language.en_ZA.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_language_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that language.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_lang, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.language.en_ZA.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.language.en_ZA.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_message_format_sum(self):
+        """
+        When a new subscription is created, a sum metric should be fired for
+        that subscription's message format.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
+
+        self.make_subscription()
+
+        [sum_call, _] = responses.calls
+        self.assertEqual(json.loads(sum_call.request.body), {
+            "subscriptions.message_format.text.sum": 1.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
+
+    @responses.activate
+    def test_metric_per_message_format_last(self):
+        """
+        When a new subscription is created, a last metric should be fired for
+        the total amount of subscriptions for that message format.
+        """
+        # deactivate Testsession for this test
+        self.session = None
+        # add metric post response
+        responses.add(responses.POST,
+                      "http://metrics-url/metrics/",
+                      json={"foo": "bar"},
+                      status=200, content_type='application/json')
+        post_save.connect(fire_metric_per_message_format, sender=Subscription)
+
+        self.make_subscription()
+        self.make_subscription_audio()
+        self.make_subscription()
+
+        [_, last_call1, _, last_call2, _, last_call3] = responses.calls
+        self.assertEqual(json.loads(last_call1.request.body), {
+            "subscriptions.message_format.text.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call2.request.body), {
+            "subscriptions.message_format.audio.total.last": 1.0
+        })
+        self.assertEqual(json.loads(last_call3.request.body), {
+            "subscriptions.message_format.text.total.last": 2.0
+        })
+
+        post_save.disconnect(fire_metric_per_message_format,
+                             sender=Subscription)
 
     def test_fire_active_last(self):
         # Setup
@@ -1583,6 +1928,29 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.check_request(
             adapter.request, 'POST',
             data={"subscriptions.completed.last": 1.0}
+        )
+
+    def test_fire_incomplete_last(self):
+        # Setup
+        adapter = self._mount_session()
+        # make two incomplete and one complete subscription
+        self.make_subscription()
+        self.make_subscription()
+        sub = self.make_subscription()
+        sub.completed = True
+        sub.save()
+
+        # Execute
+        result = tasks.fire_incomplete_last.apply_async()
+
+        # Check
+        self.assertEqual(
+            result.get().get(),
+            "Fired metric <subscriptions.incomplete.last> with value <2.0>"
+        )
+        self.check_request(
+            adapter.request, 'POST',
+            data={"subscriptions.incomplete.last": 2.0}
         )
 
     def test_messagesets_tasks(self):
