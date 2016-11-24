@@ -1,7 +1,7 @@
 import responses
 import json
 from requests.exceptions import HTTPError
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 try:
     from StringIO import StringIO
@@ -12,6 +12,8 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
+
+import pytz
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -2191,3 +2193,75 @@ class TestRemoveDuplicateSubscriptions(AuthenticatedAPITestCase):
                 'Removed 2 duplicate subscriptions.',
             ]))
         self.assertEqual(Subscription.objects.count(), 1)
+
+
+class TestSubscription(AuthenticatedAPITestCase):
+
+    def make_schedule(self):
+        schedule_data = {
+            'hour': '8',
+            'minute': '0',
+            'day_of_week': '2, 4'
+        }
+        return Schedule.objects.create(**schedule_data)
+
+    def make_subscription(self):
+        post_data = {
+            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset": self.messageset,
+            "next_sequence_number": 1,
+            "lang": "en_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": self.schedule,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        return Subscription.objects.create(**post_data)
+
+    def test_get_expected_next_sequence_number(self):
+        # make messages
+        message_data_eng_1 = {
+            "messageset": self.messageset,
+            "sequence_number": 1,
+            "lang": "en_ZA",
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data_eng_1)
+        message_data_eng_2 = {
+            "messageset": self.messageset,
+            "sequence_number": 2,
+            "lang": "en_ZA",
+            "text_content": "This is message 2",
+        }
+        Message.objects.create(**message_data_eng_2)
+        message_data_eng_3 = {
+            "messageset": self.messageset,
+            "sequence_number": 3,
+            "lang": "en_ZA",
+            "text_content": "This is message 3",
+        }
+        Message.objects.create(**message_data_eng_3)
+
+        start = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        end = datetime(2016, 11, 7, 22, 0, tzinfo=pytz.UTC)
+        subscription = self.make_subscription()
+        subscription.created_at = start
+        est, comp = subscription.get_expected_next_sequence_number(end)
+        self.assertEqual(est, 3)
+        self.assertEqual(comp, False)
+
+        end = datetime(2016, 11, 10, 22, 0, tzinfo=pytz.UTC)
+        est, comp = subscription.get_expected_next_sequence_number(end)
+        self.assertEqual(est, 3)
+        self.assertEqual(comp, True)
+
+        start = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        end = datetime(2016, 11, 1, 7, 0, tzinfo=pytz.UTC)
+        subscription = self.make_subscription()
+        subscription.created_at = start
+        est, comp = subscription.get_expected_next_sequence_number(end)
+        self.assertEqual(est, 1)
+        self.assertEqual(comp, False)
