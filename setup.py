@@ -26,6 +26,7 @@ setup(
         'go-http==0.3.0',
         'drfdocs==0.0.11',
         'seed-services-client>=0.9.0',
+        'croniter==0.3.13',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
