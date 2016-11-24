@@ -373,15 +373,6 @@ class ScheduleCreate(Task):
             api_token=settings.SCHEDULER_API_TOKEN,
             api_url=settings.SCHEDULER_URL)
 
-    def schedule_to_cron(self, schedule):
-        return "%s %s %s %s %s" % (
-            schedule.minute,
-            schedule.hour,
-            schedule.day_of_month,
-            schedule.month_of_year,
-            schedule.day_of_week
-        )
-
     def run(self, subscription_id, **kwargs):
         """ Returns remote scheduler_id UUID
         """
@@ -393,8 +384,7 @@ class ScheduleCreate(Task):
             if subscription.process_status == 0:
                 schedule = {
                     "frequency": None,
-                    "cron_definition":
-                        self.schedule_to_cron(subscription.schedule),
+                    "cron_definition": subscription.schedule.cron_string,
                     "endpoint": "%s/%s/send" % (
                         settings.STAGE_BASED_MESSAGING_URL, subscription_id),
                     "auth_token": settings.SCHEDULER_INBOUND_API_TOKEN
