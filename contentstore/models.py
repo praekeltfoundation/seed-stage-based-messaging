@@ -34,10 +34,11 @@ class Schedule(models.Model):
 
     @property
     def cron_string(self):
-        return '{0} {1} {2} {3} {4}'.format(
-            self.rfield(self.minute), self.rfield(self.hour),
-            self.rfield(self.day_of_week), self.rfield(self.day_of_month),
-            self.rfield(self.month_of_year),
+        return '{minute} {hour} {dom} {moy} {dow}'.format(
+            minute=self.rfield(self.minute), hour=self.rfield(self.hour),
+            dom=self.rfield(self.day_of_month),
+            moy=self.rfield(self.month_of_year),
+            dow=self.rfield(self.day_of_week)
         )
 
     def rfield(self, s):

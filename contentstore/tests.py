@@ -219,3 +219,25 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                 "unique set."]
         })
         self.assertEqual(Message.objects.all().count(), 1)
+
+
+class TestSchedule(TestCase):
+
+    def test_cron_string(self):
+        schedule = Schedule(
+            minute='*',
+            hour='*',
+            day_of_week='1',
+            day_of_month='1',
+            month_of_year='*'
+        )
+        self.assertEqual(schedule.cron_string, '* * 1 * 1')
+
+        schedule = Schedule(
+            minute='0',
+            hour='8',
+            day_of_week='1, 2, 3',
+            day_of_month='*',
+            month_of_year='*'
+        )
+        self.assertEqual(schedule.cron_string, '0 8 * * 1,2,3')
