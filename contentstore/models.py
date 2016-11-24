@@ -4,6 +4,7 @@ from rest_framework.serializers import ValidationError
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import python_2_unicode_compatible
+from croniter import croniter
 
 
 @python_2_unicode_compatible
@@ -50,6 +51,17 @@ class Schedule(models.Model):
             self.rfield(self.day_of_week), self.rfield(self.day_of_month),
             self.rfield(self.month_of_year),
         )
+
+    def get_run_times_between(self, start, end):
+        """Gets a list of datetimes for when this cron schedule would be
+        run between the given start and end datetimes.
+        """
+        dates = []
+        for dt in croniter(self.cron_string, start, ret_type=datetime):
+            if dt > end:
+                break
+            dates.append(dt)
+        return dates
 
 
 @python_2_unicode_compatible

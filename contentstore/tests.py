@@ -1,4 +1,7 @@
 import json
+from datetime import datetime
+
+import pytz
 
 from django.test import TestCase
 from django.contrib.auth.models import User
@@ -250,3 +253,27 @@ class TestSchedule(TestCase):
             month_of_year='5'
         )
         self.assertEqual(schedule.cron_string, '1 2 4 5 3')
+
+    def test_get_run_times_between(self):
+        start = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        end = datetime(2016, 11, 30, 23, 59, tzinfo=pytz.UTC)
+
+        # test with every mon, tues, wed in November 2016
+        schedule = Schedule(day_of_week='1,2,3', hour='8', minute='0')
+        runs = schedule.get_run_times_between(start, end)
+        self.assertEqual(len(runs), 14)
+
+        # test with every week day in November
+        schedule = Schedule(day_of_week='1,2,3,4,5', hour='8', minute='0')
+        runs = schedule.get_run_times_between(start, end)
+        self.assertEqual(len(runs), 22)
+
+        # test with every day in November
+        schedule = Schedule(day_of_week='*', hour='8', minute='0')
+        runs = schedule.get_run_times_between(start, end)
+        self.assertEqual(len(runs), 30)
+
+        # test with specific day in November
+        schedule = Schedule(day_of_month='21', hour='8', minute='0')
+        runs = schedule.get_run_times_between(start, end)
+        self.assertEqual(len(runs), 1)

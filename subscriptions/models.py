@@ -7,6 +7,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.timezone import now
 
 from contentstore.models import MessageSet, Schedule
 
@@ -43,6 +44,24 @@ class Subscription(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+    def get_expected_next_sequence_number(self, end_date=None):
+        """Determines the expected next sequence number this subscription
+        should be at based on the configured schedule, message set and
+        creation date. It also checks if the subscription should be completed.
+
+        Returns a tuple of next_sequence_number, completed.
+        """
+        if end_date is None:
+            end_date = now()
+        set_max = self.messageset.messages.filter(lang=self.lang).count()
+        runs = self.schedule.get_run_times_between(self.created_at, end_date)
+        count = len(runs)
+        if count >= set_max:
+            return set_max, True
+        else:
+            expected = count + 1
+            return expected, False
 
 
 # Make sure new subscriptions are created on scheduler
