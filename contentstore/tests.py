@@ -241,3 +241,12 @@ class TestSchedule(TestCase):
             month_of_year='*'
         )
         self.assertEqual(schedule.cron_string, '0 8 * * 1,2,3')
+
+        schedule = Schedule(
+            minute='1',
+            hour='2',
+            day_of_week='3',
+            day_of_month='4',
+            month_of_year='5'
+        )
+        self.assertEqual(schedule.cron_string, '1 2 4 5 3')
