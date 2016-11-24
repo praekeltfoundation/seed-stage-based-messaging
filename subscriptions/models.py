@@ -47,7 +47,7 @@ class Subscription(models.Model):
 
     def get_expected_next_sequence_number(self, end_date=None):
         """Determines the expected next sequence number this subscription
-        should be at based on the configured scheduler, message set and
+        should be at based on the configured schedule, message set and
         creation date. It also checks if the subscription should be completed.
 
         Returns a tuple of next_sequence_number, completed.
