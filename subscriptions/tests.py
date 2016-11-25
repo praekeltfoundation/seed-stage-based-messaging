@@ -2221,8 +2221,7 @@ class TestSubscription(AuthenticatedAPITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def test_get_expected_next_sequence_number(self):
-        # make messages
+    def make_messageset_content(self):
         message_data_eng_1 = {
             "messageset": self.messageset,
             "sequence_number": 1,
@@ -2245,6 +2244,8 @@ class TestSubscription(AuthenticatedAPITestCase):
         }
         Message.objects.create(**message_data_eng_3)
 
+    def test_get_expected_next_sequence_number(self):
+        self.make_messageset_content()
         start = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
         end = datetime(2016, 11, 7, 22, 0, tzinfo=pytz.UTC)
         subscription = self.make_subscription()
@@ -2265,3 +2266,18 @@ class TestSubscription(AuthenticatedAPITestCase):
         est, comp = subscription.get_expected_next_sequence_number(end)
         self.assertEqual(est, 1)
         self.assertEqual(comp, False)
+
+    def test_mark_as_complete(self):
+        subscription = self.make_subscription()
+        subscription.mark_as_complete()
+        self.assertEqual(subscription.completed, True)
+        self.assertEqual(subscription.process_status, 2)
+        self.assertEqual(subscription.active, False)
+
+    def test_has_next_sequence_number(self):
+        self.make_messageset_content()
+        subscription = self.make_subscription()
+        self.assertEqual(subscription.has_next_sequence_number, True)
+
+        subscription.next_sequence_number = 3
+        self.assertEqual(subscription.has_next_sequence_number, False)

@@ -63,6 +63,21 @@ class Subscription(models.Model):
             expected = count + 1
             return expected, False
 
+    @property
+    def has_next_sequence_number(self):
+        """Returns True if this Subscription has not yet reached the
+        configured MessageSet's maximum sequence number, returns False
+        otherwise.
+        """
+        set_max = self.messageset.messages.filter(lang=self.lang).count()
+        return self.next_sequence_number < set_max
+
+    def mark_as_complete(self):
+        self.completed = True
+        self.active = False
+        self.process_status = 2  # Completed
+        self.save()
+
 
 # Make sure new subscriptions are created on scheduler
 @receiver(post_save, sender=Subscription)
