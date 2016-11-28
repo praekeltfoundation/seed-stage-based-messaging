@@ -116,6 +116,13 @@ class Subscription(models.Model):
             completed = sub.fast_forward(end_date)
             if completed:
                 if sub.messageset.next_set:
+                    # If the sub.lang is None or empty there is a problem with
+                    # the data that we can't directly resolve here so we
+                    # guard against that breaking things here.
+                    if not sub.lang:
+                        # TODO: what do we do here?
+                        break
+
                     run_dates = sub.messageset.get_all_run_dates(
                         sub.created_at,
                         sub.lang,
