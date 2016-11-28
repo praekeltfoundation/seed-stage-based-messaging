@@ -92,6 +92,26 @@ class MessageSet(models.Model):
     def __str__(self):
         return "%s" % self.short_name
 
+    def set_max(self, lang):
+        return self.messages.filter(lang=lang).count()
+
+    def get_all_run_dates(self, start, lang, schedule=None):
+        """Returns the complete list of dates this MessageSet would run on given
+        a start datetime, language and Schedule. If no Schedule is passed it
+        will use the configured default_schedule.
+        """
+        if schedule is None:
+            schedule = self.default_schedule
+        dates = []
+        set_max = self.set_max(lang)
+        iters = 1
+        for dt in croniter(schedule.cron_string, start, ret_type=datetime):
+            if iters > set_max:
+                break
+            iters = iters + 1
+            dates.append(dt)
+        return dates
+
 
 def generate_new_filename(instance, filename):
     ext = os.path.splitext(filename)[-1]  # get file extension
