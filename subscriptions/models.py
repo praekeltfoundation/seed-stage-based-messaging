@@ -56,7 +56,7 @@ class Subscription(models.Model):
         """
         if end_date is None:
             end_date = now()
-        set_max = self.messageset.set_max(self.lang)
+        set_max = self.messageset.get_messageset_max(self.lang)
         runs = self.schedule.get_run_times_between(self.created_at, end_date)
         count = len(runs)
         if count >= set_max:
@@ -71,7 +71,8 @@ class Subscription(models.Model):
         configured MessageSet's maximum sequence number, returns False
         otherwise.
         """
-        return self.next_sequence_number < self.messageset.set_max(self.lang)
+        return self.next_sequence_number < self.messageset.get_messageset_max(
+            self.lang)
 
     def mark_as_complete(self):
         self.completed = True

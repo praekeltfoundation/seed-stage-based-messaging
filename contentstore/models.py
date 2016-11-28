@@ -92,7 +92,7 @@ class MessageSet(models.Model):
     def __str__(self):
         return "%s" % self.short_name
 
-    def set_max(self, lang):
+    def get_messageset_max(self, lang):
         return self.messages.filter(lang=lang).count()
 
     def get_all_run_dates(self, start, lang, schedule=None):
@@ -103,7 +103,7 @@ class MessageSet(models.Model):
         if schedule is None:
             schedule = self.default_schedule
         dates = []
-        set_max = self.set_max(lang)
+        set_max = self.get_messageset_max(lang)
         iters = 1
         for dt in croniter(schedule.cron_string, start, ret_type=datetime):
             if iters > set_max:
