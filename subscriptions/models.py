@@ -1,5 +1,7 @@
 import uuid
 
+from datetime import timedelta
+
 from django.contrib.postgres.fields import JSONField
 from django.core.cache import cache
 from django.db import models
@@ -54,7 +56,7 @@ class Subscription(models.Model):
         """
         if end_date is None:
             end_date = now()
-        set_max = self.messageset.messages.filter(lang=self.lang).count()
+        set_max = self.messageset.get_messageset_max(self.lang)
         runs = self.schedule.get_run_times_between(self.created_at, end_date)
         count = len(runs)
         if count >= set_max:
@@ -62,6 +64,96 @@ class Subscription(models.Model):
         else:
             expected = count + 1
             return expected, False
+
+    @property
+    def has_next_sequence_number(self):
+        """Returns True if this Subscription has not yet reached the
+        configured MessageSet's maximum sequence number, returns False
+        otherwise.
+        """
+        return self.next_sequence_number < self.messageset.get_messageset_max(
+            self.lang)
+
+    def mark_as_complete(self):
+        self.completed = True
+        self.active = False
+        self.process_status = 2  # Completed
+        self.save()
+
+    def fast_forward(self, end_date=None):
+        """Moves a subscription forward to where it should be based on the
+        configured MessageSet and schedule and the given end_date (defaults
+        to utcnow if not specified).
+
+        Returns True if the subscription was completed due to this action,
+        False otherwise.
+        """
+        number, complete = self.get_expected_next_sequence_number(end_date)
+        if complete:
+            self.mark_as_complete()
+        else:
+            self.next_sequence_number = number
+            self.save()
+        return complete
+
+    @classmethod
+    def fast_forward_lifecycle(self, subscription, end_date=None):
+        """Takes an existing Subscription object and fast forwards it through
+        the entire lifecycle based on the given end_date. If no end_date is
+        specified now will be used.
+
+        This method will create all subsequent Subscription objects as required
+        by the configured MessageSet object's next_set value.
+
+        Returns a list of all Subscription objects operated on.
+        """
+        if end_date is None:
+            end_date = now()
+
+        subscriptions = [subscription]
+        done = False
+        sub = subscription
+        while not done:
+            completed = sub.fast_forward(end_date)
+            if completed:
+                if sub.messageset.next_set:
+                    # If the sub.lang is None or empty there is a problem with
+                    # the data that we can't directly resolve here so we
+                    # guard against that breaking things here.
+                    if not sub.lang:
+                        # TODO: what do we do here?
+                        break
+
+                    run_dates = sub.messageset.get_all_run_dates(
+                        sub.created_at,
+                        sub.lang,
+                        sub.schedule
+                    )
+                    last_date = run_dates.pop()
+                    newsub = Subscription.objects.create(
+                        identity=sub.identity,
+                        lang=sub.lang,
+                        messageset=sub.messageset.next_set,
+                        schedule=sub.messageset.next_set.default_schedule
+                    )
+                    # Because created_at uses auto_now we have to set the
+                    # created date manually after creation. Add a minute to
+                    # the expected last run date because in the normal flow
+                    # new subscriptions are processed after the day's send
+                    # has been completed.
+                    newsub.created_at = last_date + timedelta(minutes=1)
+                    newsub.save()
+                    completed = newsub.fast_forward(end_date)
+                    subscriptions.append(newsub)
+                    sub = newsub
+                else:
+                    # There are no more subscriptions in this lifecycle.
+                    done = True
+            else:
+                # The subscription isn't completed yet.
+                done = True
+
+        return subscriptions
 
 
 # Make sure new subscriptions are created on scheduler
