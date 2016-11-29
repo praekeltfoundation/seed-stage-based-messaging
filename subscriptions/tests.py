@@ -91,7 +91,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule,
@@ -107,7 +107,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule,
@@ -123,7 +123,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset_audio,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule,
@@ -139,7 +139,7 @@ class AuthenticatedAPITestCase(APITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset_audio,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule,
@@ -251,7 +251,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
             "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset.id,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule.id,
@@ -271,7 +271,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
-        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.lang, "eng_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.schedule.id, self.schedule.id)
@@ -291,7 +291,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
-        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.lang, "eng_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.schedule.id, self.schedule.id)
@@ -336,7 +336,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.next_sequence_number, 10)
-        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.lang, "eng_ZA")
 
     def test_delete_subscription_data(self):
         # Setup
@@ -389,14 +389,14 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent1,
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent2,
         }
         Message.objects.create(**message_data2)
@@ -406,7 +406,7 @@ class TestCreateScheduleTask(AuthenticatedAPITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": messageset,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": schedule,
@@ -483,7 +483,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
                 "messageset": self.messageset.id,
                 "updated_at": "2016-02-17T07:59:42.831568+00:00",
                 "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
-                "lang": "en_ZA",
+                "lang": "eng_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
                 "next_sequence_number": 1,
@@ -501,7 +501,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
         self.assertEqual(d.next_sequence_number, 1)
-        self.assertEqual(d.lang, "en_ZA")
+        self.assertEqual(d.lang, "eng_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.schedule.id, self.schedule.id)
@@ -518,7 +518,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
             "data": {
                 "messageset": self.messageset.id,
                 "updated_at": "2016-02-17T07:59:42.831568+00:00",
-                "lang": "en_ZA",
+                "lang": "eng_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
                 "next_sequence_number": 1,
@@ -590,7 +590,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "receiver_role": "mother",
                     "linked_to": None,
                     "preferred_msg_type": "text",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -638,21 +638,21 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data_eng_1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data_eng_1)
         message_data_eng_2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data_eng_2)
         message_data_eng_3 = {
             "messageset": existing.messageset,
             "sequence_number": 3,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 3",
         }
         Message.objects.create(**message_data_eng_3)
@@ -751,7 +751,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "receiver_role": "mother",
                     "linked_to": None,
                     "preferred_msg_type": "text",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -799,14 +799,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data2)
@@ -878,7 +878,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "receiver_role": "mother",
                     "linked_to": None,
                     "preferred_msg_type": "text",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -933,14 +933,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data2)
@@ -989,21 +989,21 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data_eng_1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data_eng_1)
         message_data_eng_2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data_eng_2)
         message_data_eng_3 = {
             "messageset": existing.messageset,
             "sequence_number": 3,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 3",
         }
         Message.objects.create(**message_data_eng_3)
@@ -1087,7 +1087,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "receiver_role": "mother",
                     "linked_to": None,
                     "preferred_msg_type": "text",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "communicate_through": "3f7c8851-5204-43f7-af7f-005059993333",
                 "created_at": "2015-07-10T06:13:29.693272Z",
@@ -1114,7 +1114,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "receiver_role": "friend",
                     "linked_to": existing.identity,
                     "preferred_msg_type": "text",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -1162,14 +1162,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data2)
@@ -1237,7 +1237,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "preferred_msg_type": "audio",
                     "preferred_msg_days": "mon_wed",
                     "preferred_msg_times": "2_5",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -1297,14 +1297,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent1,
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent2,
         }
         Message.objects.create(**message_data2)
@@ -1371,7 +1371,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                     "preferred_msg_type": "audio",
                     "preferred_msg_days": "mon_wed",
                     "preferred_msg_times": "2_5",
-                    "preferred_language": "en_ZA"
+                    "preferred_language": "eng_ZA"
                 },
                 "created_at": "2015-07-10T06:13:29.693272Z",
                 "updated_at": "2015-07-10T06:13:29.693298Z"
@@ -1433,14 +1433,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_data1 = {
             "messageset": existing.messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent1,
         }
         Message.objects.create(**message_data1)
         message_data2 = {
             "messageset": existing.messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "binary_content": binarycontent2,
         }
         Message.objects.create(**message_data2)
@@ -1535,8 +1535,8 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.message_set.messageset_two.sum',
                 'subscriptions.message_set.messageset_one.total.last',
                 'subscriptions.message_set.messageset_two.total.last',
-                'subscriptions.language.en_ZA.sum',
-                'subscriptions.language.en_ZA.total.last',
+                'subscriptions.language.eng_ZA.sum',
+                'subscriptions.language.eng_ZA.total.last',
                 'subscriptions.message_format.text.sum',
                 'subscriptions.message_format.text.total.last',
                 'subscriptions.message_format.audio.sum',
@@ -1740,7 +1740,7 @@ class TestMetrics(AuthenticatedAPITestCase):
 
         [sum_call, _] = responses.calls
         self.assertEqual(json.loads(sum_call.request.body), {
-            "subscriptions.language.en_ZA.sum": 1.0
+            "subscriptions.language.eng_ZA.sum": 1.0
         })
 
         post_save.disconnect(fire_metric_per_lang, sender=Subscription)
@@ -1765,10 +1765,10 @@ class TestMetrics(AuthenticatedAPITestCase):
 
         [_, last_call1, _, last_call2] = responses.calls
         self.assertEqual(json.loads(last_call1.request.body), {
-            "subscriptions.language.en_ZA.total.last": 1.0
+            "subscriptions.language.eng_ZA.total.last": 1.0
         })
         self.assertEqual(json.loads(last_call2.request.body), {
-            "subscriptions.language.en_ZA.total.last": 2.0
+            "subscriptions.language.eng_ZA.total.last": 2.0
         })
 
         post_save.disconnect(fire_metric_per_lang, sender=Subscription)
@@ -2210,7 +2210,7 @@ class TestSubscription(AuthenticatedAPITestCase):
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset,
             "next_sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "active": True,
             "completed": False,
             "schedule": self.schedule,
@@ -2221,31 +2221,31 @@ class TestSubscription(AuthenticatedAPITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def make_messageset_content(self):
+    def make_messageset_content(self, messageset):
         message_data_eng_1 = {
-            "messageset": self.messageset,
+            "messageset": messageset,
             "sequence_number": 1,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 1",
         }
         Message.objects.create(**message_data_eng_1)
         message_data_eng_2 = {
-            "messageset": self.messageset,
+            "messageset": messageset,
             "sequence_number": 2,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 2",
         }
         Message.objects.create(**message_data_eng_2)
         message_data_eng_3 = {
-            "messageset": self.messageset,
+            "messageset": messageset,
             "sequence_number": 3,
-            "lang": "en_ZA",
+            "lang": "eng_ZA",
             "text_content": "This is message 3",
         }
         Message.objects.create(**message_data_eng_3)
 
     def test_get_expected_next_sequence_number(self):
-        self.make_messageset_content()
+        self.make_messageset_content(self.messageset)
         start = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
         end = datetime(2016, 11, 7, 22, 0, tzinfo=pytz.UTC)
         subscription = self.make_subscription()
@@ -2275,7 +2275,7 @@ class TestSubscription(AuthenticatedAPITestCase):
         self.assertEqual(subscription.active, False)
 
     def test_has_next_sequence_number(self):
-        self.make_messageset_content()
+        self.make_messageset_content(self.messageset)
         subscription = self.make_subscription()
         self.assertEqual(subscription.has_next_sequence_number, True)
 
@@ -2283,23 +2283,78 @@ class TestSubscription(AuthenticatedAPITestCase):
         self.assertEqual(subscription.has_next_sequence_number, False)
 
     def test_fast_foward_incomplete(self):
-        self.make_messageset_content()
+        self.make_messageset_content(self.messageset)
         subscription = self.make_subscription()
         end = datetime(2016, 11, 4, 10, 0, tzinfo=pytz.UTC)
         subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
         subscription.save()
         complete = subscription.fast_forward(end)
         self.assertEqual(complete, False)
+        self.assertEqual(subscription.completed, False)
         self.assertEqual(subscription.next_sequence_number, 3)
         self.assertEqual(subscription.active, True)
 
     def test_fast_foward_complete(self):
-        self.make_messageset_content()
+        self.make_messageset_content(self.messageset)
         subscription = self.make_subscription()
         end = datetime(2016, 11, 30, 7, 0, tzinfo=pytz.UTC)
         subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
         subscription.save()
         complete = subscription.fast_forward(end)
         self.assertEqual(complete, True)
+        self.assertEqual(subscription.completed, True)
         self.assertEqual(subscription.process_status, 2)
         self.assertEqual(subscription.active, False)
+
+    def test_fast_foward_lifecycle_complete(self):
+        messageset_data = {
+            'short_name': 'messageset_pre',
+            'notes': None,
+            'next_set': self.messageset,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        first_ms = MessageSet.objects.create(**messageset_data)
+        self.make_messageset_content(first_ms)
+        self.make_messageset_content(self.messageset)
+
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 30, 7, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.messageset = first_ms
+        subscription.save()
+
+        result = Subscription.fast_forward_lifecycle(subscription, end)
+        self.assertEqual(len(result), 2)
+        sub1 = result[0]
+        sub2 = result[1]
+        self.assertEqual(sub1.completed, True)
+        self.assertEqual(sub2.completed, True)
+        self.assertEqual(
+            sub2.created_at,
+            datetime(2016, 11, 8, 8, 1, tzinfo=pytz.UTC))
+
+    def test_fast_foward_lifecycle_incomplete(self):
+        messageset_data = {
+            'short_name': 'messageset_pre',
+            'notes': None,
+            'next_set': self.messageset,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        first_ms = MessageSet.objects.create(**messageset_data)
+        self.make_messageset_content(first_ms)
+        self.make_messageset_content(self.messageset)
+
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.messageset = first_ms
+        subscription.save()
+
+        result = Subscription.fast_forward_lifecycle(subscription, end)
+        self.assertEqual(len(result), 2)
+        sub1 = result[0]
+        sub2 = result[1]
+        self.assertEqual(sub1.completed, True)
+        self.assertEqual(sub2.completed, False)
