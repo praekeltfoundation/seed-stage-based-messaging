@@ -2281,3 +2281,25 @@ class TestSubscription(AuthenticatedAPITestCase):
 
         subscription.next_sequence_number = 3
         self.assertEqual(subscription.has_next_sequence_number, False)
+
+    def test_fast_foward_incomplete(self):
+        self.make_messageset_content()
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 4, 10, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.save()
+        complete = subscription.fast_forward(end)
+        self.assertEqual(complete, False)
+        self.assertEqual(subscription.next_sequence_number, 3)
+        self.assertEqual(subscription.active, True)
+
+    def test_fast_foward_complete(self):
+        self.make_messageset_content()
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 30, 7, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.save()
+        complete = subscription.fast_forward(end)
+        self.assertEqual(complete, True)
+        self.assertEqual(subscription.process_status, 2)
+        self.assertEqual(subscription.active, False)
