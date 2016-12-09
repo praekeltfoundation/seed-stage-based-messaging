@@ -81,20 +81,28 @@ class SendNextMessage(Task):
         l.info("Loading Subscription")
         try:
             subscription = Subscription.objects.get(id=subscription_id)
+        except Subscription.DoesNotExist:
+            logger.error('Could not load subscription <%s>' % subscription_id,
+                         exc_info=True)
+            return
+
+        try:
             # start here
             if subscription.process_status == 0 and \
                subscription.completed is not True and \
                subscription.active is True:
 
-                l.debug("setting process status to 1")
-                subscription.process_status = 1  # in process
-                l.debug("saving subscription")
-                subscription.save()
+                # Try load message first,
                 l.info("Loading Message")
                 message = Message.objects.get(
                     messageset=subscription.messageset,
                     sequence_number=subscription.next_sequence_number,
                     lang=subscription.lang)
+
+                l.debug("setting process status to 1")
+                subscription.process_status = 1  # in process
+                l.debug("saving subscription")
+                subscription.save()
 
                 l.info("Loading Initial Recipient Identity")
                 to_addr = None
@@ -220,7 +228,12 @@ class SendNextMessage(Task):
                 return "Message sending aborted"
 
         except ObjectDoesNotExist:
-            logger.error('Missing Message', exc_info=True)
+            error = ('Missing Message: MessageSet: <%s>, Sequence Number: <%s>'
+                     ', Lang: <%s>') % (
+                subscription.messageset,
+                subscription.next_sequence_number,
+                subscription.lang)
+            logger.error(error, exc_info=True)
 
         except SoftTimeLimitExceeded:
             logger.error(
