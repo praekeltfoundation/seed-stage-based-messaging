@@ -1464,6 +1464,48 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             "message.audio.messageset_two.sum": 1.0
         })
 
+    @responses.activate
+    def test_send_message_task_to_mother_text_no_content(self):
+        post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        # mock schedule sending
+        responses.add(
+            responses.POST,
+            "http://seed-scheduler/api/v1/schedule/",
+            json={
+                "id": "1234"
+            },
+            status=201, content_type='application/json'
+        )
+        # Setup
+        existing = self.make_subscription()
+
+        # Precheck
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/%s/send' % (
+            existing.id, ), content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
+        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        # Ensure the the process_status doesnt get left in processing state
+        self.assertEqual(d.process_status, 0)
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+        self.assertEqual(len(responses.calls), 1)
+
+        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+
     @override_settings(USE_SSL=True)
     def test_make_absolute_url(self):
         self.assertEqual(
