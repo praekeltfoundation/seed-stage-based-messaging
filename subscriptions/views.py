@@ -20,7 +20,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
     filter_fields = ('identity', 'messageset_id', 'lang', 'active',
-                     'completed', 'schedule', 'process_status', 'metadata',)
+                     'completed', 'schedule', 'process_status',)
 
 
 class SubscriptionSend(APIView):
