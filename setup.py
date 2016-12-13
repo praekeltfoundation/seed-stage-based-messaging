@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="seed-stage-based-messaging",
-    version="0.1",
+    version="0.9.0",
     url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
     author='Praekelt Foundation',
