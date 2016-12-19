@@ -9,14 +9,16 @@ from celery.task import Task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
 
+from django.db.models import Count
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.sites.shortcuts import get_current_site
+from django.utils.timezone import now
 from go_http.metrics import MetricsApiClient
 
 from .models import Subscription
 from seed_stage_based_messaging import utils
-from contentstore.models import Message, MessageSet
+from contentstore.models import Message, MessageSet, Schedule
 from seed_services_client import SchedulerApiClient
 
 logger = get_task_logger(__name__)
@@ -558,3 +560,37 @@ class FireMessageSetLast(Task):
         })
 
 fire_messageset_last = FireMessageSetLast()
+
+
+class FireWeekEstimateLast(Task):
+    """Fires week estimated send counts.
+    """
+    name = "subscriptions.tasks.fire_week_estimate_last"
+
+    def run(self):
+        schedules = Schedule.objects.filter(
+            subscriptions__active=True,
+            subscriptions__completed=False,
+            subscriptions__process_status=0
+        ).annotate(total_subs=Count('subscriptions'))
+        totals = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
+        for schedule in schedules:
+            for day in range(7):
+                if (str(day) in schedule.day_of_week or
+                        '*' in schedule.day_of_week):
+                    totals[day] = totals[day] + schedule.total_subs
+
+        today = now()
+        for dow, total in totals.iteritems():
+            # Only fire the metric for today or days in the future so that
+            # estimates for the week don't get updated after the day in
+            # question. Django's datetime's weekday method has Monday = 0
+            # whereas the cron format used in the schedules has Sunday = 0
+            if dow >= (today.weekday() - 1):
+                fire_metric.apply_async(kwargs={
+                    "metric_name": 'subscriptions.send.estimate.%s.last' % dow,
+                    "metric_value": total
+                })
+
+
+fire_week_estimate_last = FireWeekEstimateLast()

@@ -49,6 +49,19 @@ class RecordingAdapter(TestAdapter):
         return super(RecordingAdapter, self).send(request, *args, **kw)
 
 
+class ListRecordingAdapter(TestAdapter):
+
+    """ Record all the request that were handled by the adapter.
+    """
+    def __init__(self, *args, **kw):
+        self.requests = []
+        return super(ListRecordingAdapter, self).__init__(*args, **kw)
+
+    def send(self, request, *args, **kw):
+        self.requests.append(request)
+        return super(ListRecordingAdapter, self).send(request, *args, **kw)
+
+
 class APITestCase(TestCase):
 
     def setUp(self):
@@ -1626,13 +1639,17 @@ class TestMetrics(AuthenticatedAPITestCase):
         else:
             self.assertEqual(json.loads(request.body), data)
 
-    def _mount_session(self):
+    def _mount_session(self, use_list_apdaptor=False):
         response = [{
             'name': 'foo',
             'value': 9000,
             'aggregator': 'bar',
         }]
-        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
+        if use_list_apdaptor:
+            adapter = ListRecordingAdapter(
+                json.dumps(response).encode('utf-8'))
+        else:
+            adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
         self.session.mount(
             "http://metrics-url/metrics/", adapter)
         return adapter
@@ -2032,6 +2049,22 @@ class TestMetrics(AuthenticatedAPITestCase):
             adapter.request, 'POST',
             data={"subscriptions.messageset_one.active.last": 1.0}
         )
+
+    def test_fire_week_estimate_last(self):
+        # Setup
+        adapter = self._mount_session(use_list_apdaptor=True)
+        self.make_subscription()
+
+        # Execute
+        tasks.fire_week_estimate_last.apply_async()
+
+        # Check
+        self.assertEqual(len(adapter.requests), 7)
+        for i, req in enumerate(adapter.requests):
+            self.check_request(
+                req, 'POST',
+                data={"subscriptions.send.estimate.%s.last" % i: 1.0}
+            )
 
 
 class TestUserCreation(AuthenticatedAPITestCase):
