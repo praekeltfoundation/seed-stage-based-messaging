@@ -14,8 +14,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--end_date", dest="end_date", default=datetime.now(),
             type=lambda today: datetime.strptime(today, '%Y%m%d'),
-            help=("Fast forward subscription to end_date",
-                  "By default it will use datetime.now() (format YYYYMMDD)")
+            help='''Fast forward subscription to end_date
+                  By default it will use datetime.now() (format YYYYMMDD)'''
         )
 
     def handle(self, *args, **options):
