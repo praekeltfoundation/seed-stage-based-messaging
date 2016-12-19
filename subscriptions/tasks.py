@@ -581,7 +581,7 @@ class FireWeekEstimateLast(Task):
                     totals[day] = totals[day] + schedule.total_subs
 
         today = now()
-        for dow, total in totals.iteritems():
+        for dow, total in totals.items():
             # Only fire the metric for today or days in the future so that
             # estimates for the week don't get updated after the day in
             # question. Django's datetime's weekday method has Monday = 0
