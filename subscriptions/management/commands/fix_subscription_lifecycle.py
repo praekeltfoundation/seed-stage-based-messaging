@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         updated = 0
 
-        subscriptions = Subscription.objects.all()
+        subscriptions = Subscription.objects.filter(active=True)
 
         for sub in subscriptions:
             updates = Subscription.fast_forward_lifecycle(sub, end_date)
