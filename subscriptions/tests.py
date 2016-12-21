@@ -2453,6 +2453,11 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
         sub1.save()
 
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.active = False
+        sub2.save()
+
         call_command('fix_subscription_lifecycle',
                      stdout=stdout, stderr=stderr)
 
