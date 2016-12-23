@@ -91,9 +91,10 @@ class Subscription(models.Model):
         number, complete = self.get_expected_next_sequence_number(end_date)
         if complete:
             self.mark_as_complete()
-        else:
-            self.next_sequence_number = number
-            self.save()
+
+        self.next_sequence_number = number
+        self.save()
+
         return complete
 
     @classmethod
