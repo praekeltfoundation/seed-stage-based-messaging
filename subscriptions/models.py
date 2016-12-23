@@ -129,23 +129,27 @@ class Subscription(models.Model):
                         sub.lang,
                         sub.schedule
                     )
-                    last_date = run_dates.pop()
-                    newsub = Subscription.objects.create(
-                        identity=sub.identity,
-                        lang=sub.lang,
-                        messageset=sub.messageset.next_set,
-                        schedule=sub.messageset.next_set.default_schedule
-                    )
-                    # Because created_at uses auto_now we have to set the
-                    # created date manually after creation. Add a minute to
-                    # the expected last run date because in the normal flow
-                    # new subscriptions are processed after the day's send
-                    # has been completed.
-                    newsub.created_at = last_date + timedelta(minutes=1)
-                    newsub.save()
-                    completed = newsub.fast_forward(end_date)
-                    subscriptions.append(newsub)
-                    sub = newsub
+                    if run_dates:
+                        last_date = run_dates.pop()
+                        newsub = Subscription.objects.create(
+                            identity=sub.identity,
+                            lang=sub.lang,
+                            messageset=sub.messageset.next_set,
+                            schedule=sub.messageset.next_set.default_schedule
+                        )
+                        # Because created_at uses auto_now we have to set the
+                        # created date manually after creation. Add a minute to
+                        # the expected last run date because in the normal flow
+                        # new subscriptions are processed after the day's send
+                        # has been completed.
+                        newsub.created_at = last_date + timedelta(minutes=1)
+                        newsub.save()
+                        completed = newsub.fast_forward(end_date)
+                        subscriptions.append(newsub)
+                        sub = newsub
+                    else:
+                        # This subscription is new and hasn't had any runs yet
+                        done = True
                 else:
                     # There are no more subscriptions in this lifecycle.
                     done = True
