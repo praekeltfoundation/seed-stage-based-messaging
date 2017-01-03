@@ -580,12 +580,17 @@ class FireWeekEstimateLast(Task):
                         '*' in schedule.day_of_week):
                     totals[day] = totals[day] + schedule.total_subs
 
+        # Django's datetime's weekday method has Monday = 0
+        # whereas the cron format used in the schedules has Sunday = 0
+        sunday = totals.pop(0)
+        totals[7] = sunday
+        totals = {(k-1): v for k, v in totals.items()}
+
         today = now()
         for dow, total in totals.items():
             # Only fire the metric for today or days in the future so that
             # estimates for the week don't get updated after the day in
-            # question. Django's datetime's weekday method has Monday = 0
-            # whereas the cron format used in the schedules has Sunday = 0
+            # question.
             if dow >= (today.weekday() - 1):
                 fire_metric.apply_async(kwargs={
                     "metric_name": 'subscriptions.send.estimate.%s.last' % dow,
