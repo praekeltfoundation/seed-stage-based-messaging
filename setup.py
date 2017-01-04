@@ -1,8 +1,22 @@
+import os
+import re
 from setuptools import setup, find_packages
+
+
+def get_version(package):
+    """
+    Return package version as listed in `__version__` in `init.py`.
+    """
+    init_py = open(os.path.join(package, '__init__.py')).read()
+    return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
+
+
+version = get_version('seed_stage_based_messaging')
+
 
 setup(
     name="seed-stage-based-messaging",
-    version="0.9.0",
+    version=version,
     url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
     author='Praekelt Foundation',
@@ -10,13 +24,12 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django==1.9.11',
-        'djangorestframework==3.3.2',
+        'Django==1.9.12',
+        'djangorestframework==3.5.3',
         'dj-database-url==0.3.0',
         'psycopg2==2.6.2',
-        'raven==5.10.0',
-        'gunicorn==19.4.5',
-        'django-filter==0.12.0',
+        'raven==5.32.0',
+        'django-filter==1.0.1',
         'dj-static==0.0.6',
         'celery==3.1.24',
         'django-celery==3.1.17',
