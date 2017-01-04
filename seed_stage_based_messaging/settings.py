@@ -223,7 +223,14 @@ METRICS_SCHEDULED = [
     'subscriptions.active.last',
     'subscriptions.created.last',
     'subscriptions.broken.last',
-    'subscriptions.completed.last'
+    'subscriptions.completed.last',
+    'subscriptions.send.estimate.0.last',
+    'subscriptions.send.estimate.1.last',
+    'subscriptions.send.estimate.2.last',
+    'subscriptions.send.estimate.3.last',
+    'subscriptions.send.estimate.4.last',
+    'subscriptions.send.estimate.5.last',
+    'subscriptions.send.estimate.6.last',
 ]
 METRICS_SCHEDULED_TASKS = [
     'fire_active_last',

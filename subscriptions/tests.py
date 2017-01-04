@@ -49,6 +49,19 @@ class RecordingAdapter(TestAdapter):
         return super(RecordingAdapter, self).send(request, *args, **kw)
 
 
+class ListRecordingAdapter(TestAdapter):
+
+    """ Record all the request that were handled by the adapter.
+    """
+    def __init__(self, *args, **kw):
+        self.requests = []
+        return super(ListRecordingAdapter, self).__init__(*args, **kw)
+
+    def send(self, request, *args, **kw):
+        self.requests.append(request)
+        return super(ListRecordingAdapter, self).send(request, *args, **kw)
+
+
 class APITestCase(TestCase):
 
     def setUp(self):
@@ -1571,6 +1584,13 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.created.last',
                 'subscriptions.broken.last',
                 'subscriptions.completed.last',
+                'subscriptions.send.estimate.0.last',
+                'subscriptions.send.estimate.1.last',
+                'subscriptions.send.estimate.2.last',
+                'subscriptions.send.estimate.3.last',
+                'subscriptions.send.estimate.4.last',
+                'subscriptions.send.estimate.5.last',
+                'subscriptions.send.estimate.6.last',
                 'subscriptions.messageset_one.active.last',
                 'subscriptions.messageset_two.active.last',
                 'subscriptions.message_set.messageset_one.sum',
@@ -1626,13 +1646,17 @@ class TestMetrics(AuthenticatedAPITestCase):
         else:
             self.assertEqual(json.loads(request.body), data)
 
-    def _mount_session(self):
+    def _mount_session(self, use_list_adapter=False):
         response = [{
             'name': 'foo',
             'value': 9000,
             'aggregator': 'bar',
         }]
-        adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
+        if use_list_adapter:
+            adapter = ListRecordingAdapter(
+                json.dumps(response).encode('utf-8'))
+        else:
+            adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
         self.session.mount(
             "http://metrics-url/metrics/", adapter)
         return adapter
@@ -2032,6 +2056,18 @@ class TestMetrics(AuthenticatedAPITestCase):
             adapter.request, 'POST',
             data={"subscriptions.messageset_one.active.last": 1.0}
         )
+
+    def test_fire_week_estimate_last(self):
+        # Setup
+        adapter = self._mount_session(use_list_adapter=True)
+        self.make_subscription()
+
+        # Execute
+        tasks.fire_week_estimate_last.apply_async()
+
+        # Check
+        days_left_in_week = 7 - datetime.now().weekday()
+        self.assertEqual(len(adapter.requests), days_left_in_week)
 
 
 class TestUserCreation(AuthenticatedAPITestCase):
@@ -2469,8 +2505,13 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
     def test_subscription_lifecycle_fix_with_args(self):
         stdout, stderr = StringIO(), StringIO()
 
-        self.make_subscription()
-        self.make_subscription()
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.save()
 
         call_command('fix_subscription_lifecycle',
                      '--end_date', '20170101',
