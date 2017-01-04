@@ -2066,12 +2066,8 @@ class TestMetrics(AuthenticatedAPITestCase):
         tasks.fire_week_estimate_last.apply_async()
 
         # Check
-        self.assertEqual(len(adapter.requests), 7)
-        for i, req in enumerate(adapter.requests):
-            self.check_request(
-                req, 'POST',
-                data={"subscriptions.send.estimate.%s.last" % i: 1.0}
-            )
+        days_left_in_week = 7 - datetime.now().weekday()
+        self.assertEqual(len(adapter.requests), days_left_in_week)
 
 
 class TestUserCreation(AuthenticatedAPITestCase):

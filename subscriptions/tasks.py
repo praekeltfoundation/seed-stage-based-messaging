@@ -591,7 +591,7 @@ class FireWeekEstimateLast(Task):
             # Only fire the metric for today or days in the future so that
             # estimates for the week don't get updated after the day in
             # question.
-            if dow >= (today.weekday() - 1):
+            if dow >= (today.weekday()):
                 fire_metric.apply_async(kwargs={
                     "metric_name": 'subscriptions.send.estimate.%s.last' % dow,
                     "metric_value": total
