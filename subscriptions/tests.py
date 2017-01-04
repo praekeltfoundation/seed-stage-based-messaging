@@ -1646,13 +1646,13 @@ class TestMetrics(AuthenticatedAPITestCase):
         else:
             self.assertEqual(json.loads(request.body), data)
 
-    def _mount_session(self, use_list_apdaptor=False):
+    def _mount_session(self, use_list_adapter=False):
         response = [{
             'name': 'foo',
             'value': 9000,
             'aggregator': 'bar',
         }]
-        if use_list_apdaptor:
+        if use_list_adapter:
             adapter = ListRecordingAdapter(
                 json.dumps(response).encode('utf-8'))
         else:
