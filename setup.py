@@ -25,11 +25,11 @@ setup(
     include_package_data=True,
     install_requires=[
         'Django==1.9.12',
-        'djangorestframework==3.5.3',
+        'djangorestframework==3.3.2',
         'dj-database-url==0.3.0',
         'psycopg2==2.6.2',
         'raven==5.32.0',
-        'django-filter==1.0.1',
+        'django-filter==0.12.0',
         'dj-static==0.0.6',
         'celery==3.1.24',
         'django-celery==3.1.17',
