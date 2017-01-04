@@ -2505,8 +2505,13 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
     def test_subscription_lifecycle_fix_with_args(self):
         stdout, stderr = StringIO(), StringIO()
 
-        self.make_subscription()
-        self.make_subscription()
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.save()
 
         call_command('fix_subscription_lifecycle',
                      '--end_date', '20170101',
