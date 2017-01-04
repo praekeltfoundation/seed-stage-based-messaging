@@ -2440,3 +2440,83 @@ class TestSubscription(AuthenticatedAPITestCase):
         sub2 = result[1]
         self.assertEqual(sub1.completed, True)
         self.assertEqual(sub2.completed, False)
+
+
+class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
+
+    def setUp(self):
+        super(TestFixSubscriptionLifecycle, self).setUp()
+
+        self.messageset_second = self.make_messageset_second()
+        self.messageset.next_set = self.messageset_second
+        self.messageset.save()
+
+        self.message = self.make_message()
+
+    def make_message(self):
+        message_data = {
+            'messageset': self.messageset,
+            'sequence_number': 1,
+            'lang': 'eng_ZA',
+            'text_content': 'This is a test message bro.',
+        }
+        return Message.objects.create(**message_data)
+
+    def make_messageset_second(self):
+        messageset_data = {
+            'short_name': 'messageset_second',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule,
+            'content_type': 'audio'
+        }
+        return MessageSet.objects.create(**messageset_data)
+
+    def test_noop(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+
+        call_command('fix_subscription_lifecycle',
+                     stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            '0 subscriptions updated.')
+
+    def test_subscriptions_lifecycle_fix(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.active = False
+        sub2.save()
+
+        call_command('fix_subscription_lifecycle',
+                     stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            '1 subscription updated.')
+
+    def test_subscription_lifecycle_fix_with_args(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+        self.make_subscription()
+
+        call_command('fix_subscription_lifecycle',
+                     '--end_date', '20170101',
+                     stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            '2 subscriptions updated.')
