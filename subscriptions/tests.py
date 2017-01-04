@@ -2059,7 +2059,7 @@ class TestMetrics(AuthenticatedAPITestCase):
 
     def test_fire_week_estimate_last(self):
         # Setup
-        adapter = self._mount_session(use_list_apdaptor=True)
+        adapter = self._mount_session(use_list_adapter=True)
         self.make_subscription()
 
         # Execute
