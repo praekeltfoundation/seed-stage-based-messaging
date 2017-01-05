@@ -1,5 +1,5 @@
-include README.rst LICENSE tox.ini .travis.yml docs/Makefile manage.py
-recursive-include tests *.py
+include README.rst LICENCE docs/Makefile manage.py
+include requirements*.txt
 recursive-include docs *.rst
 recursive-include docs *.py
 recursive-include templates *.html
