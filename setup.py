@@ -13,15 +13,6 @@ def read(*parts):  # Stolen from txacme
         return f.read()
 
 
-def readme():
-    # Prefer the ReStructuredText README, but fallback to Markdown if it hasn't
-    # been generated
-    if os.path.exists('README.rst'):
-        return read('README.rst')
-    else:
-        return read('README.md')
-
-
 def get_version(package):
     """
     Return package version as listed in `__version__` in `init.py`.
@@ -38,7 +29,7 @@ setup(
     version=version,
     url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
-    long_description=readme(),
+    long_description=read('README.rst'),
     author='Praekelt.org',
     author_email='dev@praekelt.org',
     packages=find_packages(),
