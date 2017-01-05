@@ -7,4 +7,4 @@ register = template.Library()
 
 @register.simple_tag
 def current_version():
-    return seed_stage_based_messaging.VERSION
+    return seed_stage_based_messaging.__version__

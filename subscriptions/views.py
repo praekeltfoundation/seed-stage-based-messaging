@@ -123,11 +123,19 @@ class HealthcheckView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
+        import seed_stage_based_messaging
+        import django
+        import rest_framework
         status = 200
         resp = {
             "up": True,
             "result": {
-                "database": "Accessible"
+                "database": "Accessible",
+                "version": seed_stage_based_messaging.__version__,
+                "libraries": {
+                    "django": django.__version__,
+                    "djangorestframework": rest_framework.__version__
+                }
             }
         }
         return Response(resp, status=status)
