@@ -1731,9 +1731,13 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "6 Scheduled metrics launched")
+        self.assertEqual(result.get(), "7 Scheduled metrics launched")
         # fire_messagesets_tasks fires two metrics, therefore extra call
-        self.assertEqual(len(responses.calls), 7)
+        total = 7
+        # fire_week_estimate_last can fire up to 7 extra metrics based on the
+        # day of the week
+        total = total + (7 - datetime.today().weekday())
+        self.assertEqual(len(responses.calls), total)
 
     @responses.activate
     def test_metric_per_message_set_sum(self):
