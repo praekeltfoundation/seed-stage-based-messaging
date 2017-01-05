@@ -1,6 +1,25 @@
+import codecs
 import os
 import re
+
 from setuptools import setup, find_packages
+
+
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+
+def read(*parts):  # Stolen from txacme
+    with codecs.open(os.path.join(HERE, *parts), 'rb', 'utf-8') as f:
+        return f.read()
+
+
+def readme():
+    # Prefer the ReStructuredText README, but fallback to Markdown if it hasn't
+    # been generated
+    if os.path.exists('README.rst'):
+        return read('README.rst')
+    else:
+        return read('README.md')
 
 
 def get_version(package):
@@ -19,8 +38,9 @@ setup(
     version=version,
     url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
-    author='Praekelt Foundation',
-    author_email='dev@praekeltfoundation.org',
+    long_description=readme(),
+    author='Praekelt.org',
+    author_email='dev@praekelt.org',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[

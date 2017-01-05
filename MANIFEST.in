@@ -1,6 +1,9 @@
-# Source distribution files.
-include README.md
-include setup.py
+include README.rst LICENSE tox.ini .travis.yml docs/Makefile manage.py
+recursive-include tests *.py
+recursive-include docs *.rst
+recursive-include docs *.py
+recursive-include templates *.html
+prune docs/_build
 
 # Prune stray bytecode files.
 global-exclude *.pyc
