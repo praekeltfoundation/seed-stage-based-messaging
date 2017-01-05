@@ -1,17 +1,17 @@
 language: python
 python:
-- '2.7'
-- '3.4'
+  - "2.7"
+  - "3.4"
 addons:
-  postgresql: '9.4'
+  postgresql: "9.4"
 services:
-- postgresql
+  - postgresql
 install:
-- pip install -e . --use-mirrors
-- pip install -r requirements-dev.txt --use-wheel
+  - "pip install -e . --use-mirrors"
+  - "pip install -r requirements-dev.txt --use-wheel"
 script:
-- flake8
-- py.test
+  - flake8
+  - py.test
 deploy:
   provider: pypi
   user: praekelt.org
