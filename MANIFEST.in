@@ -1,6 +1,9 @@
-# Source distribution files.
-include README.md
-include setup.py
+include README.rst LICENCE docs/Makefile manage.py
+include requirements*.txt
+recursive-include docs *.rst
+recursive-include docs *.py
+recursive-include templates *.html
+prune docs/_build
 
 # Prune stray bytecode files.
 global-exclude *.pyc
