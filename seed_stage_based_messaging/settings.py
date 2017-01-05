@@ -250,7 +250,8 @@ METRICS_SCHEDULED_TASKS = [
     'fire_broken_last',
     'fire_completed_last',
     'fire_incomplete_last',
-    'fire_messagesets_tasks'
+    'fire_messagesets_tasks',
+    'fire_week_estimate_last'
 ]
 
 CELERY_TASK_SERIALIZER = 'json'
