@@ -2303,28 +2303,17 @@ class TestSubscription(AuthenticatedAPITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def make_messageset_content(self, messageset):
-        message_data_eng_1 = {
-            "messageset": messageset,
-            "sequence_number": 1,
-            "lang": "eng_ZA",
-            "text_content": "This is message 1",
-        }
-        Message.objects.create(**message_data_eng_1)
-        message_data_eng_2 = {
-            "messageset": messageset,
-            "sequence_number": 2,
-            "lang": "eng_ZA",
-            "text_content": "This is message 2",
-        }
-        Message.objects.create(**message_data_eng_2)
-        message_data_eng_3 = {
-            "messageset": messageset,
-            "sequence_number": 3,
-            "lang": "eng_ZA",
-            "text_content": "This is message 3",
-        }
-        Message.objects.create(**message_data_eng_3)
+    def make_messageset_content(self, messageset, count=3):
+
+        for msg in range(0, count):
+            message_data_eng = {
+                "messageset": messageset,
+                "sequence_number": msg + 1,
+                "lang": "eng_ZA",
+                "text_content": "This is message %s" % (msg + 1),
+            }
+            print message_data_eng
+            Message.objects.create(**message_data_eng)
 
     def test_get_expected_next_sequence_number(self):
         self.make_messageset_content(self.messageset)
@@ -2390,16 +2379,16 @@ class TestSubscription(AuthenticatedAPITestCase):
         self.assertEqual(subscription.active, False)
 
     def test_fast_foward_incomplete_with_initial(self):
-        self.make_messageset_content(self.messageset)
+        self.make_messageset_content(self.messageset, 6)
         subscription = self.make_subscription()
-        end = datetime(2016, 11, 2, 10, 0, tzinfo=pytz.UTC)
+        end = datetime(2016, 11, 8, 10, 0, tzinfo=pytz.UTC)
         subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
         subscription.initial_sequence_number = 2
         subscription.save()
         complete = subscription.fast_forward(end)
         self.assertEqual(complete, False)
         self.assertEqual(subscription.completed, False)
-        self.assertEqual(subscription.next_sequence_number, 3)
+        self.assertEqual(subscription.next_sequence_number, 5)
         self.assertEqual(subscription.active, True)
 
     def test_fast_foward_complete(self):
