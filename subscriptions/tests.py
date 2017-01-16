@@ -499,7 +499,7 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
                 "lang": "eng_ZA",
                 "created_at": "2016-02-17T07:59:42.831533+00:00",
                 "id": "5282ed58-348f-4a54-b1ff-f702e36ec3cc",
-                "next_sequence_number": 1,
+                "next_sequence_number": 2,
                 "schedule": self.schedule.id
             }
         }
@@ -513,7 +513,8 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
         self.assertIsNotNone(d.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
-        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.next_sequence_number, 2)
+        self.assertEqual(d.initial_sequence_number, 2)
         self.assertEqual(d.lang, "eng_ZA")
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
