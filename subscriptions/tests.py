@@ -2312,7 +2312,6 @@ class TestSubscription(AuthenticatedAPITestCase):
                 "lang": "eng_ZA",
                 "text_content": "This is message %s" % (msg + 1),
             }
-            print message_data_eng
             Message.objects.create(**message_data_eng)
 
     def test_get_expected_next_sequence_number(self):
