@@ -24,6 +24,8 @@ class Subscription(models.Model):
     version = models.IntegerField(default=1)
     messageset = models.ForeignKey(MessageSet, related_name='subscriptions',
                                    null=False)
+    initial_sequence_number = models.IntegerField(default=1, null=False,
+                                                  blank=False)
     next_sequence_number = models.IntegerField(default=1, null=False,
                                                blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
@@ -58,7 +60,7 @@ class Subscription(models.Model):
             end_date = now()
         set_max = self.messageset.get_messageset_max(self.lang)
         runs = self.schedule.get_run_times_between(self.created_at, end_date)
-        count = len(runs)
+        count = len(runs) + (self.initial_sequence_number - 1)
         if count >= set_max:
             return set_max, True
         else:
