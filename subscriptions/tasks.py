@@ -57,6 +57,7 @@ class FireMetric(Task):
         return "Fired metric <%s> with value <%s>" % (
             metric_name, metric_value)
 
+
 fire_metric = FireMetric()
 
 
@@ -245,6 +246,7 @@ class SendNextMessage(Task):
 
         return False
 
+
 send_next_message = SendNextMessage()
 
 
@@ -333,6 +335,7 @@ class PostSendProcess(Task):
 
         return False
 
+
 post_send_process = PostSendProcess()
 
 
@@ -373,6 +376,7 @@ class ScheduleDisable(Task):
                 'via Celery.',
                 exc_info=True)
         return False
+
 
 schedule_disable = ScheduleDisable()
 
@@ -426,6 +430,7 @@ class ScheduleCreate(Task):
 
         return False
 
+
 schedule_create = ScheduleCreate()
 
 
@@ -444,6 +449,7 @@ class ScheduledMetrics(Task):
         return "%d Scheduled metrics launched" % len(
             settings.METRICS_SCHEDULED_TASKS)
 
+
 scheduled_metrics = ScheduledMetrics()
 
 
@@ -459,6 +465,7 @@ class FireActiveLast(Task):
             "metric_name": 'subscriptions.active.last',
             "metric_value": active_subs
         })
+
 
 fire_active_last = FireActiveLast()
 
@@ -476,6 +483,7 @@ class FireCreatedLast(Task):
             "metric_value": created_subs
         })
 
+
 fire_created_last = FireCreatedLast()
 
 
@@ -491,6 +499,7 @@ class FireBrokenLast(Task):
             "metric_name": 'subscriptions.broken.last',
             "metric_value": broken_subs
         })
+
 
 fire_broken_last = FireBrokenLast()
 
@@ -508,6 +517,7 @@ class FireCompletedLast(Task):
             "metric_value": completed_subs
         })
 
+
 fire_completed_last = FireCompletedLast()
 
 
@@ -523,6 +533,7 @@ class FireIncompleteLast(Task):
             "metric_name": 'subscriptions.incomplete.last',
             "metric_value": incomplete_subs
         })
+
 
 fire_incomplete_last = FireIncompleteLast()
 
@@ -544,6 +555,7 @@ class FireMessageSetsTasks(Task):
             })
         return "%d MessageSet metrics launched" % messagesets.count()
 
+
 fire_messagesets_tasks = FireMessageSetsTasks()
 
 
@@ -558,6 +570,7 @@ class FireMessageSetLast(Task):
             "metric_name": 'subscriptions.%s.active.last' % short_name,
             "metric_value": active_msgset_subs
         })
+
 
 fire_messageset_last = FireMessageSetLast()
 
