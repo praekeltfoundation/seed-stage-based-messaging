@@ -29,6 +29,7 @@ setup(
     version=version,
     url='http://github.com/praekelt/seed-stage-based-messaging',
     license='BSD',
+    description='Seed Stage Based Messaging microservice',
     long_description=read('README.rst'),
     author='Praekelt.org',
     author_email='dev@praekelt.org',

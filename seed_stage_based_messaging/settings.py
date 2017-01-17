@@ -145,7 +145,6 @@ RAVEN_CONFIG = {
 
 # REST Framework conf defaults
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser',),
     'PAGE_SIZE': 1000,
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.LimitOffsetPagination',
@@ -188,13 +187,13 @@ CELERY_ROUTES = {
         'queue': 'priority',
     },
     'subscriptions.tasks.post_send_process': {
-        'queue': 'priority',
+        'queue': 'mediumpriority',
     },
     'subscriptions.tasks.schedule_create': {
-        'queue': 'priority',
+        'queue': 'mediumpriority',
     },
     'subscriptions.tasks.schedule_disable': {
-        'queue': 'priority',
+        'queue': 'mediumpriority',
     },
     'subscriptions.tasks.fire_metric': {
         'queue': 'metrics',
@@ -250,7 +249,8 @@ METRICS_SCHEDULED_TASKS = [
     'fire_broken_last',
     'fire_completed_last',
     'fire_incomplete_last',
-    'fire_messagesets_tasks'
+    'fire_messagesets_tasks',
+    'fire_week_estimate_last'
 ]
 
 CELERY_TASK_SERIALIZER = 'json'
