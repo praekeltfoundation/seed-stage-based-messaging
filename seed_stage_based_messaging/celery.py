@@ -24,6 +24,7 @@ class Celery(celery.Celery):
         # hook into the Celery error handler
         register_signal(client)
 
+
 app = Celery(__name__)
 
 # Using a string here means the worker will not have to

@@ -12,4 +12,5 @@ class SubscriptionAdmin(admin.ModelAdmin):
         'created_at', 'updated_at', )
     search_fields = ['id', 'identity']
 
+
 admin.site.register(Subscription, SubscriptionAdmin)
