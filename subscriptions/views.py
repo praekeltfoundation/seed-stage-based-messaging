@@ -58,6 +58,11 @@ class SubscriptionRequest(APIView):
         # This is a workaround for JSONField not liking blank/null refs
         if "metadata" not in request.data["data"]:
             request.data["data"]["metadata"] = {}
+
+        if "initial_sequence_number" not in request.data["data"]:
+            request.data["data"]["initial_sequence_number"] = \
+                request.data["data"].get("next_sequence_number")
+
         subscription = SubscriptionSerializer(data=request.data["data"])
         if subscription.is_valid():
             subscription.save()

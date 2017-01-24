@@ -15,4 +15,5 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         fields = (
             'url', 'id', 'version', 'identity', 'messageset',
             'next_sequence_number', 'lang', 'active', 'completed', 'schedule',
-            'process_status', 'metadata', 'created_at', 'updated_at')
+            'process_status', 'metadata', 'created_at', 'updated_at',
+            'initial_sequence_number')
