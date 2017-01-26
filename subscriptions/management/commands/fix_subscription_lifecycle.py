@@ -3,12 +3,14 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from subscriptions.models import Subscription
+from subscriptions.tasks import send_next_message
 
 
 class Command(BaseCommand):
-    help = ("Fast forward subscriptions lifecycle up to given date. This "
-            "is used when the messages sending failed to get the subscription "
-            "up to date. Leave end_date blank for current date")
+    help = ("Fast forward subscriptions by one message if it is behind "
+            "schedule. This is used when the messages sending failed to get "
+            "the subscription up to date. Leave end_date blank for current "
+            "date. Include --fix=True to update and send messages")
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -17,8 +19,12 @@ class Command(BaseCommand):
             help='''Fast forward subscription to end_date
                   By default it will use datetime.now() (format YYYYMMDD)'''
         )
+        parser.add_argument(
+            "--fix", dest="update", default=False,
+            help=("Set to True to update and send message."))
 
     def handle(self, *args, **options):
+        update = options['update']
         end_date = options['end_date']
         end_date = end_date.replace(tzinfo=timezone.utc)
 
@@ -27,8 +33,16 @@ class Command(BaseCommand):
         subscriptions = Subscription.objects.filter(active=True)
 
         for sub in subscriptions:
-            updates = Subscription.fast_forward_lifecycle(sub, end_date)
-            updated += len(updates) - 1
+            number, complete = sub.get_expected_next_sequence_number(end_date)
 
-        self.stdout.write("%s subscription%s updated."
+            if number > sub.next_sequence_number:
+                if update:
+                    send_next_message.apply_async(args=[str(sub.id)])
+
+                updated += 1
+
+        self.stdout.write("Message sent to %s subscription%s."
                           % (updated, '' if updated == 1 else 's'))
+        if not update:
+            self.stdout.write("ONLY A TEST RUN, NOTHING WAS UPDATED/SENT"
+                              "Add this to update/send: --fix=True")
