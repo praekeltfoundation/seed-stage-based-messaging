@@ -2521,7 +2521,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(
             stdout.getvalue().strip(),
             "Message sent to 1 subscription.\nONLY A TEST RUN, NOTHING WAS "
-            "UPDATED/SENTAdd this to update/send: --fix=True")
+            "UPDATED/SENT\nAdd this to update/send: `--fix True`")
 
     @responses.activate
     def test_subscriptions_lifecycle_fix(self):

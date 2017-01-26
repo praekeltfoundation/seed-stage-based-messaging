@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = ("Fast forward subscriptions by one message if it is behind "
             "schedule. This is used when the messages sending failed to get "
             "the subscription up to date. Leave end_date blank for current "
-            "date. Include --fix=True to update and send messages")
+            "date. Include `--fix True` to update and send messages")
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -30,7 +30,8 @@ class Command(BaseCommand):
 
         updated = 0
 
-        subscriptions = Subscription.objects.filter(active=True)
+        subscriptions = Subscription.objects.filter(active=True,
+                                                    process_status=0)
 
         for sub in subscriptions:
             number, complete = sub.get_expected_next_sequence_number(end_date)
@@ -44,5 +45,5 @@ class Command(BaseCommand):
         self.stdout.write("Message sent to %s subscription%s."
                           % (updated, '' if updated == 1 else 's'))
         if not update:
-            self.stdout.write("ONLY A TEST RUN, NOTHING WAS UPDATED/SENT"
-                              "Add this to update/send: --fix=True")
+            self.stdout.write("ONLY A TEST RUN, NOTHING WAS UPDATED/SENT\n"
+                              "Add this to update/send: `--fix True`")
