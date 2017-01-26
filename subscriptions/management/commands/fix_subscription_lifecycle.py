@@ -30,8 +30,8 @@ class Command(BaseCommand):
 
         updated = 0
 
-        subscriptions = Subscription.objects.filter(active=True)\
-            .exclude(process_status=-1)
+        subscriptions = Subscription.objects.filter(active=True,
+                                                    process_status=0)
 
         for sub in subscriptions:
             number, complete = sub.get_expected_next_sequence_number(end_date)
