@@ -21,10 +21,6 @@ class SubscriptionFilter(filters.FilterSet):
 
     class Meta:
         model = Subscription
-        filters = (
-            'identity', 'messageset_id', 'lang', 'active', 'completed',
-            'schedule', 'process_status', 'metadata',
-        )
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
