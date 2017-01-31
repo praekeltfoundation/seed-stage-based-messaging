@@ -331,14 +331,14 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
 
-    def test_filter_subscription_created_from(self):
+    def test_filter_subscription_created_after(self):
         self.make_subscription()
         sub2 = self.make_subscription()
         sub3 = self.make_subscription()
 
         response = self.client.get(
             '/api/v1/subscriptions/',
-            {"created_from": sub2.created_at.isoformat()},
+            {"created_after": sub2.created_at.isoformat()},
             content_type='application/json'
         )
 
@@ -347,14 +347,14 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub2.id), str(sub3.id)]), ids)
 
-    def test_filter_subscription_created_to(self):
+    def test_filter_subscription_created_before(self):
         sub1 = self.make_subscription()
         sub2 = self.make_subscription()
         self.make_subscription()
 
         response = self.client.get(
             '/api/v1/subscriptions/',
-            {"created_to": sub2.created_at.isoformat()},
+            {"created_before": sub2.created_at.isoformat()},
             content_type='application/json'
         )
 

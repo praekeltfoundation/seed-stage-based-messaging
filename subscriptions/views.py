@@ -14,9 +14,9 @@ from seed_stage_based_messaging.utils import get_available_metrics
 
 
 class SubscriptionFilter(filters.FilterSet):
-    created_from = django_filters.IsoDateTimeFilter(
+    created_after = django_filters.IsoDateTimeFilter(
         name="created_at", lookup_type="gte")
-    created_to = django_filters.IsoDateTimeFilter(
+    created_before = django_filters.IsoDateTimeFilter(
         name="created_at", lookup_type="lte")
 
     class Meta:
