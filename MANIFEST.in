@@ -1,0 +1,10 @@
+include README.rst LICENCE docs/Makefile manage.py
+include requirements*.txt
+recursive-include docs *.rst
+recursive-include docs *.py
+recursive-include templates *.html
+prune docs/_build
+
+# Prune stray bytecode files.
+global-exclude *.pyc
+global-exclude __pycache__

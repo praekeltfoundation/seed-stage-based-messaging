@@ -1,0 +1,22 @@
+language: python
+python:
+  - "2.7"
+  - "3.4"
+addons:
+  postgresql: "9.4"
+services:
+  - postgresql
+install:
+  - "pip install -e . --use-mirrors"
+  - "pip install -r requirements-dev.txt --use-wheel"
+script:
+  - flake8
+  - py.test
+deploy:
+  provider: pypi
+  user: praekelt.org
+  password:
+    secure: EhKwyJYJZhMxmwFB3d1VmKayfgVVmSyY4ne8IiYBB4MSOTTu6P9RHxlg/cxdQ7RrdlTUvauS9PVOLA5GJVS+iInmSERYJ+sAmVGZgW4ToDMVJgRfkM+RzyIxw/VFPAjgOneHK5mCEfAcWaZFOkRD1RStqOq4SG8G49dN2v0wan1ZjmH/MerXyNaBYNSMB0NxnrEAm9jexzFJkqsTG3+rJ21qIB5KCMzqE9H+HOTyKUSVeE3HGgwLzzyu/EuiNP4MSPSQMxa6dpZJ/3NOKId0dgsChI3F/YS250RhdpuhGk+X1p/bl77GxWiNmsM8ZRFe4fFA2Wv+u0mb4rfwLreHK1iM7s2ouwviZ1y6GaicwaxTQrc01omhIReXnXFBB0xZMCGAADpMxdVD7eDm4NJ9uE05inI/oFe5xiAfOUB3RLVukZzahwPE4Q2kVx92FDee57k2Y/AVNGv+zVtaafeHoDJ7sTGE3DqITU/b1LtfVwuduJ6E1GGafjM7MpV43p1OEo1RPvPlRqCE73ZZHw+7CQKKQDrWO3glIxU8Y4f18TCuC7Pv7Sf32k/WX3C9Y3OV+3AeZHt1oSEtMW1ckcd82NRgUWGMoT+i4qLMwwl6eRnphVFybe+U297D6ytkW+dCScsRpgPywfAaoPFj50IbgZIDpCn5mWuKOaNWFy7H0GI=
+  distributions: sdist bdist_wheel
+  on:
+    tags: true
