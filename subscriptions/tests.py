@@ -331,6 +331,38 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
 
+    def test_filter_subscription_created_after(self):
+        self.make_subscription()
+        sub2 = self.make_subscription()
+        sub3 = self.make_subscription()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"created_after": sub2.created_at.isoformat()},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub2.id), str(sub3.id)]), ids)
+
+    def test_filter_subscription_created_before(self):
+        sub1 = self.make_subscription()
+        sub2 = self.make_subscription()
+        self.make_subscription()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"created_before": sub2.created_at.isoformat()},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
+
     def test_update_subscription_data(self):
         # Setup
         existing = self.make_subscription()
