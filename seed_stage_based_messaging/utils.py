@@ -26,10 +26,12 @@ def normalise_metric_name(name):
     return NORMALISE_METRIC_RE.sub('_', name).rstrip('_').lstrip('_')
 
 
-def get_identity_address(identity_uuid):
+def get_identity_address(identity_uuid, use_communicate_through=False):
     url = "%s/%s/%s/addresses/msisdn" % (settings.IDENTITY_STORE_URL,
                                          "identities", identity_uuid)
     params = {"default": True}
+    if use_communicate_through:
+        params['use_communicate_through'] = True
     headers = {
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
