@@ -3,7 +3,6 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
 import django_filters
 
@@ -44,12 +43,11 @@ class SubscriptionSend(APIView):
         """
         # Look up subscriber
         subscription_id = kwargs["subscription_id"]
-        try:
-            subscription = Subscription.objects.get(id=subscription_id)
+        if Subscription.objects.filter(id=subscription_id).exists():
             status = 201
             accepted = {"accepted": True}
-            send_next_message.apply_async(args=[str(subscription.id)])
-        except ObjectDoesNotExist:
+            send_next_message.apply_async(args=[subscription_id])
+        else:
             status = 400
             accepted = {"accepted": False,
                         "reason": "Missing subscription in control"}
