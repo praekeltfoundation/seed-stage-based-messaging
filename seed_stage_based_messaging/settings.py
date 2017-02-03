@@ -218,6 +218,8 @@ CELERY_ROUTES = {
     },
 }
 
+CELERYD_MAX_TASKS_PER_CHILD = 50
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
