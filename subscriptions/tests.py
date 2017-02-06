@@ -2514,14 +2514,16 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         sub2.active = False
         sub2.save()
 
-        call_command('fix_subscription_lifecycle',
+        call_command('fix_subscription_lifecycle', '--verbose', 'True',
                      stdout=stdout, stderr=stderr)
 
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            "Message sent to 1 subscription.\nONLY A TEST RUN, NOTHING WAS "
-            "UPDATED/SENT\nAdd this to update/send: `--fix True`")
+            "{}: 2\nMessage sent to 1 "
+            "subscription.\nONLY A TEST RUN, NOTHING WAS "
+            "UPDATED/SENT\nAdd this to update/send: `--fix True`".format(
+                sub1.id))
 
     @responses.activate
     def test_subscriptions_lifecycle_fix(self):

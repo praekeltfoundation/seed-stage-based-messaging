@@ -22,9 +22,13 @@ class Command(BaseCommand):
         parser.add_argument(
             "--fix", dest="update", default=False,
             help=("Set to True to update and send message."))
+        parser.add_argument(
+            "--verbose", dest="verbose", default=False,
+            help=("Print out some details on the relevant subscriptions."))
 
     def handle(self, *args, **options):
         update = options['update']
+        verbose = options['verbose']
         end_date = options['end_date']
         end_date = end_date.replace(tzinfo=timezone.utc)
 
@@ -37,6 +41,11 @@ class Command(BaseCommand):
             number, complete = sub.get_expected_next_sequence_number(end_date)
 
             if number > sub.next_sequence_number:
+
+                if verbose:
+                    self.stdout.write("{}: {}".format(sub.id, number -
+                                      sub.next_sequence_number))
+
                 if update:
                     send_next_message.apply_async(args=[str(sub.id)])
 
