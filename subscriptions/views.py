@@ -1,15 +1,25 @@
-from rest_framework import viewsets, status
+from rest_framework import filters, viewsets, status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
+import django_filters
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer, CreateUserSerializer
 from .tasks import send_next_message, scheduled_metrics
 from seed_stage_based_messaging.utils import get_available_metrics
+
+
+class SubscriptionFilter(filters.FilterSet):
+    created_after = django_filters.IsoDateTimeFilter(
+        name="created_at", lookup_type="gte")
+    created_before = django_filters.IsoDateTimeFilter(
+        name="created_at", lookup_type="lte")
+
+    class Meta:
+        model = Subscription
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -19,8 +29,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    filter_fields = ('identity', 'messageset_id', 'lang', 'active',
-                     'completed', 'schedule', 'process_status', 'metadata',)
+    filter_class = SubscriptionFilter
 
 
 class SubscriptionSend(APIView):
@@ -34,12 +43,11 @@ class SubscriptionSend(APIView):
         """
         # Look up subscriber
         subscription_id = kwargs["subscription_id"]
-        try:
-            subscription = Subscription.objects.get(id=subscription_id)
+        if Subscription.objects.filter(id=subscription_id).exists():
             status = 201
             accepted = {"accepted": True}
-            send_next_message.apply_async(args=[str(subscription.id)])
-        except ObjectDoesNotExist:
+            send_next_message.apply_async(args=[subscription_id])
+        else:
             status = 400
             accepted = {"accepted": False,
                         "reason": "Missing subscription in control"}

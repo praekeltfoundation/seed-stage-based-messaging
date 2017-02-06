@@ -331,6 +331,38 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
 
+    def test_filter_subscription_created_after(self):
+        self.make_subscription()
+        sub2 = self.make_subscription()
+        sub3 = self.make_subscription()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"created_after": sub2.created_at.isoformat()},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub2.id), str(sub3.id)]), ids)
+
+    def test_filter_subscription_created_before(self):
+        sub1 = self.make_subscription()
+        sub2 = self.make_subscription()
+        self.make_subscription()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"created_before": sub2.created_at.isoformat()},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
+
     def test_update_subscription_data(self):
         # Setup
         existing = self.make_subscription()
@@ -575,7 +607,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -584,32 +616,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "text",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # Create message sender call
@@ -708,15 +714,15 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 6)
+        self.assertEqual(len(responses.calls), 5)
 
         # Check the request body of metric call
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[5]
+        metric_call = responses.calls[4]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -736,7 +742,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -745,32 +751,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "text",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # Create message sender call
@@ -840,12 +820,12 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -863,7 +843,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -872,32 +852,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "text",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # mock message sender call
@@ -971,14 +925,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
-        self.assertEqual(len(responses.calls), 6)
+        self.assertEqual(len(responses.calls), 5)
 
         # Check the request body of metric call
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
-        metric_call = responses.calls[5]
+        metric_call = responses.calls[4]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -1071,8 +1025,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (  # noqa
-                "3f7c8851-5204-43f7-af7f-005059993333", ),
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (  # noqa
+                existing.identity, ),
             json={
                 "count": 1,
                 "next": None,
@@ -1081,59 +1035,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "text",
-                    "preferred_language": "eng_ZA"
-                },
-                "communicate_through": "3f7c8851-5204-43f7-af7f-005059993333",
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
-        )
-
-        # mock identity address lookup - friend
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                "3f7c8851-5204-43f7-af7f-005059993333", ),
-            json={
-                "id": "3f7c8851-5204-43f7-af7f-005059993333",
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059993333": {}
-                        }
-                    },
-                    "receiver_role": "friend",
-                    "linked_to": existing.identity,
-                    "preferred_msg_type": "text",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # Create message sender call
@@ -1202,12 +1103,12 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -1220,7 +1121,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -1229,34 +1130,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "audio",
-                    "preferred_msg_days": "mon_wed",
-                    "preferred_msg_times": "2_5",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # Create message sender call
@@ -1336,12 +1209,12 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.audio.messageset_two.sum": 1.0
         })
 
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.audio.sum": 1.0
         })
@@ -1354,7 +1227,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -1363,34 +1236,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             },
             status=200, content_type='application/json',
             match_querystring=True
-        )
-
-        # mock identity address lookup
-        responses.add(
-            responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/" % (
-                existing.identity, ),
-            json={
-                "id": existing.identity,
-                "version": 1,
-                "details": {
-                    "default_addr_type": "msisdn",
-                    "addresses": {
-                        "msisdn": {
-                            "+2345059992222": {}
-                        }
-                    },
-                    "receiver_role": "mother",
-                    "linked_to": None,
-                    "preferred_msg_type": "audio",
-                    "preferred_msg_days": "mon_wed",
-                    "preferred_msg_times": "2_5",
-                    "preferred_language": "eng_ZA"
-                },
-                "created_at": "2015-07-10T06:13:29.693272Z",
-                "updated_at": "2015-07-10T06:13:29.693298Z"
-            },
-            status=200, content_type='application/json',
         )
 
         # Create message sender call
@@ -1473,7 +1318,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.metadata["prepend_next_delivery"], None)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.audio.messageset_two.sum": 1.0
         })
@@ -2566,7 +2411,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (sub1.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,
@@ -2655,7 +2500,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True" % (sub1.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
                 "count": 1,
                 "next": None,

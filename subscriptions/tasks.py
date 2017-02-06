@@ -89,136 +89,9 @@ class SendNextMessage(Task):
                          exc_info=True)
             return
 
-        try:
-            # start here
-            if subscription.process_status == 0 and \
-               subscription.completed is not True and \
-               subscription.active is True:
-
-                # Try load message first,
-                l.info("Loading Message")
-                message = Message.objects.get(
-                    messageset=subscription.messageset,
-                    sequence_number=subscription.next_sequence_number,
-                    lang=subscription.lang)
-
-                l.debug("setting process status to 1")
-                subscription.process_status = 1  # in process
-                l.debug("saving subscription")
-                subscription.save()
-
-                l.info("Loading Initial Recipient Identity")
-                to_addr = None
-                initial_id = utils.get_identity(subscription.identity)
-                if "communicate_through" in initial_id and \
-                        initial_id["communicate_through"] is not None:
-                    # we should not send messages to this ID. Load listed ID.
-                    to_addr = utils.get_identity_address(
-                        initial_id["communicate_through"])
-                else:
-                    # set recipient data
-                    to_addr = utils.get_identity_address(subscription.identity)
-                l.debug("to_addr determined - %s" % to_addr)
-
-                if to_addr is not None:
-                    l.info("Preparing message payload with: %s" % message.id)  # noqa
-                    payload = {
-                        "to_addr": to_addr,
-                        "delivered": "false",
-                        "metadata": {}
-                    }
-                    if subscription.messageset.content_type == "text":
-                        l.debug("Determining payload content")
-                        if subscription.metadata is not None and \
-                           "prepend_next_delivery" in subscription.metadata \
-                           and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                            l.debug("Prepending next delivery")
-                            payload["content"] = "%s\n%s" % (
-                                subscription.metadata["prepend_next_delivery"],
-                                message.text_content)
-                            # clear prepend_next_delivery
-                            l.debug("Clearing prepended message")
-                            subscription.metadata[
-                                "prepend_next_delivery"] = None
-                            subscription.save()
-                        else:
-                            l.debug("Loading default content")
-                            payload["content"] = message.text_content
-                        l.debug("text content loaded")
-                    else:
-                        # TODO - audio media handling on MC
-                        # audio
-
-                        if subscription.metadata is not None and \
-                           "prepend_next_delivery" in subscription.metadata \
-                           and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                            payload["metadata"]["voice_speech_url"] = [
-                                subscription.metadata["prepend_next_delivery"],
-                                make_absolute_url(
-                                    message.binary_content.content.url),
-                            ]
-                            # clear prepend_next_delivery
-                            subscription.metadata[
-                                "prepend_next_delivery"] = None
-                            subscription.save()
-                        else:
-                            payload["metadata"]["voice_speech_url"] = \
-                                make_absolute_url(
-                                    message.binary_content.content.url)
-
-                    l.info("Sending message to Message Sender")
-                    result = requests.post(
-                        url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
-                        data=json.dumps(payload),
-                        headers={
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Token %s' % (
-                                settings.MESSAGE_SENDER_TOKEN,)
-                        }
-                    ).json()
-
-                    l.debug("setting process status back to 0")
-                    subscription.process_status = 0  # ready
-                    l.debug("saving subscription")
-                    subscription.save()
-
-                    l.debug("firing post_send_process task")
-                    post_send_process.apply_async(args=[subscription_id])
-                    l.debug("fired post_send_process task")
-
-                    l.debug("Firing SMS/OBD calls sent per message set metric")
-                    send_type = utils.normalise_metric_name(
-                                    subscription.messageset.content_type)
-                    ms_name = utils.normalise_metric_name(
-                                    subscription.messageset.short_name)
-                    fire_metric.apply_async(kwargs={
-                        "metric_name":
-                            'message.{}.{}.sum'.format(send_type, ms_name),
-                        "metric_value": 1.0
-                    })
-                    fire_metric.apply_async(kwargs={
-                        "metric_name":
-                            'message.{}.sum'.format(send_type),
-                        "metric_value": 1.0
-                    })
-
-                    l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
-                    return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
-                else:
-                    l.info("No valid recipient to_addr found")
-                    subscription.process_status = -1  # Error
-                    l.debug("saving subscription")
-                    subscription.save()
-                    l.debug("Firing error metric")
-                    fire_metric.apply_async(kwargs={
-                        "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
-                        "metric_value": 1.0
-                    })
-                    l.debug("Fired error metric")
-                    return "Valid recipient could not be found"
-
-            elif (subscription.process_status == 2 or
-                  subscription.completed is True):
+        if not subscription.is_ready_for_processing:
+            if (subscription.process_status == 2 or
+                    subscription.completed is True):
                 # Disable the subscription's scheduler
                 schedule_disable.apply_async(args=[subscription_id])
                 l.info("Scheduler deactivation task fired")
@@ -228,8 +101,15 @@ class SendNextMessage(Task):
                 l.info("Message sending aborted - busy, broken or inactive")
                 # TODO: retry if busy (process_status = 1)
                 # TODO: be more specific about why it aborted
-                return "Message sending aborted"
+                return ("Message sending aborted, status <%s>" %
+                        subscription.process_status)
 
+        try:
+            l.info("Loading Message")
+            message = Message.objects.get(
+                messageset=subscription.messageset,
+                sequence_number=subscription.next_sequence_number,
+                lang=subscription.lang)
         except ObjectDoesNotExist:
             error = ('Missing Message: MessageSet: <%s>, Sequence Number: <%s>'
                      ', Lang: <%s>') % (
@@ -237,14 +117,117 @@ class SendNextMessage(Task):
                 subscription.next_sequence_number,
                 subscription.lang)
             logger.error(error, exc_info=True)
+            return "Message sending aborted, missing message"
 
-        except SoftTimeLimitExceeded:
-            logger.error(
-                'Soft time limit exceed processing message send search '
-                'via Celery.',
-                exc_info=True)
+        # Start processing
+        l.debug("setting process status to 1")
+        subscription.process_status = 1  # in process
+        l.debug("saving subscription")
+        subscription.save()
 
-        return False
+        l.info("Loading Initial Recipient Identity")
+        to_addr = utils.get_identity_address(
+            subscription.identity,
+            use_communicate_through=True)
+        l.debug("to_addr determined - %s" % to_addr)
+
+        if to_addr is None:
+            l.info("No valid recipient to_addr found")
+            subscription.process_status = -1  # Error
+            l.debug("saving subscription")
+            subscription.save()
+            l.debug("Firing error metric")
+            fire_metric.apply_async(kwargs={
+                "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
+                "metric_value": 1.0
+            })
+            l.debug("Fired error metric")
+            return "Valid recipient could not be found"
+
+        # All preconditions have been met
+        l.info("Preparing message payload with: %s" % message.id)  # noqa
+        payload = {
+            "to_addr": to_addr,
+            "delivered": "false",
+            "metadata": {}
+        }
+        if subscription.messageset.content_type == "text":
+            l.debug("Determining payload content")
+            if subscription.metadata is not None and \
+               "prepend_next_delivery" in subscription.metadata \
+               and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                l.debug("Prepending next delivery")
+                payload["content"] = "%s\n%s" % (
+                    subscription.metadata["prepend_next_delivery"],
+                    message.text_content)
+                # clear prepend_next_delivery
+                l.debug("Clearing prepended message")
+                subscription.metadata[
+                    "prepend_next_delivery"] = None
+                subscription.save()
+            else:
+                l.debug("Loading default content")
+                payload["content"] = message.text_content
+            l.debug("text content loaded")
+        else:
+            # TODO - audio media handling on MC
+            # audio
+
+            if subscription.metadata is not None and \
+               "prepend_next_delivery" in subscription.metadata \
+               and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                payload["metadata"]["voice_speech_url"] = [
+                    subscription.metadata["prepend_next_delivery"],
+                    make_absolute_url(
+                        message.binary_content.content.url),
+                ]
+                # clear prepend_next_delivery
+                subscription.metadata[
+                    "prepend_next_delivery"] = None
+                subscription.save()
+            else:
+                payload["metadata"]["voice_speech_url"] = \
+                    make_absolute_url(
+                        message.binary_content.content.url)
+
+        l.info("Sending message to Message Sender")
+        result = requests.post(
+            url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
+            data=json.dumps(payload),
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Token %s' % (
+                    settings.MESSAGE_SENDER_TOKEN,)
+            }
+        ).json()
+
+        l.debug("setting process status back to 0")
+        subscription.process_status = 0  # ready
+        l.debug("saving subscription")
+        subscription.save()
+
+        l.debug("firing post_send_process task")
+        post_send_process.apply_async(args=[subscription_id])
+        l.debug("fired post_send_process task")
+
+        l.debug("Firing SMS/OBD calls sent per message set metric")
+        send_type = utils.normalise_metric_name(
+                        subscription.messageset.content_type)
+        ms_name = utils.normalise_metric_name(
+                        subscription.messageset.short_name)
+        fire_metric.apply_async(kwargs={
+            "metric_name":
+                'message.{}.{}.sum'.format(send_type, ms_name),
+            "metric_value": 1.0
+        })
+        fire_metric.apply_async(kwargs={
+            "metric_name":
+                'message.{}.sum'.format(send_type),
+            "metric_value": 1.0
+        })
+
+        l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
+        return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
 
 
 send_next_message = SendNextMessage()

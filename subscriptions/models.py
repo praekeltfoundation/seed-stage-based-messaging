@@ -162,6 +162,12 @@ class Subscription(models.Model):
 
         return subscriptions
 
+    @property
+    def is_ready_for_processing(self):
+        return self.process_status == 0 and \
+               self.completed is not True and \
+               self.active is True
+
 
 # Make sure new subscriptions are created on scheduler
 @receiver(post_save, sender=Subscription)
