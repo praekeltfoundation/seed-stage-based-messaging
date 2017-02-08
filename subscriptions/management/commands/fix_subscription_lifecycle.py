@@ -8,9 +8,11 @@ from subscriptions.tasks import send_next_message
 
 class Command(BaseCommand):
     help = ("Fast forward subscriptions by one message if it is behind "
-            "schedule. This is used when the messages sending failed to get "
-            "the subscription up to date. Leave end_date blank for current "
-            "date. Include `--fix True` to update and send messages")
+            "schedule or fast forward to end date. This is used when the "
+            "messages sending failed to get the subscription up to date. Leave"
+            " end_date blank for current date. Include `--action fast_forward`"
+            " to fast forward them to the end date or `--action send` to send "
+            "messages")
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -20,19 +22,22 @@ class Command(BaseCommand):
                   By default it will use datetime.now() (format YYYYMMDD)'''
         )
         parser.add_argument(
-            "--fix", dest="update", default=False,
-            help=("Set to True to update and send message."))
+            "--action", dest="action", default=False,
+            help=("Set to `send` to send next message or `fast_forward` to "
+                  "fast forward the subscription."))
         parser.add_argument(
             "--verbose", dest="verbose", default=False,
             help=("Print out some details on the relevant subscriptions."))
 
     def handle(self, *args, **options):
-        update = options['update']
+        action = options['action']
         verbose = options['verbose']
         end_date = options['end_date']
         end_date = end_date.replace(tzinfo=timezone.utc)
 
-        updated = 0
+        behind = 0
+        forwards = 0
+        sends = 0
 
         subscriptions = Subscription.objects.filter(active=True,
                                                     process_status=0)
@@ -46,13 +51,19 @@ class Command(BaseCommand):
                     self.stdout.write("{}: {}".format(sub.id, number -
                                       sub.next_sequence_number))
 
-                if update:
+                if action == 'fast_forward':
+                    updates = Subscription.fast_forward_lifecycle(sub,
+                                                                  end_date)
+                    forwards += len(updates) - 1
+                elif action == 'send':
                     send_next_message.apply_async(args=[str(sub.id)])
+                    sends += 1
 
-                updated += 1
+                behind += 1
 
+        self.stdout.write("%s subscription%s behind schedule."
+                          % (behind, '' if behind == 1 else 's'))
+        self.stdout.write("%s subscription%s fast forwarded to end date."
+                          % (forwards, '' if forwards == 1 else 's'))
         self.stdout.write("Message sent to %s subscription%s."
-                          % (updated, '' if updated == 1 else 's'))
-        if not update:
-            self.stdout.write("ONLY A TEST RUN, NOTHING WAS UPDATED/SENT\n"
-                              "Add this to update/send: `--fix True`")
+                          % (sends, '' if sends == 1 else 's'))
