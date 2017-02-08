@@ -2338,15 +2338,17 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
 
         self.make_subscription()
 
-        call_command('fix_subscription_lifecycle', '--fix', 'True',
+        call_command('fix_subscription_lifecycle', '--action', 'send',
                      stdout=stdout, stderr=stderr)
 
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            'Message sent to 0 subscriptions.')
+            "0 subscriptions behind schedule.\n"
+            "0 subscriptions fast forwarded to end date.\n"
+            "Message sent to 0 subscriptions.")
 
-    def test_noop_no_update_flag(self):
+    def test_noop_no_action_flag(self):
         stdout, stderr = StringIO(), StringIO()
 
         self.make_subscription()
@@ -2365,13 +2367,13 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            "{}: 2\nMessage sent to 1 "
-            "subscription.\nONLY A TEST RUN, NOTHING WAS "
-            "UPDATED/SENT\nAdd this to update/send: `--fix True`".format(
-                sub1.id))
+            "{}: 2\n"
+            "1 subscription behind schedule.\n"
+            "0 subscriptions fast forwarded to end date.\n"
+            "Message sent to 0 subscriptions.".format(sub1.id))
 
     @responses.activate
-    def test_subscriptions_lifecycle_fix(self):
+    def test_subscriptions_lifecycle_send(self):
         stdout, stderr = StringIO(), StringIO()
 
         self.make_subscription()
@@ -2453,16 +2455,18 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             status=200, content_type='application/json; charset=utf-8'
         )
 
-        call_command('fix_subscription_lifecycle', '--fix', 'True',
+        call_command('fix_subscription_lifecycle', '--action', 'send',
                      stdout=stdout, stderr=stderr)
 
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            'Message sent to 1 subscription.')
+            "1 subscription behind schedule.\n"
+            "0 subscriptions fast forwarded to end date.\n"
+            "Message sent to 1 subscription.")
 
     @responses.activate
-    def test_subscription_lifecycle_fix_with_args(self):
+    def test_subscription_lifecycle_send_with_args(self):
         stdout, stderr = StringIO(), StringIO()
 
         sub1 = self.make_subscription()
@@ -2542,11 +2546,202 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             status=200, content_type='application/json; charset=utf-8'
         )
 
-        call_command('fix_subscription_lifecycle', '--fix', 'True',
+        call_command('fix_subscription_lifecycle', '--action', 'send',
                      '--end_date', '20170101',
                      stdout=stdout, stderr=stderr)
 
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            'Message sent to 2 subscriptions.')
+            "2 subscriptions behind schedule.\n"
+            "0 subscriptions fast forwarded to end date.\n"
+            "Message sent to 2 subscriptions.")
+
+    @responses.activate
+    def test_subscriptions_lifecycle_fast_forward(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.active = False
+        sub2.save()
+
+        # mock identity lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/" % (sub1.identity, ),  # noqa
+            json={
+                "foo": sub1.identity,
+                "version": 1,
+                "details": {
+                    "default_addr_type": "msisdn",
+                    "addresses": {
+                        "msisdn": {
+                            "+2345059992222": {}
+                        }
+                    },
+                    "receiver_role": "mother",
+                    "linked_to": None,
+                    "preferred_msg_type": "text",
+                    "preferred_language": "eng_ZA"
+                },
+                "created_at": "2015-07-10T06:13:29.693272Z",
+                "updated_at": "2015-07-10T06:13:29.693298Z"
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "vumi_message_id": None,
+                "content": "This is message 1",
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {},
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # metrics call
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
+        call_command('fix_subscription_lifecycle', '--action', 'fast_forward',
+                     stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "1 subscription behind schedule.\n"
+            "1 subscription fast forwarded to end date.\n"
+            "Message sent to 0 subscriptions.")
+        updated_sub = Subscription.objects.get(pk=sub1.id)
+        self.assertEqual(updated_sub.next_sequence_number, 3)
+
+    @responses.activate
+    def test_subscription_lifecycle_fast_forward_with_args(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.save()
+
+        # mock identity lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/" % (sub1.identity, ),  # noqa
+            json={
+                "foo": sub1.identity,
+                "version": 1,
+                "details": {
+                    "default_addr_type": "msisdn",
+                    "addresses": {
+                        "msisdn": {
+                            "+2345059992222": {}
+                        }
+                    },
+                    "receiver_role": "mother",
+                    "linked_to": None,
+                    "preferred_msg_type": "text",
+                    "preferred_language": "eng_ZA"
+                },
+                "created_at": "2015-07-10T06:13:29.693272Z",
+                "updated_at": "2015-07-10T06:13:29.693298Z"
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "vumi_message_id": None,
+                "content": "This is message 1",
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {},
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # metrics call
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
+        call_command('fix_subscription_lifecycle', '--action', 'fast_forward',
+                     '--end_date', '20170101',
+                     stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "2 subscriptions behind schedule.\n"
+            "2 subscriptions fast forwarded to end date.\n"
+            "Message sent to 0 subscriptions.")
+        updated_sub = Subscription.objects.get(pk=sub2.id)
+        self.assertEqual(updated_sub.next_sequence_number, 3)
