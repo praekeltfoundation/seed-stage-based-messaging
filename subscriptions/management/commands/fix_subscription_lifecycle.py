@@ -52,9 +52,8 @@ class Command(BaseCommand):
                                       sub.next_sequence_number))
 
                 if action == 'fast_forward':
-                    updates = Subscription.fast_forward_lifecycle(sub,
-                                                                  end_date)
-                    forwards += len(updates) - 1
+                    Subscription.fast_forward_lifecycle(sub, end_date)
+                    forwards += 1
                 elif action == 'send':
                     send_next_message.apply_async(args=[str(sub.id)])
                     sends += 1
