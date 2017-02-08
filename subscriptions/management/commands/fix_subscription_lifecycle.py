@@ -7,12 +7,12 @@ from subscriptions.tasks import send_next_message
 
 
 class Command(BaseCommand):
-    help = ("Fast forward subscriptions by one message if it is behind "
-            "schedule or fast forward to end date. This is used when the "
-            "messages sending failed to get the subscription up to date. Leave"
-            " end_date blank for current date. Include `--action fast_forward`"
-            " to fast forward them to the end date or `--action send` to send "
-            "messages")
+    help = ("This command is used when the subscription has fallen behind "
+            "schedule. Leave the action argument blank to see how many "
+            "subscriptions are behind. Running the command with `--action "
+            "send` will send a message to each subscription that is behind. "
+            "Running the command with `--action fast_forward` will fast "
+            "forward the subscriptions that are behind to the end_date.")
 
     def add_arguments(self, parser):
         parser.add_argument(
