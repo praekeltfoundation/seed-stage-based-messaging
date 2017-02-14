@@ -247,6 +247,13 @@ METRICS_SCHEDULED = [
     'subscriptions.send.estimate.4.last',
     'subscriptions.send.estimate.5.last',
     'subscriptions.send.estimate.6.last',
+    'subscriptions.send_next_message.connection_error.sum',
+    'subscriptions.send_next_message.http_error.400.sum',
+    'subscriptions.send_next_message.http_error.401.sum',
+    'subscriptions.send_next_message.http_error.403.sum',
+    'subscriptions.send_next_message.http_error.404.sum',
+    'subscriptions.send_next_message.http_error.500.sum',
+    'subscriptions.send_next_message.timeout.sum',
 ]
 METRICS_SCHEDULED_TASKS = [
     'fire_active_last',
