@@ -1,5 +1,6 @@
 import responses
 import json
+from uuid import uuid4
 from requests.exceptions import HTTPError
 from datetime import timedelta, datetime
 
@@ -20,6 +21,7 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.db.models.signals import post_save
 from django.conf import settings
+from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -27,8 +29,8 @@ from rest_framework.authtoken.models import Token
 from requests_testadapter import TestAdapter, TestSession
 from go_http.metrics import MetricsApiClient
 
-from .models import (Subscription, fire_sub_action_if_new,
-                     disable_schedule_if_complete,
+from .models import (Subscription, SubscriptionSendFailure,
+                     fire_sub_action_if_new, disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
                      fire_metric_per_message_set, fire_metric_per_lang,
                      fire_metric_per_message_format)
@@ -1362,6 +1364,160 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
         self.assertEqual(len(responses.calls), 1)
+
+        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+
+    @responses.activate
+    def test_retry_send_message_task_to_mother_text(self):
+        post_save.connect(fire_sub_action_if_new, sender=Subscription)
+        # mock schedule sending
+        responses.add(
+            responses.POST,
+            "http://seed-scheduler/api/v1/schedule/",
+            json={
+                "id": "1234"
+            },
+            status=201, content_type='application/json'
+        )
+        # Setup
+        existing = self.make_subscription()
+
+        # Precheck
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "vumi_message_id": None,
+                "content": "This is message 1",
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {},
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json; charset=utf-8'
+        )
+
+        # make messages
+        message_data_eng_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data_eng_1)
+        message_data_eng_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "eng_ZA",
+            "text_content": "This is message 2",
+        }
+        Message.objects.create(**message_data_eng_2)
+        message_data_eng_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "eng_ZA",
+            "text_content": "This is message 3",
+        }
+        Message.objects.create(**message_data_eng_3)
+        message_data_zul_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 1",
+        }
+        Message.objects.create(**message_data_zul_1)
+        message_data_zul_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 2",
+        }
+        Message.objects.create(**message_data_zul_2)
+        message_data_zul_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "zu_ZA",
+            "text_content": "Ke msg 3",
+        }
+        Message.objects.create(**message_data_zul_3)
+
+        # Execute
+        SubscriptionSendFailure.objects.create(
+            subscription=existing,
+            task_id=uuid4(),
+            initiated_at=timezone.now(),
+            reason='Error')
+        # Requeue
+        tasks.requeue_failed_tasks()
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.messageset.id, self.messageset.id)
+        self.assertEqual(d.next_sequence_number, 2)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.process_status, 0)
+        subs_all = Subscription.objects.all()
+        self.assertEqual(subs_all.count(), 1)
+        scheds_all = Schedule.objects.all()
+        self.assertEqual(scheds_all.count(), 1)
+        self.assertEqual(len(responses.calls), 5)
+
+        # Check the request body of metric call
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.messageset_one.sum": 1.0
+        })
+
+        metric_call = responses.calls[4]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.text.sum": 1.0
+        })
+
+        # Check the message_count / set_max count
+        message_count = existing.messageset.messages.filter(
+            lang=existing.lang).count()
+        self.assertEqual(message_count, 3)
 
         post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
