@@ -4,6 +4,7 @@ import requests
 from django.conf import settings
 from contentstore.models import MessageSet
 from subscriptions.models import Subscription
+from requests.adapters import HTTPAdapter
 
 
 NORMALISE_METRIC_RE = re.compile(r'\W+')
@@ -16,7 +17,9 @@ def get_identity(identity_uuid):
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
     }
-    r = requests.get(
+    session = requests.Session()
+    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
+    r = session.get(
         url,
         headers=headers,
         timeout=settings.DEFAULT_REQUEST_TIMEOUT

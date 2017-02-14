@@ -16,6 +16,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.utils.timezone import now
 from go_http.metrics import MetricsApiClient
 from requests import exceptions as requests_exceptions
+from requests.adapters import HTTPAdapter
 
 from .models import Subscription, SubscriptionSendFailure
 from seed_stage_based_messaging import utils
@@ -225,8 +226,10 @@ class SendNextMessage(Task):
                         message.binary_content.content.url)
 
         l.info("Sending message to Message Sender")
+        session = requests.Session()
+        session.mount(settings.MESSAGE_SENDER_URL, HTTPAdapter(max_retries=5))
         try:
-            result = requests.post(
+            result = session.post(
                 url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
                 data=json.dumps(payload),
                 headers={
