@@ -32,12 +32,17 @@ class Command(BaseCommand):
         parser.add_argument(
             "--verbose", dest="verbose", default=False,
             help=("Print out some details on the relevant subscriptions."))
+        parser.add_argument(
+            "--message-set", dest="message_set", default=None,
+            help=("Only apply the action to the subscriptions that are for "
+                  "the specified message set, defaults to all message sets."))
 
     def handle(self, *args, **options):
         action = options['action']
         verbose = options['verbose']
         end_date = options['end_date']
         end_date = end_date.replace(tzinfo=timezone.utc)
+        message_set = options['message_set']
 
         behind = 0
         forwards = 0
@@ -45,6 +50,8 @@ class Command(BaseCommand):
 
         subscriptions = Subscription.objects.filter(active=True,
                                                     process_status=0)
+        if message_set is not None:
+            subscriptions.filter(messageset=message_set)
 
         for sub in subscriptions:
             number, complete = sub.get_expected_next_sequence_number(end_date)
