@@ -44,7 +44,9 @@ def get_identity_address(identity_uuid, use_communicate_through=False):
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
     }
-    result = requests.get(url, params=params, headers=headers)
+    session = requests.Session()
+    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
+    result = session.get(url, params=params, headers=headers)
     result.raise_for_status()
     r = result.json()
     if len(r["results"]) > 0:
