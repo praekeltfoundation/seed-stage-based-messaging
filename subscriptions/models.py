@@ -297,3 +297,14 @@ def get_or_incr_cache(key, func):
         cache.incr(key)
         value += 1
     return value
+
+
+@python_2_unicode_compatible
+class SubscriptionSendFailure(models.Model):
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
+    task_id = models.UUIDField()
+    initiated_at = models.DateTimeField()
+    reason = models.TextField()
+
+    def __str__(self):  # __unicode__ on Python 2
+        return str(self.id)

@@ -195,6 +195,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.schedule_disable': {
         'queue': 'mediumpriority',
     },
+    'subscriptions.tasks.requeue_failed_tasks': {
+        'queue': 'mediumpriority',
+    },
     'subscriptions.tasks.fire_metric': {
         'queue': 'metrics',
     },
@@ -244,6 +247,13 @@ METRICS_SCHEDULED = [
     'subscriptions.send.estimate.4.last',
     'subscriptions.send.estimate.5.last',
     'subscriptions.send.estimate.6.last',
+    'subscriptions.send_next_message.connection_error.sum',
+    'subscriptions.send_next_message.http_error.400.sum',
+    'subscriptions.send_next_message.http_error.401.sum',
+    'subscriptions.send_next_message.http_error.403.sum',
+    'subscriptions.send_next_message.http_error.404.sum',
+    'subscriptions.send_next_message.http_error.500.sum',
+    'subscriptions.send_next_message.timeout.sum',
 ]
 METRICS_SCHEDULED_TASKS = [
     'fire_active_last',
@@ -277,3 +287,5 @@ MESSAGE_SENDER_TOKEN = os.environ.get("MESSAGE_SENDER_TOKEN", "REPLACEME")
 
 METRICS_URL = os.environ.get("METRICS_URL", None)
 METRICS_AUTH_TOKEN = os.environ.get("METRICS_AUTH_TOKEN", "REPLACEME")
+
+DEFAULT_REQUEST_TIMEOUT = float(os.environ.get("DEFAULT_REQUEST_TIMEOUT", 30))

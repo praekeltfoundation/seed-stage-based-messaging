@@ -1,8 +1,10 @@
+import random
 import re
 import requests
 from django.conf import settings
 from contentstore.models import MessageSet
 from subscriptions.models import Subscription
+from requests.adapters import HTTPAdapter
 
 
 NORMALISE_METRIC_RE = re.compile(r'\W+')
@@ -15,7 +17,13 @@ def get_identity(identity_uuid):
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
     }
-    r = requests.get(url, headers=headers)
+    session = requests.Session()
+    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
+    r = session.get(
+        url,
+        headers=headers,
+        timeout=settings.DEFAULT_REQUEST_TIMEOUT
+    )
     return r.json()
 
 
@@ -36,7 +44,16 @@ def get_identity_address(identity_uuid, use_communicate_through=False):
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
     }
-    r = requests.get(url, params=params, headers=headers).json()
+    session = requests.Session()
+    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
+    result = session.get(
+        url,
+        params=params,
+        headers=headers,
+        timeout=settings.DEFAULT_REQUEST_TIMEOUT
+    )
+    result.raise_for_status()
+    r = result.json()
     if len(r["results"]) > 0:
         return r["results"][0]["address"]
     else:
@@ -83,3 +100,14 @@ def get_available_metrics():
                 "message.{}.{}.sum".format(type_normal, messageset_name))
 
     return available_metrics
+
+
+def calculate_retry_delay(attempt, max_delay=300):
+    """Calculates an exponential backoff for retry attempts with a small
+    amount of jitter."""
+    delay = int(random.uniform(2, 4) ** attempt)
+    if delay > max_delay:
+        # After reaching the max delay, stop using expontential growth
+        # and keep the delay nearby the max.
+        delay = int(random.uniform(max_delay - 20, max_delay + 20))
+    return delay
