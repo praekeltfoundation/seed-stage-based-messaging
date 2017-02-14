@@ -233,7 +233,8 @@ class SendNextMessage(Task):
                     'Content-Type': 'application/json',
                     'Authorization': 'Token %s' % (
                         settings.MESSAGE_SENDER_TOKEN,)
-                }
+                },
+                timeout=settings.DEFAULT_REQUEST_TIMEOUT
             )
             result.raise_for_status()
             result = result.json()

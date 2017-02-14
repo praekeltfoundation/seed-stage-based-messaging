@@ -16,7 +16,11 @@ def get_identity(identity_uuid):
         'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
         'Content-Type': 'application/json'
     }
-    r = requests.get(url, headers=headers)
+    r = requests.get(
+        url,
+        headers=headers,
+        timeout=settings.DEFAULT_REQUEST_TIMEOUT
+    )
     return r.json()
 
 
