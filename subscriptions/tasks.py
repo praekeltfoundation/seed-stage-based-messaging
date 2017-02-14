@@ -675,3 +675,25 @@ class FireWeekEstimateLast(Task):
 
 
 fire_week_estimate_last = FireWeekEstimateLast()
+
+
+class RequeueFailedTasks(Task):
+
+    """
+    Task to requeue failed schedules.
+    """
+    name = "subscriptions.tasks.requeue_failed_tasks"
+
+    def run(self, **kwargs):
+        l = self.get_logger(**kwargs)
+        failures = SubscriptionSendFailure.objects.all()
+        l.info("Attempting to requeue <%s> failed Subscription sends" %
+               failures.count())
+        for failure in failures:
+            subscription_id = str(failure.subscription_id)
+            # Cleanup the failure before requeueing it.
+            failure.delete()
+            send_next_message.delay(subscription_id)
+
+
+requeue_failed_tasks = RequeueFailedTasks()
