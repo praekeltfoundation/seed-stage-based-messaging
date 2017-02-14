@@ -1,6 +1,7 @@
 from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+import json
 
 from subscriptions.models import Subscription
 from subscriptions.tasks import send_next_message
@@ -12,7 +13,9 @@ class Command(BaseCommand):
             "subscriptions are behind. Running the command with `--action "
             "send` will send a message to each subscription that is behind. "
             "Running the command with `--action fast_forward` will fast "
-            "forward the subscriptions that are behind to the end_date.")
+            "forward the subscriptions that are behind to the end_date. "
+            "Running the command with `--action diff` will print out the "
+            "differences that running the command would make.")
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -24,7 +27,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--action", dest="action", default=False,
             help=("Set to `send` to send next message or `fast_forward` to "
-                  "fast forward the subscription."))
+                  "fast forward the subscription or `diff` to print out the "
+                  "changes that the command would make."))
         parser.add_argument(
             "--verbose", dest="verbose", default=False,
             help=("Print out some details on the relevant subscriptions."))
@@ -57,6 +61,21 @@ class Command(BaseCommand):
                 elif action == 'send':
                     send_next_message.apply_async(args=[str(sub.id)])
                     sends += 1
+                elif action == 'diff':
+                    start_ms = sub.messageset.pk
+                    start_nseq = sub.next_sequence_number
+                    subs = Subscription.fast_forward_lifecycle(
+                        sub, end_date, save=False)
+                    end_sub = subs[-1]
+                    self.stdout.write(json.dumps({
+                        "language": sub.lang,
+                        "identity": sub.identity,
+                        "current_messageset_id": start_ms,
+                        "current_sequence_number": start_nseq,
+                        "expected_messageset_id": end_sub.messageset.pk,
+                        "expected_sequence_number":
+                            end_sub.next_sequence_number,
+                    }))
 
                 behind += 1
 

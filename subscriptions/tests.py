@@ -2745,3 +2745,40 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             "Message sent to 0 subscriptions.")
         updated_sub = Subscription.objects.get(pk=sub2.id)
         self.assertEqual(updated_sub.next_sequence_number, 3)
+
+    def test_diff_action(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+        sub1 = self.make_subscription()
+        sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.save()
+
+        sub2 = self.make_subscription()
+        sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub2.active = False
+        sub2.save()
+
+        self.assertEqual(Subscription.objects.count(), 3)
+
+        call_command(
+            'fix_subscription_lifecycle', '--action', 'diff',
+            '--end_date', '20170101', stdout=stdout, stderr=stderr)
+
+        self.assertEqual(stderr.getvalue(), '')
+        [diff, _, _, _] = stdout.getvalue().strip().split('\n')
+        diff = json.loads(diff)
+        self.assertEqual(
+            diff, {
+                'identity': "8646b7bc-b511-4965-a90b-e1145e398703",
+                'language': "eng_ZA",
+                'current_messageset_id': self.messageset.pk,
+                'current_sequence_number': 1,
+                'expected_messageset_id': self.messageset_second.pk,
+                'expected_sequence_number': 0,
+            })
+
+        # Ensure that we haven't changed any of the subscriptions
+        self.assertEqual(Subscription.objects.count(), 3)
+        for sub in Subscription.objects.all():
+            self.assertEqual(sub.next_sequence_number, 1)
