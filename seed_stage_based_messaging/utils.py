@@ -46,7 +46,12 @@ def get_identity_address(identity_uuid, use_communicate_through=False):
     }
     session = requests.Session()
     session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
-    result = session.get(url, params=params, headers=headers)
+    result = session.get(
+        url,
+        params=params,
+        headers=headers,
+        timeout=settings.DEFAULT_REQUEST_TIMEOUT
+    )
     result.raise_for_status()
     r = result.json()
     if len(r["results"]) > 0:
