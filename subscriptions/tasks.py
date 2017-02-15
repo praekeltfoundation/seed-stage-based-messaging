@@ -689,10 +689,10 @@ class RequeueFailedTasks(Task):
 
     def run(self, **kwargs):
         l = self.get_logger(**kwargs)
-        failures = SubscriptionSendFailure.objects.all()
+        failures = SubscriptionSendFailure.objects
         l.info("Attempting to requeue <%s> failed Subscription sends" %
-               failures.count())
-        for failure in failures:
+               failures.all().count())
+        for failure in failures.iterator():
             subscription_id = str(failure.subscription_id)
             # Cleanup the failure before requeueing it.
             failure.delete()
