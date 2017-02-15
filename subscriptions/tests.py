@@ -2970,3 +2970,32 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             '0 subscriptions fast forwarded to end date.',
             'Message sent to 0 subscriptions.',
         ])
+
+
+class TestFailedTaskAPI(AuthenticatedAPITestCase):
+
+    @responses.activate
+    def test_failed_tasks_requeue(self):
+        # mock schedule sending
+        responses.add(
+            responses.POST,
+            "http://seed-scheduler/api/v1/schedule/",
+            json={
+                "id": "1234"
+            },
+            status=201, content_type='application/json'
+        )
+        # Setup
+        existing = self.make_subscription()
+
+        SubscriptionSendFailure.objects.create(
+            subscription=existing,
+            task_id=uuid4(),
+            initiated_at=timezone.now(),
+            reason='Error')
+
+        response = self.client.post('/api/v1/failed-tasks/',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["requeued_failed_tasks"], True)
+        self.assertEqual(SubscriptionSendFailure.objects.all().count(), 0)

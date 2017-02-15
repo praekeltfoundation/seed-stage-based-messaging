@@ -1,4 +1,4 @@
-from rest_framework import filters, viewsets, status
+from rest_framework import filters, viewsets, status, mixins
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -6,9 +6,10 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 import django_filters
 
-from .models import Subscription
-from .serializers import SubscriptionSerializer, CreateUserSerializer
-from .tasks import send_next_message, scheduled_metrics
+from .models import Subscription, SubscriptionSendFailure
+from .serializers import (SubscriptionSerializer, CreateUserSerializer,
+                          SubscriptionSendFailureSerializer)
+from .tasks import send_next_message, scheduled_metrics, requeue_failed_tasks
 from seed_stage_based_messaging.utils import get_available_metrics
 
 
@@ -151,4 +152,18 @@ class HealthcheckView(APIView):
                 }
             }
         }
+        return Response(resp, status=status)
+
+
+class FailedTaskViewSet(mixins.ListModelMixin,
+                        mixins.RetrieveModelMixin,
+                        viewsets.GenericViewSet):
+    permission_classes = (IsAuthenticated,)
+    queryset = SubscriptionSendFailure.objects.all()
+    serializer_class = SubscriptionSendFailureSerializer
+
+    def create(self, request):
+        status = 201
+        resp = {'requeued_failed_tasks': True}
+        requeue_failed_tasks.delay()
         return Response(resp, status=status)
