@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Subscription
+from .models import Subscription, SubscriptionSendFailure
 
 
 class CreateUserSerializer(serializers.Serializer):
@@ -17,3 +17,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'next_sequence_number', 'lang', 'active', 'completed', 'schedule',
             'process_status', 'metadata', 'created_at', 'updated_at',
             'initial_sequence_number')
+
+
+class SubscriptionSendFailureSerializer(
+        serializers.HyperlinkedModelSerializer):
+
+    class Meta:
+        model = SubscriptionSendFailure
+        fields = ('url', 'id', 'subscription', 'task_id',
+                  'initiated_at', 'reason')

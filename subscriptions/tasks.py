@@ -15,8 +15,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.timezone import now
 from go_http.metrics import MetricsApiClient
+from requests import exceptions as requests_exceptions
+from requests.adapters import HTTPAdapter
 
-from .models import Subscription
+from .models import Subscription, SubscriptionSendFailure
 from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet, Schedule
 from seed_services_client import SchedulerApiClient
@@ -67,6 +69,8 @@ class SendNextMessage(Task):
     Task to load and contruct message and send them off
     """
     name = "subscriptions.tasks.send_next_message"
+    default_retry_delay = 5
+    max_retries = 5
 
     class FailedEventRequest(Exception):
 
@@ -119,6 +123,11 @@ class SendNextMessage(Task):
             logger.error(error, exc_info=True)
             return "Message sending aborted, missing message"
 
+        if self.request.retries > 0:
+            retry_delay = utils.calculate_retry_delay(self.request.retries)
+        else:
+            retry_delay = self.default_retry_delay
+
         # Start processing
         l.debug("setting process status to 1")
         subscription.process_status = 1  # in process
@@ -126,9 +135,32 @@ class SendNextMessage(Task):
         subscription.save()
 
         l.info("Loading Initial Recipient Identity")
-        to_addr = utils.get_identity_address(
-            subscription.identity,
-            use_communicate_through=True)
+        try:
+            to_addr = utils.get_identity_address(
+                subscription.identity,
+                use_communicate_through=True)
+        except requests_exceptions.ConnectionError as exc:
+            l.info('Connection Error to Identity Store')
+            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.HTTPError as exc:
+            # Recoverable HTTP errors: 500, 401
+            l.info('Identity Store Request failed due to status: %s' %
+                   exc.response.status_code)
+            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
+                           exc.response.status_code)
+            fire_metric.delay(metric_name, 1)
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.Timeout as exc:
+            l.info('Identity Store Request failed due to timeout')
+            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
         l.debug("to_addr determined - %s" % to_addr)
 
         if to_addr is None:
@@ -151,11 +183,13 @@ class SendNextMessage(Task):
             "delivered": "false",
             "metadata": {}
         }
+        prepend_next = None
         if subscription.messageset.content_type == "text":
             l.debug("Determining payload content")
             if subscription.metadata is not None and \
                "prepend_next_delivery" in subscription.metadata \
                and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                prepend_next = subscription.metadata["prepend_next_delivery"]
                 l.debug("Prepending next delivery")
                 payload["content"] = "%s\n%s" % (
                     subscription.metadata["prepend_next_delivery"],
@@ -176,6 +210,7 @@ class SendNextMessage(Task):
             if subscription.metadata is not None and \
                "prepend_next_delivery" in subscription.metadata \
                and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+                prepend_next = subscription.metadata["prepend_next_delivery"]
                 payload["metadata"]["voice_speech_url"] = [
                     subscription.metadata["prepend_next_delivery"],
                     make_absolute_url(
@@ -191,15 +226,52 @@ class SendNextMessage(Task):
                         message.binary_content.content.url)
 
         l.info("Sending message to Message Sender")
-        result = requests.post(
-            url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
-            data=json.dumps(payload),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': 'Token %s' % (
-                    settings.MESSAGE_SENDER_TOKEN,)
-            }
-        ).json()
+        session = requests.Session()
+        session.mount(settings.MESSAGE_SENDER_URL, HTTPAdapter(max_retries=5))
+        try:
+            result = session.post(
+                url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
+                data=json.dumps(payload),
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Token %s' % (
+                        settings.MESSAGE_SENDER_TOKEN,)
+                },
+                timeout=settings.DEFAULT_REQUEST_TIMEOUT
+            )
+            result.raise_for_status()
+            result = result.json()
+        except requests_exceptions.ConnectionError as exc:
+            l.info('Connection Error to Message Sender')
+            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.HTTPError as exc:
+            # Recoverable HTTP errors: 500, 401
+            l.info('Message Sender Request failed due to status: %s' %
+                   exc.response.status_code)
+            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
+                           exc.response.status_code)
+            fire_metric.delay(metric_name, 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.Timeout as exc:
+            l.info('Message Sender Request failed due to timeout')
+            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
 
         l.debug("setting process status back to 0")
         subscription.process_status = 0  # ready
@@ -228,6 +300,17 @@ class SendNextMessage(Task):
 
         l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
         return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        if self.request.retries == self.max_retries:
+            SubscriptionSendFailure.objects.create(
+                subscription_id=args[0],
+                initiated_at=self.request.eta,
+                reason=einfo.exception.message,
+                task_id=task_id
+            )
+        super(SendNextMessage, self).on_failure(exc, task_id, args,
+                                                kwargs, einfo)
 
 
 send_next_message = SendNextMessage()
@@ -595,3 +678,25 @@ class FireWeekEstimateLast(Task):
 
 
 fire_week_estimate_last = FireWeekEstimateLast()
+
+
+class RequeueFailedTasks(Task):
+
+    """
+    Task to requeue failed schedules.
+    """
+    name = "subscriptions.tasks.requeue_failed_tasks"
+
+    def run(self, **kwargs):
+        l = self.get_logger(**kwargs)
+        failures = SubscriptionSendFailure.objects
+        l.info("Attempting to requeue <%s> failed Subscription sends" %
+               failures.all().count())
+        for failure in failures.iterator():
+            subscription_id = str(failure.subscription_id)
+            # Cleanup the failure before requeueing it.
+            failure.delete()
+            send_next_message.delay(subscription_id)
+
+
+requeue_failed_tasks = RequeueFailedTasks()

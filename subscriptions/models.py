@@ -76,13 +76,14 @@ class Subscription(models.Model):
         return self.next_sequence_number < self.messageset.get_messageset_max(
             self.lang)
 
-    def mark_as_complete(self):
+    def mark_as_complete(self, save=True):
         self.completed = True
         self.active = False
         self.process_status = 2  # Completed
-        self.save()
+        if save:
+            self.save()
 
-    def fast_forward(self, end_date=None):
+    def fast_forward(self, end_date=None, save=True):
         """Moves a subscription forward to where it should be based on the
         configured MessageSet and schedule and the given end_date (defaults
         to utcnow if not specified).
@@ -92,15 +93,16 @@ class Subscription(models.Model):
         """
         number, complete = self.get_expected_next_sequence_number(end_date)
         if complete:
-            self.mark_as_complete()
+            self.mark_as_complete(save=save)
 
         self.next_sequence_number = number
-        self.save()
+        if save:
+            self.save()
 
         return complete
 
     @classmethod
-    def fast_forward_lifecycle(self, subscription, end_date=None):
+    def fast_forward_lifecycle(self, subscription, end_date=None, save=True):
         """Takes an existing Subscription object and fast forwards it through
         the entire lifecycle based on the given end_date. If no end_date is
         specified now will be used.
@@ -117,7 +119,7 @@ class Subscription(models.Model):
         done = False
         sub = subscription
         while not done:
-            completed = sub.fast_forward(end_date)
+            completed = sub.fast_forward(end_date, save=save)
             if completed:
                 if sub.messageset.next_set:
                     # If the sub.lang is None or empty there is a problem with
@@ -134,20 +136,21 @@ class Subscription(models.Model):
                     )
                     if run_dates:
                         last_date = run_dates.pop()
-                        newsub = Subscription.objects.create(
+                        newsub = Subscription(
                             identity=sub.identity,
                             lang=sub.lang,
                             messageset=sub.messageset.next_set,
                             schedule=sub.messageset.next_set.default_schedule
                         )
+                        if save:
+                            newsub.save()
                         # Because created_at uses auto_now we have to set the
                         # created date manually after creation. Add a minute to
                         # the expected last run date because in the normal flow
                         # new subscriptions are processed after the day's send
                         # has been completed.
                         newsub.created_at = last_date + timedelta(minutes=1)
-                        newsub.save()
-                        completed = newsub.fast_forward(end_date)
+                        completed = newsub.fast_forward(end_date, save=save)
                         subscriptions.append(newsub)
                         sub = newsub
                     else:
@@ -297,3 +300,14 @@ def get_or_incr_cache(key, func):
         cache.incr(key)
         value += 1
     return value
+
+
+@python_2_unicode_compatible
+class SubscriptionSendFailure(models.Model):
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
+    task_id = models.UUIDField()
+    initiated_at = models.DateTimeField()
+    reason = models.TextField()
+
+    def __str__(self):  # __unicode__ on Python 2
+        return str(self.id)
