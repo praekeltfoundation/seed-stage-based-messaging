@@ -2952,21 +2952,25 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.make_subscription()
         sub1 = self.make_subscription()
         sub1.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub1.messageset = self.messageset_second
         sub1.save()
 
         sub2 = self.make_subscription()
         sub2.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
-        sub2.messageset = self.messageset_second
         sub2.save()
+
+        sub3 = self.make_subscription()
+        sub3.created_at = datetime(2016, 1, 1, 0, 0, tzinfo=pytz.UTC)
+        sub3.save()
 
         call_command(
             'fix_subscription_lifecycle', '--end_date', '20170101',
-            '--message-set', str(self.messageset_second.pk),
+            '--message-set', str(self.messageset.pk),
             stdout=stdout, stderr=stderr)
         self.assertEqual(stderr.getvalue(), '')
         output = stdout.getvalue().strip().split('\n')
         self.assertEqual(output, [
-            '1 subscription behind schedule.',
+            '2 subscriptions behind schedule.',
             '0 subscriptions fast forwarded to end date.',
             'Message sent to 0 subscriptions.',
         ])
