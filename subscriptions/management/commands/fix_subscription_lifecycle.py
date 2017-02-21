@@ -33,7 +33,7 @@ class Command(BaseCommand):
             "--verbose", dest="verbose", default=False,
             help=("Print out some details on the relevant subscriptions."))
         parser.add_argument(
-            "--message-set", dest="message_set", default=None,
+            "--message-set", dest="message_set", default=None, type=int,
             help=("Only apply the action to the subscriptions that are for "
                   "the specified message set, defaults to all message sets."))
 
@@ -51,7 +51,7 @@ class Command(BaseCommand):
         subscriptions = Subscription.objects.filter(active=True,
                                                     process_status=0)
         if message_set is not None:
-            subscriptions.filter(messageset=message_set)
+            subscriptions = subscriptions.filter(messageset__pk=message_set)
 
         for sub in subscriptions:
             number, complete = sub.get_expected_next_sequence_number(end_date)

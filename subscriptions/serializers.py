@@ -21,8 +21,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class SubscriptionSendFailureSerializer(
         serializers.HyperlinkedModelSerializer):
+    subscription_id = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = SubscriptionSendFailure
-        fields = ('url', 'id', 'subscription', 'task_id',
+        fields = ('url', 'id', 'subscription', 'subscription_id', 'task_id',
                   'initiated_at', 'reason')
