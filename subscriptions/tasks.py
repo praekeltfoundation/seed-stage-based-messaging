@@ -278,9 +278,9 @@ class SendNextMessage(Task):
         l.debug("saving subscription")
         subscription.save()
 
-        l.debug("firing post_send_process task")
-        post_send_process.apply_async(args=[subscription_id])
-        l.debug("fired post_send_process task")
+        l.debug("starting post_send_process task")
+        post_send_process(subscription_id)
+        l.debug("finished post_send_process task")
 
         l.debug("Firing SMS/OBD calls sent per message set metric")
         send_type = utils.normalise_metric_name(
