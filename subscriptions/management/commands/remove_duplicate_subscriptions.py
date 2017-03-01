@@ -80,6 +80,8 @@ class Command(BaseCommand):
             subscriptions = Subscription.objects.filter(**{
                 field: getattr(unique, field) for field in fields}
             )
+            subscriptions = subscriptions.filter(active=True, completed=False)
+            subscriptions = subscriptions.order_by('created_at')
             if len(subscriptions) == 1:
                 continue
             dates = [subscriptions[0].created_at]
