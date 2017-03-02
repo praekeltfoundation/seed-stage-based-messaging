@@ -82,7 +82,7 @@ class Command(BaseCommand):
             )
             subscriptions = subscriptions.filter(active=True, completed=False)
             subscriptions = subscriptions.order_by('created_at')
-            if len(subscriptions) == 1:
+            if len(subscriptions) <= 1:
                 continue
             dates = [subscriptions[0].created_at]
             for sub in subscriptions[1:]:
