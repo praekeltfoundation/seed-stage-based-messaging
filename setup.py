@@ -52,6 +52,8 @@ setup(
         'drfdocs==0.0.11',
         'seed-services-client>=0.9.0',
         'croniter==0.3.13',
+        'django-cache-url==1.3.1',
+        'django-redis==4.7.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

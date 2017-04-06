@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import djcelery
 import dj_database_url
+import django_cache_url
 import mimetypes
 
 from kombu import Exchange, Queue
@@ -223,11 +224,9 @@ CELERY_ROUTES = {
 
 CELERYD_MAX_TASKS_PER_CHILD = 50
 
+CACHE_URL = os.environ.get('STAGE_BASED_MESSAGING_CACHE', 'locmem://')
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'TIMEOUT': None,
-    },
+    'default': django_cache_url.parse(CACHE_URL),
 }
 
 METRICS_REALTIME = [
