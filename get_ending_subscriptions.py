@@ -54,7 +54,8 @@ def compile_temp_csv(subscriptions, hub_client, identity_client):
     print("Retrieving and writing data to terminating_subscriptions.csv")
     with open("terminating_subscriptions.csv", 'w+b') as csvfile:
         fieldnames = [
-            'Subscription', 'MSISDN', 'Facility code', 'EDD', 'Language']
+            'Subscription', 'MSISDN', 'Facility code', 'EDD', 'ID Number',
+            'Language']
         csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames,
                                    restval="Unavailable")
         csvwriter.writeheader()
@@ -94,6 +95,8 @@ def get_registration_data(registration):
         data['EDD'] = registration['data']['edd']
     if "language" in registration['data']:
         data['Language'] = registration['data']['language']
+    if "sa_id_no" in registration['data']:
+        data['ID Number'] = registration['data']['sa_id_no']
     return data
 
 
