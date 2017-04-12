@@ -842,6 +842,19 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         existing.next_sequence_number = 2  # fast forward to end
         existing.save()
 
+        # add a next message set
+        messageset_data = {
+            'short_name': 'messageset_two_text',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        next_message_set = MessageSet.objects.create(**messageset_data)
+        messageset = existing.messageset
+        messageset.next_set = next_message_set
+        messageset.save()
+
         # mock identity address lookup
         responses.add(
             responses.GET,
@@ -928,6 +941,15 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
         self.assertEqual(len(responses.calls), 5)
+
+        # make sure a subscription is created on the next message set
+        subs_active = Subscription.objects.filter(
+            identity=existing.identity, active=True)
+        self.assertEqual(subs_active.count(), 1)
+        self.assertEqual(subs_active[0].messageset, d.messageset.next_set)
+        self.assertEqual(subs_active[0].next_sequence_number, 1)
+        self.assertEqual(subs_active[0].initial_sequence_number, 1)
+        self.assertEqual(subs_active[0].completed, False)
 
         # Check the request body of metric call
         metric_call = responses.calls[3]
