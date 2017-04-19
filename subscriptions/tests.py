@@ -599,6 +599,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         )
         # Setup
         existing = self.make_subscription()
+        self.messageset.channel = 'CHANNEL1'
+        self.messageset.save()
 
         # Precheck
         subs_all = Subscription.objects.all()
@@ -728,6 +730,11 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
+
+        # check that channel is sent to message sender
+        sender_call = responses.calls[2]
+        self.assertEqual(json.loads(sender_call.request.body).get("channel"),
+                         "CHANNEL1")
 
         # Check the message_count / set_max count
         message_count = existing.messageset.messages.filter(

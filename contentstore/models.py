@@ -78,6 +78,8 @@ class MessageSet(models.Model):
 
     short_name = models.CharField(_('Short name'), max_length=100, unique=True)
     notes = models.TextField(_('Notes'), null=True, blank=True)
+    channel = models.CharField(_('Channel'), max_length=64, null=True,
+                               blank=True)
     next_set = models.ForeignKey('self',
                                  null=True,
                                  blank=True)

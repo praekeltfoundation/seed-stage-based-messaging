@@ -181,7 +181,8 @@ class SendNextMessage(Task):
         payload = {
             "to_addr": to_addr,
             "delivered": "false",
-            "metadata": {}
+            "metadata": {},
+            "channel": subscription.messageset.channel
         }
         prepend_next = None
         if subscription.messageset.content_type == "text":
