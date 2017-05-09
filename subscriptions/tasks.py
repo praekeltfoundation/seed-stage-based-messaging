@@ -180,6 +180,7 @@ class SendNextMessage(Task):
         l.info("Preparing message payload with: %s" % message.id)  # noqa
         payload = {
             "to_addr": to_addr,
+            "to_identity": subscription.identity,
             "delivered": "false",
             "metadata": {}
         }
