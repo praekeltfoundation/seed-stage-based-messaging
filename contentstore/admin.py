@@ -34,7 +34,8 @@ class MessageSetAdmin(admin.ModelAdmin):
             if form.is_valid():
                 new_short_name = form.cleaned_data['short_name']
 
-                # NOTE: setting the PK to `None` results in a new record being created
+                # NOTE: setting the PK to `None` results in a new record being
+                # #     created
                 clone = queryset.first()
                 clone.pk = None
                 clone.short_name = new_short_name
