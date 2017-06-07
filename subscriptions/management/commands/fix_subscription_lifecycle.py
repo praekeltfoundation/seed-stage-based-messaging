@@ -53,7 +53,7 @@ class Command(BaseCommand):
         if message_set is not None:
             subscriptions = subscriptions.filter(messageset__pk=message_set)
 
-        for sub in subscriptions:
+        for sub in subscriptions.iterator():
             number, complete = sub.get_expected_next_sequence_number(end_date)
 
             if number > sub.next_sequence_number:

@@ -180,9 +180,14 @@ class SendNextMessage(Task):
         l.info("Preparing message payload with: %s" % message.id)  # noqa
         payload = {
             "to_addr": to_addr,
+            "to_identity": subscription.identity,
             "delivered": "false",
             "metadata": {}
         }
+
+        if subscription.messageset.channel:
+            payload["channel"] = subscription.messageset.channel
+
         prepend_next = None
         if subscription.messageset.content_type == "text":
             l.debug("Determining payload content")
@@ -278,9 +283,9 @@ class SendNextMessage(Task):
         l.debug("saving subscription")
         subscription.save()
 
-        l.debug("firing post_send_process task")
-        post_send_process.apply_async(args=[subscription_id])
-        l.debug("fired post_send_process task")
+        l.debug("starting post_send_process task")
+        post_send_process(subscription_id)
+        l.debug("finished post_send_process task")
 
         l.debug("Firing SMS/OBD calls sent per message set metric")
         send_type = utils.normalise_metric_name(

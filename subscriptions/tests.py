@@ -599,6 +599,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         )
         # Setup
         existing = self.make_subscription()
+        self.messageset.channel = 'CHANNEL1'
+        self.messageset.save()
 
         # Precheck
         subs_all = Subscription.objects.all()
@@ -629,6 +631,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -729,6 +732,11 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             "message.text.sum": 1.0
         })
 
+        # check that channel is sent to message sender
+        sender_call = responses.calls[2]
+        self.assertEqual(json.loads(sender_call.request.body).get("channel"),
+                         "CHANNEL1")
+
         # Check the message_count / set_max count
         message_count = existing.messageset.messages.filter(
             lang=existing.lang).count()
@@ -764,6 +772,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "Welcome to your messages!\nThis is message 1",
                 "delivered": False,
@@ -842,6 +851,19 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         existing.next_sequence_number = 2  # fast forward to end
         existing.save()
 
+        # add a next message set
+        messageset_data = {
+            'short_name': 'messageset_two_text',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        next_message_set = MessageSet.objects.create(**messageset_data)
+        messageset = existing.messageset
+        messageset.next_set = next_message_set
+        messageset.save()
+
         # mock identity address lookup
         responses.add(
             responses.GET,
@@ -865,6 +887,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 2",
                 "delivered": False,
@@ -928,6 +951,15 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
         self.assertEqual(len(responses.calls), 5)
+
+        # make sure a subscription is created on the next message set
+        subs_active = Subscription.objects.filter(
+            identity=existing.identity, active=True)
+        self.assertEqual(subs_active.count(), 1)
+        self.assertEqual(subs_active[0].messageset, d.messageset.next_set)
+        self.assertEqual(subs_active[0].next_sequence_number, 1)
+        self.assertEqual(subs_active[0].initial_sequence_number, 1)
+        self.assertEqual(subs_active[0].completed, False)
 
         # Check the request body of metric call
         metric_call = responses.calls[3]
@@ -1048,6 +1080,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059993333",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -1143,6 +1176,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": None,
                 "delivered": False,
@@ -1249,6 +1283,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": None,
                 "delivered": False,
@@ -1411,6 +1446,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -2598,6 +2634,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -2689,6 +2726,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -2783,6 +2821,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
@@ -2876,6 +2915,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
                 "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
                 "version": 1,
                 "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
                 "vumi_message_id": None,
                 "content": "This is message 1",
                 "delivered": False,
