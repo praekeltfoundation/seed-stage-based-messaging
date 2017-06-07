@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+    <form action="" method="post">
+
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clone_messageset">
+        <input type="hidden" name="do_action" value="yes">
+        <input type="hidden" name="_selected_action" value="{{ object.pk }}">
+
+        <div>
+            {{form.short_name.label}}
+            {{ form.short_name }}
+            <input type="submit" class="default" style="float: none" value="Clone">
+            {{ form.short_name.errors }}
+        </div>
+
+    </form>
+{% endblock %}

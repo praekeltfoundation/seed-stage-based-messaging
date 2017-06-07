@@ -20,7 +20,7 @@ class APITestCase(TestCase):
         self.client = APIClient()
 
 
-class AuthenticatedAPITestCase(APITestCase):
+class MessageSetTestMixin():
 
     def make_schedule(self):
         # Create hourly schedule
@@ -40,6 +40,9 @@ class AuthenticatedAPITestCase(APITestCase):
             'default_schedule': schedule
         }
         return MessageSet.objects.create(**messageset_data)
+
+
+class AuthenticatedAPITestCase(MessageSetTestMixin, APITestCase):
 
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
@@ -277,3 +280,47 @@ class TestSchedule(TestCase):
         schedule = Schedule(day_of_month='21', hour='8', minute='0')
         runs = schedule.get_run_times_between(start, end)
         self.assertEqual(len(runs), 1)
+
+
+class TestAdmin(MessageSetTestMixin, TestCase):
+
+    def setUp(self):
+        username = 'testuser'
+        password = 'testpass'
+        User.objects.create_superuser(
+            username, 'testuser@example.com', password)
+        self.client.login(username=username, password=password)
+        self.change_url = reverse('admin:contentstore_messageset_changelist')
+
+    def test_clone_action_validation(self):
+        message_set = self.make_messageset(short_name='messageset')
+        response = self.client.post(self.change_url, {
+            'action': 'clone_messageset',
+            'do_action': 'yes',
+            '_selected_action': message_set.pk,
+            'short_name': message_set.short_name,
+        })
+        self.assertContains(
+            response, 'A message set already exists with this name.')
+
+    def test_clone_action(self):
+        self.assertEqual(MessageSet.objects.count(), 0)
+        message_set = self.make_messageset(short_name='messageset')
+        self.assertEqual(MessageSet.objects.count(), 1)
+        for i in range(10):
+            message_set.messages.create(
+                sequence_number=i, lang='eng_UK',
+                text_content='message %s' % (i,))
+
+        response = self.client.post(self.change_url, {
+            'action': 'clone_messageset',
+            'do_action': 'yes',
+            '_selected_action': message_set.pk,
+            'short_name': 'new short name!',
+        })
+        self.assertRedirects(response, self.change_url)
+        self.assertEqual(MessageSet.objects.count(), 2)
+        clone = MessageSet.objects.all().order_by('-pk').first()
+        self.assertEqual(clone.short_name, 'new short name!')
+        self.assertEqual(clone.messages.count(), message_set.messages.count())
+        self.assertNotEqual(clone.pk, message_set.pk)
