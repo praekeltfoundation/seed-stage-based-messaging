@@ -2,6 +2,7 @@ include README.rst LICENCE docs/Makefile manage.py
 include requirements*.txt
 recursive-include docs *.rst
 recursive-include docs *.py
+recursive-include */templates *
 recursive-include templates *.html
 prune docs/_build
 
