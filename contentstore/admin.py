@@ -51,11 +51,13 @@ class MessageSetAdmin(admin.ModelAdmin):
         else:
             form = CloneMessageSetForm()
 
-        return render(request, 'contentstore/messageset/clone_messageset.html', {
-            'title': u'Clone message set: %s' % (original,),
-            'object': original,
-            'form': form,
-        })
+        return render(
+            request, 'contentstore/messageset/clone_messageset.html',
+            {
+                'title': u'Clone message set: %s' % (original,),
+                'object': original,
+                'form': form,
+            })
     clone_messageset.short_description = 'Clone selected message set'
 
 
