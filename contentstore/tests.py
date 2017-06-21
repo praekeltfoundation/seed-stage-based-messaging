@@ -248,7 +248,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         self.make_message(messageset2, 'zul', seq=2)
 
         # Execute
-        response = self.client.get('/api/v1/messageset_languages',
+        response = self.client.get('/api/v1/messageset_languages/',
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
