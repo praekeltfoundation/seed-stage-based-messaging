@@ -226,6 +226,36 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         })
         self.assertEqual(Message.objects.all().count(), 1)
 
+    def make_message(self, messageset, lang, seq=1):
+        Message.objects.create(
+            messageset=messageset, sequence_number=seq, lang=lang,
+            text_content="Foo")
+
+    def test_read_messageset_languages(self):
+        # Setup
+        messageset = self.make_messageset()
+        self.make_message(messageset, 'eng')
+        self.make_message(messageset, 'eng', seq=2)
+        self.make_message(messageset, 'afr')
+        messageset2 = self.make_messageset(short_name='messageset_two')
+        self.make_message(messageset2, 'eng')
+        self.make_message(messageset2, 'afr')
+        self.make_message(messageset2, 'zul')
+        self.make_message(messageset2, 'zul', seq=2)
+
+        # Execute
+        response = self.client.get('/api/v1/messageset_languages',
+                                   content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            json.loads(response.content),
+            {
+                str(messageset.id): ["afr", "eng"],
+                str(messageset2.id): ["afr", "eng", "zul"]
+            }
+        )
+
 
 class TestSchedule(TestCase):
 
