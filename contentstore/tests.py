@@ -232,6 +232,10 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
             text_content="Foo")
 
     def test_read_messageset_languages(self):
+        """
+        A GET Request should return all the messagesets with a unique list of
+        languages available on each
+        """
         # Setup
         messageset = self.make_messageset()
         self.make_message(messageset, 'eng')
@@ -249,7 +253,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            json.loads(response.content),
+            json.loads(response.content.decode("utf-8")),
             {
                 str(messageset.id): ["afr", "eng"],
                 str(messageset2.id): ["afr", "eng", "zul"]
