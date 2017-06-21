@@ -20,14 +20,11 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.db.models.signals import post_save
-from django.conf import settings
 from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
-from requests_testadapter import TestAdapter, TestSession
-from go_http.metrics import MetricsApiClient
 
 from .models import (Subscription, SubscriptionSendFailure,
                      fire_sub_action_if_new, disable_schedule_if_complete,
@@ -40,36 +37,11 @@ from .tasks import (schedule_create, schedule_disable, fire_metric,
 from . import tasks
 
 
-class RecordingAdapter(TestAdapter):
-
-    """ Record the request that was handled by the adapter.
-    """
-    request = None
-
-    def send(self, request, *args, **kw):
-        self.request = request
-        return super(RecordingAdapter, self).send(request, *args, **kw)
-
-
-class ListRecordingAdapter(TestAdapter):
-
-    """ Record all the request that were handled by the adapter.
-    """
-    def __init__(self, *args, **kw):
-        self.requests = []
-        return super(ListRecordingAdapter, self).__init__(*args, **kw)
-
-    def send(self, request, *args, **kw):
-        self.requests.append(request)
-        return super(ListRecordingAdapter, self).send(request, *args, **kw)
-
-
 class APITestCase(TestCase):
 
     def setUp(self):
         self.client = APIClient()
         self.adminclient = APIClient()
-        self.session = TestSession()
 
 
 class AuthenticatedAPITestCase(APITestCase):
@@ -165,18 +137,6 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def _replace_get_metric_client(self, session=None):
-        return MetricsApiClient(
-            auth_token=settings.METRICS_AUTH_TOKEN,
-            api_url=settings.METRICS_URL,
-            session=self.session)
-
-    def _restore_get_metric_client(session=None):
-        return MetricsApiClient(
-            auth_token=settings.METRICS_AUTH_TOKEN,
-            api_url=settings.METRICS_URL,
-            session=session)
-
     def _replace_post_save_hooks(self):
         def has_listeners():
             return post_save.has_listeners(Subscription)
@@ -210,11 +170,14 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(fire_metric_per_lang, sender=Subscription)
         post_save.connect(fire_metric_per_message_format, sender=Subscription)
 
+    def _add_metrics_response(self):
+        responses.add(
+            responses.POST, 'http://metrics-url/metrics/', json={}, status=201)
+
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
 
         self._replace_post_save_hooks()
-        tasks.get_metric_client = self._replace_get_metric_client
 
         self.username = 'testuser'
         self.password = 'testpass'
@@ -233,10 +196,10 @@ class AuthenticatedAPITestCase(APITestCase):
         sutoken = Token.objects.create(user=self.superuser)
         self.adminclient.credentials(
             HTTP_AUTHORIZATION='Token %s' % sutoken)
+        self._add_metrics_response()
 
     def tearDown(self):
         self._restore_post_save_hooks()
-        tasks.get_metric_client = self._restore_get_metric_client()
 
 
 class TestLogin(AuthenticatedAPITestCase):
@@ -644,7 +607,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         )
 
         # Create metrics call - deactivate TestSession for this
-        self.session = None
         responses.add(
             responses.POST,
             "http://metrics-url/metrics/",
@@ -1691,41 +1653,32 @@ class TestMetrics(AuthenticatedAPITestCase):
         else:
             self.assertEqual(json.loads(request.body), data)
 
-    def _mount_session(self, use_list_adapter=False):
-        response = [{
-            'name': 'foo',
-            'value': 9000,
-            'aggregator': 'bar',
-        }]
-        if use_list_adapter:
-            adapter = ListRecordingAdapter(
-                json.dumps(response).encode('utf-8'))
-        else:
-            adapter = RecordingAdapter(json.dumps(response).encode('utf-8'))
-        self.session.mount(
-            "http://metrics-url/metrics/", adapter)
-        return adapter
-
+    @responses.activate
     def test_direct_fire(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        When calling the `fire_metric` task, it should send the specified
+        metric to the metrics API.
+        """
         # Execute
         result = fire_metric.apply_async(kwargs={
             "metric_name": 'foo.last',
             "metric_value": 1,
-            "session": self.session
         })
         # Check
+        request = responses.calls[-1].request
         self.check_request(
-            adapter.request, 'POST',
+            request, 'POST',
             data={"foo.last": 1.0}
         )
         self.assertEqual(result.get(),
                          "Fired metric <foo.last> with value <1.0>")
 
+    @responses.activate
     def test_created_metrics(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        When a new subscription is created, the correct metric should be sent
+        to the metrics API.
+        """
         # reconnect metric post_save hook
         post_save.connect(fire_metrics_if_new, sender=Subscription)
 
@@ -1733,8 +1686,9 @@ class TestMetrics(AuthenticatedAPITestCase):
         self.make_subscription()
 
         # Check
+        request = responses.calls[-1].request
         self.check_request(
-            adapter.request, 'POST',
+            request, 'POST',
             data={"subscriptions.created.sum": 1.0}
         )
         # remove post_save hooks to prevent teardown errors
@@ -1946,9 +1900,12 @@ class TestMetrics(AuthenticatedAPITestCase):
         post_save.disconnect(fire_metric_per_message_format,
                              sender=Subscription)
 
+    @responses.activate
     def test_fire_active_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.active.last metric gets called with the
+        correct amount of active subscriptions.
+        """
         # make two active and one inactive subscription
         self.make_subscription()
         self.make_subscription()
@@ -1966,13 +1923,16 @@ class TestMetrics(AuthenticatedAPITestCase):
             "Fired metric <subscriptions.active.last> with value <2.0>"
         )
         self.check_request(
-            adapter.request, 'POST',
+            responses.calls[-1].request, 'POST',
             data={"subscriptions.active.last": 2.0}
         )
 
+    @responses.activate
     def test_fire_created_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.created.last metric gets called with the
+        correct amount of created subscriptions.
+        """
         # make two active and one inactive subscription
         self.make_subscription()
         self.make_subscription()
@@ -1989,14 +1949,18 @@ class TestMetrics(AuthenticatedAPITestCase):
             result.get().get(),
             "Fired metric <subscriptions.created.last> with value <3.0>"
         )
+        request = responses.calls[-1].request
         self.check_request(
-            adapter.request, 'POST',
+            request, 'POST',
             data={"subscriptions.created.last": 3.0}
         )
 
+    @responses.activate
     def test_fire_broken_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.broken.last metric gets called with the
+        correct amount of broken subscriptions.
+        """
         # make two healthy subscriptions
         self.make_subscription()
         sub = self.make_subscription()
@@ -2019,14 +1983,18 @@ class TestMetrics(AuthenticatedAPITestCase):
             result.get().get(),
             "Fired metric <subscriptions.broken.last> with value <2.0>"
         )
+        request = responses.calls[-1].request
         self.check_request(
-            adapter.request, 'POST',
+            request, 'POST',
             data={"subscriptions.broken.last": 2.0}
         )
 
+    @responses.activate
     def test_fire_completed_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.completed.last metric gets called with
+        the correct amount of completed subscriptions.
+        """
         # make two incomplete and one complete subscription
         self.make_subscription()
         self.make_subscription()
@@ -2043,13 +2011,16 @@ class TestMetrics(AuthenticatedAPITestCase):
             "Fired metric <subscriptions.completed.last> with value <1.0>"
         )
         self.check_request(
-            adapter.request, 'POST',
+            responses.calls[-1].request, 'POST',
             data={"subscriptions.completed.last": 1.0}
         )
 
+    @responses.activate
     def test_fire_incomplete_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.incomplete.last metric gets called with
+        the correct amount of incomplete subscriptions.
+        """
         # make two incomplete and one complete subscription
         self.make_subscription()
         self.make_subscription()
@@ -2066,13 +2037,16 @@ class TestMetrics(AuthenticatedAPITestCase):
             "Fired metric <subscriptions.incomplete.last> with value <2.0>"
         )
         self.check_request(
-            adapter.request, 'POST',
+            responses.calls[-1].request, 'POST',
             data={"subscriptions.incomplete.last": 2.0}
         )
 
+    @responses.activate
     def test_messagesets_tasks(self):
-        # Setup
-        self._mount_session()
+        """
+        Ensure that the `fire_messagesets_tasks` fires the correct amount of
+        messageset metric tasks.
+        """
         self.make_subscription()
 
         # Execute
@@ -2084,9 +2058,13 @@ class TestMetrics(AuthenticatedAPITestCase):
             "2 MessageSet metrics launched"
         )
 
+    @responses.activate
     def test_mesageset_last(self):
-        # Setup
-        adapter = self._mount_session()
+        """
+        Ensure that the subscriptions.<messageset>.active.last metric gets
+        called with the correct amount of active subscriptions for that
+        messageset.
+        """
         self.make_subscription()
 
         # Execute
@@ -2102,13 +2080,18 @@ class TestMetrics(AuthenticatedAPITestCase):
             "value <1.0>"
         )
         self.check_request(
-            adapter.request, 'POST',
+            responses.calls[-1].request, 'POST',
             data={"subscriptions.messageset_one.active.last": 1.0}
         )
 
+    @responses.activate
     def test_fire_week_estimate_last(self):
+        """
+        Ensure that the fire_week_estimate_last task sends the correct amount
+        of metrics to the metrics API, which should be the amount of days left
+        in this week.
+        """
         # Setup
-        adapter = self._mount_session(use_list_adapter=True)
         self.make_subscription()
 
         # Execute
@@ -2116,7 +2099,7 @@ class TestMetrics(AuthenticatedAPITestCase):
 
         # Check
         days_left_in_week = 7 - datetime.now().weekday()
-        self.assertEqual(len(adapter.requests), days_left_in_week)
+        self.assertEqual(len(responses.calls), days_left_in_week)
 
 
 class TestUserCreation(AuthenticatedAPITestCase):
