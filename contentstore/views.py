@@ -1,6 +1,8 @@
 from .models import Schedule, MessageSet, Message, BinaryContent
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from .serializers import (ScheduleSerializer, MessageSetSerializer,
                           MessageSerializer, BinaryContentSerializer,
                           MessageListSerializer, MessageSetMessagesSerializer)
@@ -66,3 +68,20 @@ class MessagesetMessagesContentView(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = MessageSet.objects.all()
     serializer_class = MessageSetMessagesSerializer
+
+
+class MessagesetLanguageView(APIView):
+
+    """
+    GET - returns languages per message set
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        status = 200
+        data = {}
+        for messageset in MessageSet.objects.all():
+            data[messageset.id] = messageset.messages.order_by(
+                'lang').values_list('lang', flat=True).distinct()
+
+        return Response(data, status=status)
