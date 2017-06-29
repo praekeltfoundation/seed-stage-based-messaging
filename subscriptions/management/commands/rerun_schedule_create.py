@@ -35,7 +35,8 @@ class Command(BaseCommand):
                 self.stdout.write("Subscription %s does not exist" % sub_id)
                 continue
 
-            if "scheduler_schedule_id" in subscription.metadata:
+            if (subscription.metadata is not None and
+                    "scheduler_schedule_id" in subscription.metadata):
                 self.stdout.write("Subscription %s already has schedule" %
                                   sub_id)
                 continue
