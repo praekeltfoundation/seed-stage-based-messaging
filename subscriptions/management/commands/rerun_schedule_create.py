@@ -1,4 +1,5 @@
 import csv
+import os
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
@@ -22,6 +23,8 @@ class Command(BaseCommand):
 
         if not file_name:
             raise CommandError('--csv is a required parameter')
+        if not os.path.isfile(file_name):
+            raise CommandError('--csv must be a valid path to a file')
 
         self.stdout.write('Processing file ...')
         count = 0
@@ -47,9 +50,10 @@ class Command(BaseCommand):
                                       % (result, sub_id))
         self.stdout.write("Created %s schedules" % count)
 
-    def subscription_from_csv(csv_file):
-        reader = csv.DictReader(csv_file)
-        if not (set(["subscription"]) <= set(reader.fieldnames)):
-            raise CommandError("CSV file must contain subscription.")
-        for data in reader:
-            yield data["subscription"]
+    def subscription_from_csv(self, csv_file):
+        with open(csv_file) as csv_file:
+            reader = csv.DictReader(csv_file)
+            if not (set(["subscription"]) <= set(reader.fieldnames)):
+                raise CommandError("CSV file must contain subscription.")
+            for data in reader:
+                yield data["subscription"]
