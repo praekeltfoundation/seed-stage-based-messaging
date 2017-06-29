@@ -34,6 +34,9 @@ class Command(BaseCommand):
             except ObjectDoesNotExist:
                 self.stdout.write("Subscription %s does not exist" % sub_id)
                 continue
+            except ValueError:
+                self.stdout.write("%s is not a valid UUID" % sub_id)
+                continue
 
             if (subscription.metadata is not None and
                     "scheduler_schedule_id" in subscription.metadata):
