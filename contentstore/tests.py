@@ -25,7 +25,7 @@ class MessageSetTestMixin():
     def make_schedule(self):
         # Create hourly schedule
         schedule_data = {
-            'hour': 1
+            'minute': '0',
         }
         return Schedule.objects.create(**schedule_data)
 
@@ -87,9 +87,10 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['hour'], '1')
+        self.assertEqual(response.data['hour'], '*')
+        self.assertEqual(response.data['minute'], '0')
         d = Schedule.objects.last()
-        self.assertEqual(d.cron_string, '* 1 * * *')
+        self.assertEqual(d.cron_string, '0 * * * *')
 
     def test_filter_schedule(self):
         # Setup
