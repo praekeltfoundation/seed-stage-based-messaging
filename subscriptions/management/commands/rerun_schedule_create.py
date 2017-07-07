@@ -38,8 +38,8 @@ class Command(BaseCommand):
                 self.stdout.write("%s is not a valid UUID" % sub_id)
                 continue
 
-            # If the subscription has a schedule or it has been triggered
-            # Some schedules were created but failed before saving to the sub
+            # Some schedules were created but failed before saving to the sub.
+            # If it's been triggered it probably has a schedule so ignore
             if ((subscription.metadata is not None and
                     "scheduler_schedule_id" in subscription.metadata) or
                     subscription.next_sequence_number >
