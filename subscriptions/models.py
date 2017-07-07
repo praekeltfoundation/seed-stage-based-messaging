@@ -132,7 +132,8 @@ class Subscription(models.Model):
                     run_dates = sub.messageset.get_all_run_dates(
                         sub.created_at,
                         sub.lang,
-                        sub.schedule
+                        sub.schedule,
+                        sub.initial_sequence_number
                     )
                     if run_dates:
                         last_date = run_dates.pop()
