@@ -262,6 +262,68 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         )
 
 
+class TestMessageSet(MessageSetTestMixin, TestCase):
+    def test_get_all_run_dates(self):
+        ms = self.make_messageset()
+        for i in range(3):
+            Message.objects.create(messageset=ms, sequence_number=i,
+                                   lang='eng_ZA', text_content="Foo")
+
+        start = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+
+        dates = ms.get_all_run_dates(start=start, lang='eng_ZA')
+
+        self.assertEqual(dates, [
+            datetime(2016, 11, 11, 8, 0, tzinfo=pytz.UTC),
+            datetime(2016, 11, 11, 9, 0, tzinfo=pytz.UTC),
+            datetime(2016, 11, 11, 10, 0, tzinfo=pytz.UTC)])
+
+    def test_get_all_run_dates_none_for_lang(self):
+        ms = self.make_messageset()
+        for i in range(3):
+            Message.objects.create(messageset=ms, sequence_number=i,
+                                   lang='eng_ZA', text_content="Foo")
+
+        start = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+
+        dates = ms.get_all_run_dates(start=start, lang='zul_ZA')
+
+        self.assertEqual(dates, [])
+
+    def test_get_all_run_dates_diff_schedule(self):
+        ms = self.make_messageset()
+        for i in range(3):
+            Message.objects.create(messageset=ms, sequence_number=i,
+                                   lang='eng_ZA', text_content="Foo")
+
+        schedule = Schedule.objects.create(minute='0,30')
+
+        start = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+
+        dates = ms.get_all_run_dates(start=start, lang='eng_ZA',
+                                     schedule=schedule)
+
+        self.assertEqual(dates, [
+            datetime(2016, 11, 11, 7, 30, tzinfo=pytz.UTC),
+            datetime(2016, 11, 11, 8, 0, tzinfo=pytz.UTC),
+            datetime(2016, 11, 11, 8, 30, tzinfo=pytz.UTC)])
+
+    def test_get_all_run_dates_diff_initial(self):
+        ms = self.make_messageset()
+        for i in range(3):
+            Message.objects.create(messageset=ms, sequence_number=i,
+                                   lang='eng_ZA', text_content="Foo")
+
+        start = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+
+        dates = ms.get_all_run_dates(start=start, lang='eng_ZA',
+                                     schedule=ms.default_schedule, initial=2)
+
+        self.assertEqual(dates, [
+            datetime(2016, 11, 11, 8, 0, tzinfo=pytz.UTC),
+            datetime(2016, 11, 11, 9, 0, tzinfo=pytz.UTC)])
+
+
 class TestSchedule(TestCase):
 
     def test_cron_string(self):
