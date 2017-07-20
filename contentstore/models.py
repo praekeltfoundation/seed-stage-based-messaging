@@ -97,16 +97,17 @@ class MessageSet(models.Model):
     def get_messageset_max(self, lang):
         return self.messages.filter(lang=lang).count()
 
-    def get_all_run_dates(self, start, lang, schedule=None):
+    def get_all_run_dates(self, start, lang, schedule=None, initial=None):
         """Returns the complete list of dates this MessageSet would run on given
-        a start datetime, language and Schedule. If no Schedule is passed it
-        will use the configured default_schedule.
+        a start datetime, language, Schedule and initial message. If no
+        Schedule is passed it will use the configured default_schedule. If no
+        Initial is passed it assumes the full set will run.
         """
         if schedule is None:
             schedule = self.default_schedule
         dates = []
         set_max = self.get_messageset_max(lang)
-        iters = 1
+        iters = initial if initial else 1  # start iterator at initial message
         for dt in croniter(schedule.cron_string, start, ret_type=datetime):
             if iters > set_max:
                 break

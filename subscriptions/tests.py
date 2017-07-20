@@ -2482,6 +2482,67 @@ class TestSubscription(AuthenticatedAPITestCase):
         sub2 = result[1]
         self.assertEqual(sub1.completed, True)
         self.assertEqual(sub2.completed, False)
+        self.assertEqual(
+            sub2.created_at,
+            datetime(2016, 11, 8, 8, 1, tzinfo=pytz.UTC))
+
+    def test_fast_foward_lifecycle_complete_with_initial(self):
+        messageset_data = {
+            'short_name': 'messageset_pre',
+            'notes': None,
+            'next_set': self.messageset,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        first_ms = MessageSet.objects.create(**messageset_data)
+        self.make_messageset_content(first_ms)
+        self.make_messageset_content(self.messageset)
+
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 30, 7, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.messageset = first_ms
+        subscription.initial_sequence_number = 2
+        subscription.save()
+
+        result = Subscription.fast_forward_lifecycle(subscription, end)
+        self.assertEqual(len(result), 2)
+        sub1 = result[0]
+        sub2 = result[1]
+        self.assertEqual(sub1.completed, True)
+        self.assertEqual(sub2.completed, True)
+        self.assertEqual(
+            sub2.created_at,
+            datetime(2016, 11, 3, 8, 1, tzinfo=pytz.UTC))
+
+    def test_fast_foward_lifecycle_incomplete_with_initial(self):
+        messageset_data = {
+            'short_name': 'messageset_pre',
+            'notes': None,
+            'next_set': self.messageset,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        first_ms = MessageSet.objects.create(**messageset_data)
+        self.make_messageset_content(first_ms)
+        self.make_messageset_content(self.messageset)
+
+        subscription = self.make_subscription()
+        end = datetime(2016, 11, 11, 7, 0, tzinfo=pytz.UTC)
+        subscription.created_at = datetime(2016, 11, 1, 0, 0, tzinfo=pytz.UTC)
+        subscription.messageset = first_ms
+        subscription.initial_sequence_number = 2
+        subscription.save()
+
+        result = Subscription.fast_forward_lifecycle(subscription, end)
+        self.assertEqual(len(result), 2)
+        sub1 = result[0]
+        sub2 = result[1]
+        self.assertEqual(sub1.completed, True)
+        self.assertEqual(sub2.completed, False)
+        self.assertEqual(
+            sub2.created_at,
+            datetime(2016, 11, 3, 8, 1, tzinfo=pytz.UTC))
 
 
 class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
