@@ -3060,6 +3060,200 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         ])
 
 
+class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
+
+    @responses.activate
+    def test_mark_invalid_subscription(self):
+        """
+        If there are subscriptions with with a process_status of 5 the
+        registrations and identity linked to them should be updated
+        """
+        stdout, stderr = StringIO(), StringIO()
+
+        registration = {
+            "id": "8646b7bc-b511-4965-a90b-1111111111111",
+            "data": {}
+        }
+
+        # mock registration lookup
+        responses.add(
+            responses.GET,
+            "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [registration]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        registration['data']['exclude_report'] = True
+        # mock registration update
+        responses.add(
+            responses.PATCH,
+            "http://seed-hub/api/v1/registration/8646b7bc-b511-4965-a90b-1111111111111/",  # noqa
+            json.dumps(registration),
+            status=200, content_type='application/json')
+
+        identity = {
+            "id": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "version": 1,
+            "details": {
+                "default_addr_type": "msisdn",
+                "addresses": {
+                    "msisdn": {
+                        "+2345059992222": {}
+                    }
+                },
+                "receiver_role": "mother",
+                "linked_to": None,
+                "preferred_msg_type": "text",
+                "preferred_language": "eng_ZA"
+            },
+            "created_at": "2015-07-10T06:13:29.693272Z",
+            "updated_at": "2015-07-10T06:13:29.693298Z"
+        }
+
+        # mock identity lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/8646b7bc-b511-4965-a90b-e1145e398703/",  # noqa
+            json=identity,
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        identity['details']['exclude_report'] = True
+        # mock identity update
+        responses.add(
+            responses.PATCH,
+            "http://seed-identity-store/api/v1/identities/8646b7bc-b511-4965-a90b-e1145e398703/",  # noqa
+            json.dumps(identity),
+            status=200, content_type='application/json')
+
+        # Sub that should be updated
+        sub = self.make_subscription()
+        sub.process_status = 5
+        sub.save()
+
+        # Sub that should not be
+        self.make_subscription()
+
+        call_command('mark_invalid_subscriptions', '--hub-url',
+                     'http://seed-hub/api/v1/', '--hub-token', 'HUBTOKEN',
+                     stdout=stdout, stderr=stderr)
+
+        output = stdout.getvalue().strip()
+        self.assertEqual(output, "Updated 1 identities and 1 registrations.")
+
+    @responses.activate
+    def test_mark_invalid_subscription_unchanged(self):
+        """
+        If there are subscriptions with with a process_status of 5 the
+        registrations and identity linked to them should be updated, this test
+        simulates a case where they have already been updated
+        """
+        stdout, stderr = StringIO(), StringIO()
+
+        registration = {
+            "id": "8646b7bc-b511-4965-a90b-1111111111111",
+            "data": {
+                "exclude_report": True
+            }
+        }
+
+        # mock registration lookup
+        responses.add(
+            responses.GET,
+            "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [registration]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        identity = {
+            "id": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "version": 1,
+            "details": {
+                "default_addr_type": "msisdn",
+                "addresses": {
+                    "msisdn": {
+                        "+2345059992222": {}
+                    }
+                },
+                "receiver_role": "mother",
+                "linked_to": None,
+                "preferred_msg_type": "text",
+                "preferred_language": "eng_ZA",
+                "exclude_report": True
+            },
+            "created_at": "2015-07-10T06:13:29.693272Z",
+            "updated_at": "2015-07-10T06:13:29.693298Z"
+        }
+
+        # mock identity lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/8646b7bc-b511-4965-a90b-e1145e398703/",  # noqa
+            json=identity,
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Sub that should be updated
+        sub = self.make_subscription()
+        sub.process_status = 5
+        sub.save()
+
+        # Sub that should not be
+        self.make_subscription()
+
+        call_command('mark_invalid_subscriptions', '--hub-url',
+                     'http://seed-hub/api/v1/', '--hub-token', 'HUBTOKEN',
+                     stdout=stdout, stderr=stderr)
+
+        output = stdout.getvalue().strip()
+        self.assertEqual(output, "Updated 0 identities and 0 registrations.")
+
+    @responses.activate
+    def test_mark_invalid_subscription_noop(self):
+        """
+        If there are no subscription with process_astatus of 5 nothing
+        should be updated
+        """
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription()
+
+        call_command('mark_invalid_subscriptions', '--hub-url',
+                     'http://seed-hub/api/v1/', '--hub-token', 'HUBTOKEN',
+                     stdout=stdout, stderr=stderr)
+
+        output = stdout.getvalue().strip()
+        self.assertEqual(output, "Updated 0 identities and 0 registrations.")
+
+    @responses.activate
+    def test_mark_invalid_subscription_invalid(self):
+        """
+        If the command is called without the correct arguments, it should give
+        a appropriate error message
+        """
+
+        stdout, stderr = StringIO(), StringIO()
+        call_command(
+            'mark_invalid_subscriptions', stdout=stdout, stderr=stderr)
+
+        error = stdout.getvalue().strip()
+        self.assertEqual(error, "hub-url and hub-token is required.")
+
+
 class TestFailedTaskAPI(AuthenticatedAPITestCase):
 
     @responses.activate

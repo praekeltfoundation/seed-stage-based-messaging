@@ -49,7 +49,7 @@ setup(
         'pytz==2015.7',
         'requests==2.9.1',
         'drfdocs==0.0.11',
-        'seed-services-client>=0.21.0',
+        'seed-services-client>=0.24.0',
         'croniter==0.3.13',
         'django-cache-url==1.3.1',
         'django-redis==4.7.0',
