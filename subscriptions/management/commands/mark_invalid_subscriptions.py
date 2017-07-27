@@ -1,6 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.core.validators import URLValidator
 from django.conf import settings
+from requests import exceptions
+from demands import HTTPServiceError
 
 from subscriptions.models import Subscription
 
@@ -65,7 +67,7 @@ class Command(BaseCommand):
 
         reg_count = 0
         id_count = 0
-        for subscription in subscriptions:
+        for subscription in subscriptions.iterator():
             identity = subscription.identity
 
             # find and update linked registrations
@@ -76,17 +78,34 @@ class Command(BaseCommand):
                 if not registration['data'].get('exclude_report', False):
                     registration['data']['exclude_report'] = True
 
-                    hubApi.update_registration(registration['id'],
-                                               registration)
-                    reg_count += 1
+                    try:
+                        hubApi.update_registration(
+                            registration['id'], {'data': registration['data']})
+                        reg_count += 1
+                    except exceptions.ConnectionError as exc:
+                        self.warning('Connection error to Hub API: {}'
+                                     .format(exc.message))
+                    except HTTPServiceError as exc:
+                        self.warning('Invalid Hub API response({}): {}'.format(
+                            exc.response.status_code, exc.response.url))
 
-            # find and uddate linked identities
+            # find and update linked identities
             identity = idApi.get_identity(identity)
 
             if not identity['details'].get('exclude_report', False):
                 identity['details']['exclude_report'] = True
-                idApi.update_identity(identity['id'], identity)
-                id_count += 1
+
+                try:
+                    idApi.update_identity(identity['id'],
+                                          {'details': identity['details']})
+                    id_count += 1
+                except exceptions.ConnectionError as exc:
+                    self.warning('Connection error to Identity API: {}'
+                                 .format(exc.message))
+                except HTTPServiceError as exc:
+                    self.warning(
+                        'Invalid Identity Store API response({}): {}'.format(
+                            exc.response.status_code, exc.response.url))
 
         self.success('Updated %s identities and %s registrations.' % (
             id_count, reg_count))
