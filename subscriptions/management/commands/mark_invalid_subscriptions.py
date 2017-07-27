@@ -83,8 +83,8 @@ class Command(BaseCommand):
                             registration['id'], {'data': registration['data']})
                         reg_count += 1
                     except exceptions.ConnectionError as exc:
-                        self.warning('Connection error to Hub API: {}'
-                                     .format(exc.message))
+                        self.warning(
+                            'Connection error to Hub API: {}'.format(exc))
                     except HTTPServiceError as exc:
                         self.warning('Invalid Hub API response({}): {}'.format(
                             exc.response.status_code, exc.response.url))
@@ -100,8 +100,8 @@ class Command(BaseCommand):
                                           {'details': identity['details']})
                     id_count += 1
                 except exceptions.ConnectionError as exc:
-                    self.warning('Connection error to Identity API: {}'
-                                 .format(exc.message))
+                    self.warning(
+                        'Connection error to Identity API: {}'.format(exc))
                 except HTTPServiceError as exc:
                     self.warning(
                         'Invalid Identity Store API response({}): {}'.format(
