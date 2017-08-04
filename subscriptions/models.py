@@ -20,7 +20,8 @@ class Subscription(models.Model):
     """ Identity subscriptions and their status
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    identity = models.CharField(max_length=36, null=False, blank=False)
+    identity = models.CharField(
+        max_length=36, null=False, blank=False, db_index=True)
     version = models.IntegerField(default=1)
     messageset = models.ForeignKey(MessageSet, related_name='subscriptions',
                                    null=False)
