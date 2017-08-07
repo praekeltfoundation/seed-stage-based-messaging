@@ -177,6 +177,7 @@ Fields
 **process_status**
     A integer flag representing the process status of this subscription.
 
+    | -2 = error
     | -1 = error
     | 0 = ready
     | 1 = in process
