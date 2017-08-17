@@ -276,6 +276,37 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
+    def test_list_subscriptions(self):
+        subs = []
+        for i in range(3):
+            subs.append(self.make_subscription())
+        response = self.client.get('/api/v1/subscriptions/',
+                                   content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check first page
+        body = response.json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], str(subs[2].id))
+        self.assertEqual(body['results'][1]['id'], str(subs[1].id))
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
+        # Check next page
+        body = self.client.get(body['next']).json()
+        self.assertEqual(len(body['results']), 1)
+        self.assertEqual(body['results'][0]['id'], str(subs[0].id))
+        self.assertIsNotNone(body['previous'])
+        self.assertIsNone(body['next'])
+
+        # Check previous page
+        body = response.json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], str(subs[2].id))
+        self.assertEqual(body['results'][1]['id'], str(subs[1].id))
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
     def test_filter_subscription_data(self):
         # Setup
         sub_active = self.make_subscription()
@@ -293,7 +324,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
 
     def test_filter_subscription_created_after(self):
@@ -308,7 +339,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub2.id), str(sub3.id)]), ids)
 
@@ -324,7 +355,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
 
@@ -3447,3 +3478,39 @@ class TestFailedTaskAPI(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["requeued_failed_tasks"], True)
         self.assertEqual(SubscriptionSendFailure.objects.all().count(), 0)
+
+    def test_failed_tasks_list(self):
+        sub = self.make_subscription()
+        failures = []
+        for i in range(3):
+            failures.append(SubscriptionSendFailure.objects.create(
+                subscription=sub,
+                task_id=uuid4(),
+                initiated_at=timezone.now(),
+                reason='Error'))
+
+        response = self.client.get('/api/v1/failed-tasks/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check first page
+        body = response.json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], failures[2].id)
+        self.assertEqual(body['results'][1]['id'], failures[1].id)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
+        # Check next page
+        body = self.client.get(body['next']).json()
+        self.assertEqual(len(body['results']), 1)
+        self.assertEqual(body['results'][0]['id'], failures[0].id)
+        self.assertIsNotNone(body['previous'])
+        self.assertIsNone(body['next'])
+
+        # Check previous page
+        body = response.json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], failures[2].id)
+        self.assertEqual(body['results'][1]['id'], failures[1].id)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])

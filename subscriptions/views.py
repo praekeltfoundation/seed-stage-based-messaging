@@ -1,4 +1,5 @@
 from rest_framework import filters, viewsets, status, mixins
+from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +12,14 @@ from .serializers import (SubscriptionSerializer, CreateUserSerializer,
                           SubscriptionSendFailureSerializer)
 from .tasks import send_next_message, scheduled_metrics, requeue_failed_tasks
 from seed_stage_based_messaging.utils import get_available_metrics
+
+
+class CreatedAtCursorPagination(CursorPagination):
+    ordering = "-created_at"
+
+
+class InitiatedAtCursorPagination(CursorPagination):
+    ordering = "-initiated_at"
 
 
 class SubscriptionFilter(filters.FilterSet):
@@ -31,6 +40,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
     filter_class = SubscriptionFilter
+    pagination_class = CreatedAtCursorPagination
 
 
 class SubscriptionSend(APIView):
@@ -161,6 +171,7 @@ class FailedTaskViewSet(mixins.ListModelMixin,
     permission_classes = (IsAuthenticated,)
     queryset = SubscriptionSendFailure.objects.all()
     serializer_class = SubscriptionSendFailureSerializer
+    pagination_class = InitiatedAtCursorPagination
 
     def create(self, request):
         status = 201
