@@ -29,16 +29,4 @@ PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
 
 
 # REST Framework conf defaults
-REST_FRAMEWORK = {
-    'PAGE_SIZE': 2,
-    'DEFAULT_PAGINATION_CLASS':
-        'rest_framework.pagination.CursorPagination',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
-}
+REST_FRAMEWORK['PAGE_SIZE'] = 2
