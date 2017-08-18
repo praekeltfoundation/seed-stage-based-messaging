@@ -18,8 +18,8 @@ class CreatedAtCursorPagination(CursorPagination):
     ordering = "-created_at"
 
 
-class InitiatedAtCursorPagination(CursorPagination):
-    ordering = "-initiated_at"
+class IdCursorPagination(CursorPagination):
+    ordering = "-id"
 
 
 class SubscriptionFilter(filters.FilterSet):
@@ -171,7 +171,7 @@ class FailedTaskViewSet(mixins.ListModelMixin,
     permission_classes = (IsAuthenticated,)
     queryset = SubscriptionSendFailure.objects.all()
     serializer_class = SubscriptionSendFailureSerializer
-    pagination_class = InitiatedAtCursorPagination
+    pagination_class = IdCursorPagination
 
     def create(self, request):
         status = 201
