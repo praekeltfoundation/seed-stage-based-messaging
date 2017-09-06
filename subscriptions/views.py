@@ -66,7 +66,7 @@ class SubscriptionRequest(APIView):
         """
         # Ensure that we check for the 'data' hey in the request object before
         # attempting to reference it
-        if "data" in request:
+        if "data" in request.data:
             # This is a workaround for JSONField not liking blank/null refs
             if "metadata" not in request.data["data"]:
                 request.data["data"]["metadata"] = {}
@@ -82,9 +82,13 @@ class SubscriptionRequest(APIView):
                 status = 201
                 accepted = {"accepted": True}
                 return Response(accepted, status=status)
+            else:
+                status = 400
+                return Response(subscription.errors, status=status)
         else:
             status = 400
-            return Response(subscription.errors, status=status)
+            message = {'data': ['This field is required.']}
+            return Response(message, status=status)
 
 
 class UserView(APIView):
