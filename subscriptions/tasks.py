@@ -408,8 +408,8 @@ class ScheduleDisable(Task):
 
     def scheduler_client(self):
         return SchedulerApiClient(
-            api_token=settings.SCHEDULER_API_TOKEN,
-            api_url=settings.SCHEDULER_URL)
+            settings.SCHEDULER_API_TOKEN,
+            settings.SCHEDULER_URL)
 
     def run(self, subscription_id, **kwargs):
         l = self.get_logger(**kwargs)
@@ -450,8 +450,8 @@ class ScheduleCreate(Task):
 
     def scheduler_client(self):
         return SchedulerApiClient(
-            api_token=settings.SCHEDULER_API_TOKEN,
-            api_url=settings.SCHEDULER_URL)
+            settings.SCHEDULER_API_TOKEN,
+            settings.SCHEDULER_URL)
 
     def run(self, subscription_id, **kwargs):
         """ Returns remote scheduler_id UUID
