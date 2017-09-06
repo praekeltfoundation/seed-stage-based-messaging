@@ -64,7 +64,7 @@ class SubscriptionRequest(APIView):
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Subscription message
         """
-        # Ensure that we check for the 'data' hey in the request object before
+        # Ensure that we check for the 'data' key in the request object before
         # attempting to reference it
         if "data" in request.data:
             # This is a workaround for JSONField not liking blank/null refs
