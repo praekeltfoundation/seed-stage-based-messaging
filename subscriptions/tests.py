@@ -293,7 +293,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["id"], str(sub_active.id))
 
     def test_filter_subscription_created_after(self):
@@ -308,7 +308,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub2.id), str(sub3.id)]), ids)
 
@@ -324,7 +324,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
 
@@ -576,7 +576,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -716,7 +715,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -831,7 +829,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -1024,7 +1021,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (  # noqa
                 existing.identity, ),
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059993333"}]
@@ -1120,7 +1116,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -1227,7 +1222,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -1390,7 +1384,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -2660,7 +2653,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -2752,7 +2744,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -2847,7 +2838,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -2941,7 +2931,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (sub1.identity, ),  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [{"address": "+2345059992222"}]
@@ -3080,7 +3069,6 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [registration]
@@ -3167,7 +3155,6 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [registration]
@@ -3258,7 +3245,6 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [registration]
@@ -3335,7 +3321,6 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
             responses.GET,
             "http://seed-hub/api/v1/registrations/?mother_id=8646b7bc-b511-4965-a90b-e1145e398703",  # noqa
             json={
-                "count": 1,
                 "next": None,
                 "previous": None,
                 "results": [registration]
