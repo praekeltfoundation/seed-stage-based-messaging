@@ -154,7 +154,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 2)
+        self.assertEqual(len(response.data["results"]), 2)
         self.assertEqual(response.data["results"][0]["short_name"],
                          "messageset_one")
         self.assertEqual(response.data["results"][1]["short_name"],
@@ -170,7 +170,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                                    content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["short_name"],
                          "messageset_two")
 
