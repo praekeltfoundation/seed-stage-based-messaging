@@ -256,6 +256,28 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         self.assertEqual(d.process_status, 0)
         self.assertEqual(d.metadata["source"], "RapidProVoice")
 
+    def test_check_subscription_response(self):
+        # Setup
+        post_subscription = {
+            "identity": "7646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset": self.messageset.id,
+            "next_sequence_number": 1,
+            "lang": "eng_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": self.schedule.id,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/',
+                                    json.dumps(post_subscription),
+                                    content_type='application/json')
+        # Check
+        self.assertTrue(response.status_code != status.HTTP_400_BAD_REQUEST)
+
     def test_read_subscription_data(self):
         # Setup
         existing = self.make_subscription()
