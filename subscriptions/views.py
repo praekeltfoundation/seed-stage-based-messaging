@@ -64,24 +64,31 @@ class SubscriptionRequest(APIView):
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Subscription message
         """
-        # This is a workaround for JSONField not liking blank/null refs
-        if "metadata" not in request.data["data"]:
-            request.data["data"]["metadata"] = {}
+        # Ensure that we check for the 'data' key in the request object before
+        # attempting to reference it
+        if "data" in request.data:
+            # This is a workaround for JSONField not liking blank/null refs
+            if "metadata" not in request.data["data"]:
+                request.data["data"]["metadata"] = {}
 
-        if "initial_sequence_number" not in request.data["data"]:
-            request.data["data"]["initial_sequence_number"] = \
-                request.data["data"].get("next_sequence_number")
+            if "initial_sequence_number" not in request.data["data"]:
+                request.data["data"]["initial_sequence_number"] = \
+                    request.data["data"].get("next_sequence_number")
 
-        subscription = SubscriptionSerializer(data=request.data["data"])
-        if subscription.is_valid():
-            subscription.save()
-            # Return
-            status = 201
-            accepted = {"accepted": True}
-            return Response(accepted, status=status)
+            subscription = SubscriptionSerializer(data=request.data["data"])
+            if subscription.is_valid():
+                subscription.save()
+                # Return
+                status = 201
+                accepted = {"accepted": True}
+                return Response(accepted, status=status)
+            else:
+                status = 400
+                return Response(subscription.errors, status=status)
         else:
             status = 400
-            return Response(subscription.errors, status=status)
+            message = {"data": ["This field is required."]}
+            return Response(message, status=status)
 
 
 class UserView(APIView):
