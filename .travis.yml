@@ -8,7 +8,7 @@ services:
   - postgresql
 install:
   - "pip install -e ."
-  - "pip install -r requirements-dev.txt"
+  - "pip install -r requirements-dev.txt --use-wheel"
 script:
   - flake8
   - py.test

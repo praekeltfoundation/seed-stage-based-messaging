@@ -87,7 +87,7 @@ class SubscriptionRequest(APIView):
                 return Response(subscription.errors, status=status)
         else:
             status = 400
-            message = {'data': ['This field is required.']}
+            message = {"data": ["This field is required."]}
             return Response(message, status=status)
 
 
