@@ -1,5 +1,3 @@
-import requests
-import json
 try:
     from urlparse import urlunparse
 except ImportError:
@@ -16,12 +14,11 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.utils.timezone import now
 from seed_services_client.metrics import MetricsApiClient
 from requests import exceptions as requests_exceptions
-from requests.adapters import HTTPAdapter
 
 from .models import Subscription, SubscriptionSendFailure
 from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet, Schedule
-from seed_services_client import SchedulerApiClient
+from seed_services_client import MessageSenderApiClient, SchedulerApiClient
 
 logger = get_task_logger(__name__)
 
@@ -231,21 +228,14 @@ class SendNextMessage(Task):
                         message.binary_content.content.url)
 
         l.info("Sending message to Message Sender")
-        session = requests.Session()
-        session.mount(settings.MESSAGE_SENDER_URL, HTTPAdapter(max_retries=5))
+        message_sender_client = MessageSenderApiClient(
+            settings.MESSAGE_SENDER_TOKEN,
+            settings.MESSAGE_SENDER_URL,
+            retries=5,
+            timeout=settings.DEFAULT_REQUEST_TIMEOUT,
+        )
         try:
-            result = session.post(
-                url="%s/outbound/" % settings.MESSAGE_SENDER_URL,
-                data=json.dumps(payload),
-                headers={
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Token %s' % (
-                        settings.MESSAGE_SENDER_TOKEN,)
-                },
-                timeout=settings.DEFAULT_REQUEST_TIMEOUT
-            )
-            result.raise_for_status()
-            result = result.json()
+            result = message_sender_client.create_outbound(payload)
         except requests_exceptions.ConnectionError as exc:
             l.info('Connection Error to Message Sender')
             fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
@@ -418,8 +408,8 @@ class ScheduleDisable(Task):
 
     def scheduler_client(self):
         return SchedulerApiClient(
-            api_token=settings.SCHEDULER_API_TOKEN,
-            api_url=settings.SCHEDULER_URL)
+            settings.SCHEDULER_API_TOKEN,
+            settings.SCHEDULER_URL)
 
     def run(self, subscription_id, **kwargs):
         l = self.get_logger(**kwargs)
@@ -460,8 +450,8 @@ class ScheduleCreate(Task):
 
     def scheduler_client(self):
         return SchedulerApiClient(
-            api_token=settings.SCHEDULER_API_TOKEN,
-            api_url=settings.SCHEDULER_URL)
+            settings.SCHEDULER_API_TOKEN,
+            settings.SCHEDULER_URL)
 
     def run(self, subscription_id, **kwargs):
         """ Returns remote scheduler_id UUID

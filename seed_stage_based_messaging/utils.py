@@ -1,30 +1,22 @@
 import random
 import re
-import requests
 from django.conf import settings
 from contentstore.models import MessageSet
 from subscriptions.models import Subscription
-from requests.adapters import HTTPAdapter
-
+from seed_services_client import IdentityStoreApiClient
 
 NORMALISE_METRIC_RE = re.compile(r'\W+')
 
+identity_store_client = IdentityStoreApiClient(
+    settings.IDENTITY_STORE_TOKEN,
+    settings.IDENTITY_STORE_URL,
+    retries=5,
+    timeout=settings.DEFAULT_REQUEST_TIMEOUT,
+)
+
 
 def get_identity(identity_uuid):
-    url = "%s/%s/%s/" % (settings.IDENTITY_STORE_URL, "identities",
-                         identity_uuid)
-    headers = {
-        'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
-        'Content-Type': 'application/json'
-    }
-    session = requests.Session()
-    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
-    r = session.get(
-        url,
-        headers=headers,
-        timeout=settings.DEFAULT_REQUEST_TIMEOUT
-    )
-    return r.json()
+    return identity_store_client.get_identity(identity_uuid)
 
 
 def normalise_metric_name(name):
@@ -35,29 +27,12 @@ def normalise_metric_name(name):
 
 
 def get_identity_address(identity_uuid, use_communicate_through=False):
-    url = "%s/%s/%s/addresses/msisdn" % (settings.IDENTITY_STORE_URL,
-                                         "identities", identity_uuid)
     params = {"default": True}
     if use_communicate_through:
         params['use_communicate_through'] = True
-    headers = {
-        'Authorization': 'Token %s' % settings.IDENTITY_STORE_TOKEN,
-        'Content-Type': 'application/json'
-    }
-    session = requests.Session()
-    session.mount(settings.IDENTITY_STORE_URL, HTTPAdapter(max_retries=5))
-    result = session.get(
-        url,
-        params=params,
-        headers=headers,
-        timeout=settings.DEFAULT_REQUEST_TIMEOUT
-    )
-    result.raise_for_status()
-    r = result.json()
-    if len(r["results"]) > 0:
-        return r["results"][0]["address"]
-    else:
-        return None
+
+    return identity_store_client.get_identity_address(
+        identity_uuid, params=params)
 
 
 def get_available_metrics():

@@ -188,6 +188,7 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
                                    content_type='application/json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
         # Check first page
         body = response.json()
         self.assertEqual(len(body["results"]), 2)
