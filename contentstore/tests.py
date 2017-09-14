@@ -103,6 +103,40 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['results'][0]['id'], existing.id)
 
+    def test_list_schedule(self):
+        # Setup
+        schedules = []
+        for i in range(3):
+            schedules.append(self.make_schedule())
+        # Execute
+        response = self.client.get('/api/v1/schedule/',
+                                   content_type='application/json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check first page
+        body = response.json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], schedules[0].id)
+        self.assertEqual(body['results'][1]['id'], schedules[1].id)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
+        # Check next page
+        body = self.client.get(body['next']).json()
+        self.assertEqual(len(body['results']), 1)
+        self.assertEqual(body['results'][0]['id'], schedules[2].id)
+        self.assertIsNotNone(body['previous'])
+        self.assertIsNone(body['next'])
+
+        # Check previous page
+        body = self.client.get(body['previous']).json()
+        self.assertEqual(len(body['results']), 2)
+        self.assertEqual(body['results'][0]['id'], schedules[0].id)
+        self.assertEqual(body['results'][1]['id'], schedules[1].id)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
     # MessageSet testing
     def test_read_messageset(self):
         # Setup
@@ -147,18 +181,36 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
 
     def test_list_messagesets(self):
         # Setup
-        self.make_messageset()
-        self.make_messageset(short_name='messageset_two')
+        for i in range(3):
+            self.make_messageset(short_name='messageset_%s' % i)
         # Execute
         response = self.client.get('/api/v1/messageset/',
                                    content_type='application/json')
-        # Check
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data["results"]), 2)
-        self.assertEqual(response.data["results"][0]["short_name"],
-                         "messageset_one")
-        self.assertEqual(response.data["results"][1]["short_name"],
-                         "messageset_two")
+
+        # Check first page
+        body = response.json()
+        self.assertEqual(len(body["results"]), 2)
+        self.assertEqual(body["results"][0]["short_name"], "messageset_0")
+        self.assertEqual(body["results"][1]["short_name"], "messageset_1")
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
+        # Check next page
+        body = self.client.get(body['next']).json()
+        self.assertEqual(len(body["results"]), 1)
+        self.assertEqual(body["results"][0]["short_name"], "messageset_2")
+        self.assertIsNotNone(body['previous'])
+        self.assertIsNone(body['next'])
+
+        # Check previous page
+        body = self.client.get(body['previous']).json()
+        self.assertEqual(len(body["results"]), 2)
+        self.assertEqual(body["results"][0]["short_name"], "messageset_0")
+        self.assertEqual(body["results"][1]["short_name"], "messageset_1")
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
 
     def test_filter_messagesets(self):
         # Setup
@@ -231,6 +283,39 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
         Message.objects.create(
             messageset=messageset, sequence_number=seq, lang=lang,
             text_content="Foo")
+
+    def test_list_messages(self):
+        messageset = self.make_messageset()
+        # Setup
+        for i in range(1, 4):
+            self.make_message(messageset, "eng_ZA", i)
+        # Execute
+        response = self.client.get('/api/v1/message/',
+                                   content_type='application/json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check first page
+        body = response.json()
+        self.assertEqual(len(body["results"]), 2)
+        self.assertEqual(body["results"][0]["sequence_number"], 1)
+        self.assertEqual(body["results"][1]["sequence_number"], 2)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
+
+        # Check next page
+        body = self.client.get(body['next']).json()
+        self.assertEqual(len(body["results"]), 1)
+        self.assertEqual(body["results"][0]["sequence_number"], 3)
+        self.assertIsNotNone(body['previous'])
+        self.assertIsNone(body['next'])
+
+        # Check previous page
+        body = self.client.get(body['previous']).json()
+        self.assertEqual(len(body["results"]), 2)
+        self.assertEqual(body["results"][0]["sequence_number"], 1)
+        self.assertEqual(body["results"][1]["sequence_number"], 2)
+        self.assertIsNone(body['previous'])
+        self.assertIsNotNone(body['next'])
 
     def test_read_messageset_languages(self):
         """

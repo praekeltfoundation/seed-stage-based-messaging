@@ -1,11 +1,16 @@
 from .models import Schedule, MessageSet, Message, BinaryContent
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import (ScheduleSerializer, MessageSetSerializer,
                           MessageSerializer, BinaryContentSerializer,
                           MessageListSerializer, MessageSetMessagesSerializer)
+
+
+class IdCursorPagination(CursorPagination):
+    ordering = "id"
 
 
 class ScheduleViewSet(ModelViewSet):
@@ -16,6 +21,7 @@ class ScheduleViewSet(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = Schedule.objects.all()
     serializer_class = ScheduleSerializer
+    pagination_class = IdCursorPagination
 
 
 class MessageSetViewSet(ModelViewSet):
@@ -27,6 +33,7 @@ class MessageSetViewSet(ModelViewSet):
     queryset = MessageSet.objects.all()
     serializer_class = MessageSetSerializer
     filter_fields = ('short_name', 'content_type', )
+    pagination_class = IdCursorPagination
 
 
 class MessageViewSet(ModelViewSet):
@@ -38,6 +45,7 @@ class MessageViewSet(ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
     filter_fields = ('messageset', 'sequence_number', 'lang', )
+    pagination_class = IdCursorPagination
 
 
 class BinaryContentViewSet(ModelViewSet):
@@ -48,6 +56,7 @@ class BinaryContentViewSet(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = BinaryContent.objects.all()
     serializer_class = BinaryContentSerializer
+    pagination_class = IdCursorPagination
 
 
 class MessagesContentView(ModelViewSet):
