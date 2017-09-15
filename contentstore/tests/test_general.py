@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from .models import Schedule, MessageSet, Message
+from ..models import Schedule, MessageSet, Message
 
 
 class APITestCase(TestCase):
