@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from datetime import datetime
 import os.path
 from rest_framework.serializers import ValidationError
@@ -5,6 +7,25 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import python_2_unicode_compatible
 from croniter import croniter
+
+
+def validate_special_characters(value):
+    unnecessary_special_characters = [
+        u'“',
+        u'”',
+        u'’',
+        u'–',
+    ]
+    errors = []
+
+    for character in value:
+        if character in unnecessary_special_characters:
+            errors.append(character)
+
+    if errors:
+        raise ValidationError(
+            u'Text "{0}" has special characters which can be replaced: {1}'
+            .format(value, ' '.join(errors)))
 
 
 @python_2_unicode_compatible
@@ -148,7 +169,8 @@ class Message(models.Model):
                                    null=False)
     sequence_number = models.IntegerField(null=False, blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
-    text_content = models.TextField(null=True, blank=True)
+    text_content = models.TextField(
+        null=True, blank=True, validators=[validate_special_characters])
     binary_content = models.ForeignKey(BinaryContent,
                                        related_name='message',
                                        null=True, blank=True)

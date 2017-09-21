@@ -1,4 +1,5 @@
 from rest_framework import filters, viewsets, status, mixins
+from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +12,14 @@ from .serializers import (SubscriptionSerializer, CreateUserSerializer,
                           SubscriptionSendFailureSerializer)
 from .tasks import send_next_message, scheduled_metrics, requeue_failed_tasks
 from seed_stage_based_messaging.utils import get_available_metrics
+
+
+class CreatedAtCursorPagination(CursorPagination):
+    ordering = "-created_at"
+
+
+class IdCursorPagination(CursorPagination):
+    ordering = "-id"
 
 
 class SubscriptionFilter(filters.FilterSet):
@@ -31,6 +40,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
     filter_class = SubscriptionFilter
+    pagination_class = CreatedAtCursorPagination
 
 
 class SubscriptionSend(APIView):
@@ -64,24 +74,31 @@ class SubscriptionRequest(APIView):
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Subscription message
         """
-        # This is a workaround for JSONField not liking blank/null refs
-        if "metadata" not in request.data["data"]:
-            request.data["data"]["metadata"] = {}
+        # Ensure that we check for the 'data' key in the request object before
+        # attempting to reference it
+        if "data" in request.data:
+            # This is a workaround for JSONField not liking blank/null refs
+            if "metadata" not in request.data["data"]:
+                request.data["data"]["metadata"] = {}
 
-        if "initial_sequence_number" not in request.data["data"]:
-            request.data["data"]["initial_sequence_number"] = \
-                request.data["data"].get("next_sequence_number")
+            if "initial_sequence_number" not in request.data["data"]:
+                request.data["data"]["initial_sequence_number"] = \
+                    request.data["data"].get("next_sequence_number")
 
-        subscription = SubscriptionSerializer(data=request.data["data"])
-        if subscription.is_valid():
-            subscription.save()
-            # Return
-            status = 201
-            accepted = {"accepted": True}
-            return Response(accepted, status=status)
+            subscription = SubscriptionSerializer(data=request.data["data"])
+            if subscription.is_valid():
+                subscription.save()
+                # Return
+                status = 201
+                accepted = {"accepted": True}
+                return Response(accepted, status=status)
+            else:
+                status = 400
+                return Response(subscription.errors, status=status)
         else:
             status = 400
-            return Response(subscription.errors, status=status)
+            message = {"data": ["This field is required."]}
+            return Response(message, status=status)
 
 
 class UserView(APIView):
@@ -161,6 +178,7 @@ class FailedTaskViewSet(mixins.ListModelMixin,
     permission_classes = (IsAuthenticated,)
     queryset = SubscriptionSendFailure.objects.all()
     serializer_class = SubscriptionSendFailureSerializer
+    pagination_class = IdCursorPagination
 
     def create(self, request):
         status = 201
