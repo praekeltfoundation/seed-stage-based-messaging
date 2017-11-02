@@ -313,3 +313,21 @@ class SubscriptionSendFailure(models.Model):
 
     def __str__(self):  # __unicode__ on Python 2
         return str(self.id)
+
+
+@python_2_unicode_compatible
+class EstimatedSend(models.Model):
+
+    """ Estimated number of messages to be sent per message set per day
+    """
+    send_date = models.DateField()
+    messageset = models.ForeignKey(MessageSet, related_name='estimates',
+                                   null=False)
+    estimate = models.IntegerField(default=1, null=False, blank=False)
+
+    class Meta:
+        unique_together = (("send_date", "messageset"),)
+
+    def __str__(self):
+        return '{},{}:{}'.format(
+            self.send_date, self.messageset.short_name, self.estimate)

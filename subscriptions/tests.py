@@ -3,6 +3,7 @@ import json
 from uuid import uuid4
 from requests.exceptions import HTTPError
 from datetime import timedelta, datetime
+from mock import patch
 
 try:
     from StringIO import StringIO
@@ -26,7 +27,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from .models import (Subscription, SubscriptionSendFailure,
+from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      fire_sub_action_if_new, disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
                      fire_metric_per_message_set, fire_metric_per_lang,
@@ -2142,6 +2143,101 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Check
         days_left_in_week = 7 - datetime.now().weekday()
         self.assertEqual(len(responses.calls), days_left_in_week)
+
+
+class TestDailySendEstimates(AuthenticatedAPITestCase):
+
+    def make_schedule_day(self, dow='*'):
+        # Create hourly schedule on a day specified
+        schedule_data = {
+            'hour': 1,
+            'day_of_week': dow
+        }
+        return Schedule.objects.create(**schedule_data)
+
+    def setUp(self):
+        super(TestDailySendEstimates, self).setUp()
+
+        self.schedule_monday = self.make_schedule_day('1')  # a Monday only
+
+    def test_fire_daily_send_estimate_include(self):
+        """
+        Ensure that all subscriptions are included, where schedule for day is *
+        and where it is equal to the current day
+        """
+
+        # Setup
+        self.make_subscription()
+        self.make_subscription()
+
+        sub = self.make_subscription()
+        sub.messageset = self.messageset_audio
+        sub.schedule = self.schedule_monday
+        sub.save()
+
+        # Execute
+        today = datetime(2017, 10, 30, tzinfo=timezone.utc)  # a Monday
+        with patch.object(tasks, 'now', return_value=today):
+            tasks.fire_daily_send_estimate.apply()
+
+        # Check
+        self.assertEqual(EstimatedSend.objects.all().count(), 2)
+
+        estimate = EstimatedSend.objects.get(
+            send_date=today, messageset__short_name='messageset_one')
+        self.assertEqual(estimate.estimate, 2)
+
+        estimate = EstimatedSend.objects.get(
+            send_date=today, messageset__short_name='messageset_two')
+        self.assertEqual(estimate.estimate, 1)
+
+    def test_fire_daily_send_estimate_exclude(self):
+        """
+        Ensure that only the correct subscriptions are included, they should be
+        excluded if the schedule day is not the same as current day.
+        """
+
+        # Setup
+        self.make_subscription()
+        self.make_subscription()
+
+        sub = self.make_subscription()
+        sub.messageset = self.messageset_audio
+        sub.schedule = self.schedule_monday
+        sub.save()
+
+        # Execute
+        today = datetime(2017, 10, 29, tzinfo=timezone.utc)  # a Tuesday
+        with patch.object(tasks, 'now', return_value=today):
+            tasks.fire_daily_send_estimate.apply()
+
+        # Check
+        self.assertEqual(EstimatedSend.objects.all().count(), 1)
+        estimate = EstimatedSend.objects.get(
+            send_date=today, messageset__short_name='messageset_one')
+        self.assertEqual(estimate.estimate, 2)
+
+    def test_fire_daily_send_estimate_api(self):
+        """
+        Ensure that the send estimation task is executed when we post to the
+        API
+        """
+        # Setup
+        self.make_subscription()
+        self.make_subscription()
+
+        # Execute
+        today = datetime(2017, 10, 29, tzinfo=timezone.utc)  # a Tuesday
+        with patch.object(tasks, 'now', return_value=today):
+            response = self.client.post('/api/v1/runsendestimate')
+
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
+        self.assertEqual(EstimatedSend.objects.all().count(), 1)
+        estimate = EstimatedSend.objects.get(
+            send_date=today, messageset__short_name='messageset_one')
+        self.assertEqual(estimate.estimate, 2)
 
 
 class TestUserCreation(AuthenticatedAPITestCase):
