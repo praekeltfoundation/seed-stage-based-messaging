@@ -7,7 +7,7 @@ from celery.task import Task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.sites.shortcuts import get_current_site
@@ -15,7 +15,7 @@ from django.utils.timezone import now
 from seed_services_client.metrics import MetricsApiClient
 from requests import exceptions as requests_exceptions
 
-from .models import Subscription, SubscriptionSendFailure
+from .models import Subscription, SubscriptionSendFailure, EstimatedSend
 from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet, Schedule
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
@@ -673,6 +673,37 @@ class FireWeekEstimateLast(Task):
 
 
 fire_week_estimate_last = FireWeekEstimateLast()
+
+
+class FireDailySendEstimate(Task):
+    """Fires daily estimated send counts.
+    """
+    name = "subscriptions.tasks.fire_daily_send_estimate"
+
+    def run(self):
+        # Django's datetime's weekday method has Monday = 0
+        # whereas the cron format used in the schedules has Sunday = 0
+        day = now().weekday() + 1
+
+        schedules = Schedule.objects.filter(
+            Q(day_of_week__contains=day) | Q(day_of_week__contains='*'),
+            subscriptions__active=True,
+            subscriptions__completed=False,
+            subscriptions__process_status=0
+        ).values('subscriptions__messageset').annotate(
+            total_subs=Count('subscriptions'),
+            total_unique=Count('subscriptions__identity', distinct=True))
+
+        for schedule in schedules:
+            EstimatedSend.objects.get_or_create(
+                send_date=now().date(),
+                messageset_id=schedule['subscriptions__messageset'],
+                estimate_subscriptions=schedule['total_subs'],
+                estimate_identities=schedule['total_unique']
+            )
+
+
+fire_daily_send_estimate = FireDailySendEstimate()
 
 
 class RequeueFailedTasks(Task):

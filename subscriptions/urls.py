@@ -16,4 +16,6 @@ urlpatterns = [
         views.SubscriptionRequest.as_view()),
     url(r'^api/v1/user/token/$', views.UserView.as_view(),
         name='create-user-token'),
+    url(r'^api/v1/runsendestimate$',
+        views.DailyEstimateRun.as_view()),
 ]

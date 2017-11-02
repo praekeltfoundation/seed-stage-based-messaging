@@ -10,7 +10,8 @@ import django_filters
 from .models import Subscription, SubscriptionSendFailure
 from .serializers import (SubscriptionSerializer, CreateUserSerializer,
                           SubscriptionSendFailureSerializer)
-from .tasks import send_next_message, scheduled_metrics, requeue_failed_tasks
+from .tasks import (send_next_message, scheduled_metrics, requeue_failed_tasks,
+                    fire_daily_send_estimate)
 from seed_stage_based_messaging.utils import get_available_metrics
 
 
@@ -185,3 +186,15 @@ class FailedTaskViewSet(mixins.ListModelMixin,
         resp = {'requeued_failed_tasks': True}
         requeue_failed_tasks.delay()
         return Response(resp, status=status)
+
+
+class DailyEstimateRun(APIView):
+
+    """ Triggers a daily send estimation
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        task_id = fire_daily_send_estimate.apply_async()
+        accepted = {"accepted": True, "task_id": str(task_id)}
+        return Response(accepted, status=202)
