@@ -80,9 +80,9 @@ class SendNextMessage(Task):
         """
         Load and contruct message and send them off
         """
-        l = self.get_logger(**kwargs)
+        log = self.get_logger(**kwargs)
 
-        l.info("Loading Subscription")
+        log.info("Loading Subscription")
         try:
             subscription = Subscription.objects.get(id=subscription_id)
         except Subscription.DoesNotExist:
@@ -95,18 +95,18 @@ class SendNextMessage(Task):
                     subscription.completed is True):
                 # Disable the subscription's scheduler
                 schedule_disable.apply_async(args=[subscription_id])
-                l.info("Scheduler deactivation task fired")
+                log.info("Scheduler deactivation task fired")
                 return "Schedule deactivation task fired"
 
             else:
-                l.info("Message sending aborted - busy, broken or inactive")
+                log.info("Message sending aborted - busy, broken or inactive")
                 # TODO: retry if busy (process_status = 1)
                 # TODO: be more specific about why it aborted
                 return ("Message sending aborted, status <%s>" %
                         subscription.process_status)
 
         try:
-            l.info("Loading Message")
+            log.info("Loading Message")
             message = Message.objects.get(
                 messageset=subscription.messageset,
                 sequence_number=subscription.next_sequence_number,
@@ -126,26 +126,26 @@ class SendNextMessage(Task):
             retry_delay = self.default_retry_delay
 
         # Start processing
-        l.debug("setting process status to 1")
+        log.debug("setting process status to 1")
         subscription.process_status = 1  # in process
-        l.debug("saving subscription")
+        log.debug("saving subscription")
         subscription.save()
 
-        l.info("Loading Initial Recipient Identity")
+        log.info("Loading Initial Recipient Identity")
         try:
             to_addr = utils.get_identity_address(
                 subscription.identity,
                 use_communicate_through=True)
         except requests_exceptions.ConnectionError as exc:
-            l.info('Connection Error to Identity Store')
+            log.info('Connection Error to Identity Store')
             fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
             subscription.process_status = 0
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
         except requests_exceptions.HTTPError as exc:
             # Recoverable HTTP errors: 500, 401
-            l.info('Identity Store Request failed due to status: %s' %
-                   exc.response.status_code)
+            log.info('Identity Store Request failed due to status: %s' %
+                     exc.response.status_code)
             metric_name = ('sbm.send_next_message.http_error.%s.sum' %
                            exc.response.status_code)
             fire_metric.delay(metric_name, 1)
@@ -153,28 +153,28 @@ class SendNextMessage(Task):
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
         except requests_exceptions.Timeout as exc:
-            l.info('Identity Store Request failed due to timeout')
+            log.info('Identity Store Request failed due to timeout')
             fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
             subscription.process_status = 0
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
-        l.debug("to_addr determined - %s" % to_addr)
+        log.debug("to_addr determined - %s" % to_addr)
 
         if to_addr is None:
-            l.info("No valid recipient to_addr found")
+            log.info("No valid recipient to_addr found")
             subscription.process_status = -1  # Error
-            l.debug("saving subscription")
+            log.debug("saving subscription")
             subscription.save()
-            l.debug("Firing error metric")
+            log.debug("Firing error metric")
             fire_metric.apply_async(kwargs={
                 "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
                 "metric_value": 1.0
             })
-            l.debug("Fired error metric")
+            log.debug("Fired error metric")
             return "Valid recipient could not be found"
 
         # All preconditions have been met
-        l.info("Preparing message payload with: %s" % message.id)  # noqa
+        log.info("Preparing message payload with: %s" % message.id)  # noqa
         payload = {
             "to_addr": to_addr,
             "to_identity": subscription.identity,
@@ -187,24 +187,24 @@ class SendNextMessage(Task):
 
         prepend_next = None
         if subscription.messageset.content_type == "text":
-            l.debug("Determining payload content")
+            log.debug("Determining payload content")
             if subscription.metadata is not None and \
                "prepend_next_delivery" in subscription.metadata \
                and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
                 prepend_next = subscription.metadata["prepend_next_delivery"]
-                l.debug("Prepending next delivery")
+                log.debug("Prepending next delivery")
                 payload["content"] = "%s\n%s" % (
                     subscription.metadata["prepend_next_delivery"],
                     message.text_content)
                 # clear prepend_next_delivery
-                l.debug("Clearing prepended message")
+                log.debug("Clearing prepended message")
                 subscription.metadata[
                     "prepend_next_delivery"] = None
                 subscription.save()
             else:
-                l.debug("Loading default content")
+                log.debug("Loading default content")
                 payload["content"] = message.text_content
-            l.debug("text content loaded")
+            log.debug("text content loaded")
         else:
             # TODO - audio media handling on MC
             # audio
@@ -227,7 +227,7 @@ class SendNextMessage(Task):
                     make_absolute_url(
                         message.binary_content.content.url)
 
-        l.info("Sending message to Message Sender")
+        log.info("Sending message to Message Sender")
         message_sender_client = MessageSenderApiClient(
             settings.MESSAGE_SENDER_TOKEN,
             settings.MESSAGE_SENDER_URL,
@@ -237,7 +237,7 @@ class SendNextMessage(Task):
         try:
             result = message_sender_client.create_outbound(payload)
         except requests_exceptions.ConnectionError as exc:
-            l.info('Connection Error to Message Sender')
+            log.info('Connection Error to Message Sender')
             fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
             # Reset the prepend next delivery that was cleared above.
             if prepend_next is not None:
@@ -247,8 +247,8 @@ class SendNextMessage(Task):
             self.retry(exc=exc, countdown=retry_delay)
         except requests_exceptions.HTTPError as exc:
             # Recoverable HTTP errors: 500, 401
-            l.info('Message Sender Request failed due to status: %s' %
-                   exc.response.status_code)
+            log.info('Message Sender Request failed due to status: %s' %
+                     exc.response.status_code)
             metric_name = ('sbm.send_next_message.http_error.%s.sum' %
                            exc.response.status_code)
             fire_metric.delay(metric_name, 1)
@@ -259,7 +259,7 @@ class SendNextMessage(Task):
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
         except requests_exceptions.Timeout as exc:
-            l.info('Message Sender Request failed due to timeout')
+            log.info('Message Sender Request failed due to timeout')
             fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
             # Reset the prepend next delivery that was cleared above.
             if prepend_next is not None:
@@ -268,16 +268,16 @@ class SendNextMessage(Task):
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
 
-        l.debug("setting process status back to 0")
+        log.debug("setting process status back to 0")
         subscription.process_status = 0  # ready
-        l.debug("saving subscription")
+        log.debug("saving subscription")
         subscription.save()
 
-        l.debug("starting post_send_process task")
+        log.debug("starting post_send_process task")
         post_send_process(subscription_id)
-        l.debug("finished post_send_process task")
+        log.debug("finished post_send_process task")
 
-        l.debug("Firing SMS/OBD calls sent per message set metric")
+        log.debug("Firing SMS/OBD calls sent per message set metric")
         send_type = utils.normalise_metric_name(
                         subscription.messageset.content_type)
         ms_name = utils.normalise_metric_name(
@@ -293,7 +293,7 @@ class SendNextMessage(Task):
             "metric_value": 1.0
         })
 
-        l.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
+        log.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
         return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -329,62 +329,62 @@ class PostSendProcess(Task):
         """
         Load subscription and process
         """
-        l = self.get_logger(**kwargs)
+        log = self.get_logger(**kwargs)
 
-        l.info("Loading Subscription")
+        log.info("Loading Subscription")
         # Process moving to next message, next set or finished
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             if subscription.process_status == 0:
-                l.debug("setting process status to 1")
+                log.debug("setting process status to 1")
                 subscription.process_status = 1  # in process
-                l.debug("saving subscription")
+                log.debug("saving subscription")
                 subscription.save()
                 # Get set max
                 set_max = subscription.messageset.messages.filter(
                     lang=subscription.lang).count()
-                l.debug("set_max calculated - %s" % set_max)
+                log.debug("set_max calculated - %s" % set_max)
                 # Compare user position to max
                 if subscription.next_sequence_number == set_max:
                     # Mark current as completed
-                    l.debug("setting subscription completed")
+                    log.debug("setting subscription completed")
                     subscription.completed = True
-                    l.debug("setting subscription inactive")
+                    log.debug("setting subscription inactive")
                     subscription.active = False
-                    l.debug("setting process status to 2")
+                    log.debug("setting process status to 2")
                     subscription.process_status = 2  # Completed
-                    l.debug("saving subscription")
+                    log.debug("saving subscription")
                     subscription.save()
                     # If next set defined create new subscription
                     messageset = subscription.messageset
                     if messageset.next_set:
-                        l.info("Creating new subscription for next set")
+                        log.info("Creating new subscription for next set")
                         newsub = Subscription.objects.create(
                             identity=subscription.identity,
                             lang=subscription.lang,
                             messageset=messageset.next_set,
                             schedule=messageset.next_set.default_schedule
                         )
-                        l.debug("Created Subscription <%s>" % newsub.id)
+                        log.debug("Created Subscription <%s>" % newsub.id)
                 else:
                     # More in this set so interate by one
-                    l.debug("incrementing next_sequence_number")
+                    log.debug("incrementing next_sequence_number")
                     subscription.next_sequence_number += 1
-                    l.debug("setting process status back to 0")
+                    log.debug("setting process status back to 0")
                     subscription.process_status = 0
-                    l.debug("saving subscription")
+                    log.debug("saving subscription")
                     subscription.save()
                 # return response
                 return "Subscription for %s updated" % str(
                     subscription.id)
             else:
-                l.info("post_send_process not executed")
+                log.info("post_send_process not executed")
                 return "post_send_process not executed"
 
         except ObjectDoesNotExist:
-            l.debug("subscription errored")
+            log.debug("subscription errored")
             subscription.process_status = -1  # Errored
-            l.debug("saving subscription")
+            log.debug("saving subscription")
             subscription.save()
             logger.error('Unexpected error', exc_info=True)
 
@@ -412,8 +412,8 @@ class ScheduleDisable(Task):
             settings.SCHEDULER_URL)
 
     def run(self, subscription_id, **kwargs):
-        l = self.get_logger(**kwargs)
-        l.info("Disabling schedule for <%s>" % (subscription_id,))
+        log = self.get_logger(**kwargs)
+        log.info("Disabling schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             try:
@@ -423,11 +423,11 @@ class ScheduleDisable(Task):
                     subscription.metadata["scheduler_schedule_id"],
                     {"enabled": False}
                 )
-                l.info("Disabled schedule <%s> on scheduler for sub <%s>" % (
+                log.info("Disabled schedule <%s> on scheduler for sub <%s>" % (
                     schedule_id, subscription_id))
                 return True
-            except:
-                l.info("Schedule id not saved in subscription metadata")
+            except Exception:
+                log.info("Schedule id not saved in subscription metadata")
                 return False
         except ObjectDoesNotExist:
             logger.error('Missing Subscription', exc_info=True)
@@ -457,8 +457,8 @@ class ScheduleCreate(Task):
         """ Returns remote scheduler_id UUID
         """
 
-        l = self.get_logger(**kwargs)
-        l.info("Creating schedule for <%s>" % (subscription_id,))
+        log = self.get_logger(**kwargs)
+        log.info("Creating schedule for <%s>" % (subscription_id,))
         try:
             subscription = Subscription.objects.get(id=subscription_id)
             if subscription.process_status == 0:
@@ -471,7 +471,7 @@ class ScheduleCreate(Task):
                 }
                 scheduler = self.scheduler_client()
                 result = scheduler.create_schedule(schedule)
-                l.info("Created schedule <%s> on scheduler for sub <%s>" % (
+                log.info("Created schedule <%s> on scheduler for sub <%s>" % (
                     result["id"], subscription_id))
                 if subscription.metadata is None:
                     subscription.metadata = {"scheduler_schedule_id": result["id"]}  # noqa
@@ -683,10 +683,10 @@ class RequeueFailedTasks(Task):
     name = "subscriptions.tasks.requeue_failed_tasks"
 
     def run(self, **kwargs):
-        l = self.get_logger(**kwargs)
+        log = self.get_logger(**kwargs)
         failures = SubscriptionSendFailure.objects
-        l.info("Attempting to requeue <%s> failed Subscription sends" %
-               failures.all().count())
+        log.info("Attempting to requeue <%s> failed Subscription sends" %
+                 failures.all().count())
         for failure in failures.iterator():
             subscription_id = str(failure.subscription_id)
             # Cleanup the failure before requeueing it.
