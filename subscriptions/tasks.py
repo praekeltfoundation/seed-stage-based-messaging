@@ -703,8 +703,6 @@ class FireDailySendEstimate(Task):
             )
 
 
-
-
 fire_daily_send_estimate = FireDailySendEstimate()
 
 
