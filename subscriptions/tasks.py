@@ -698,8 +698,8 @@ class FireDailySendEstimate(Task):
             EstimatedSend.objects.get_or_create(
                 send_date=now().date(),
                 messageset_id=schedule['subscriptions__messageset'],
-                estimate=schedule['total_subs'],
-                estimate_unique=schedule['total_unique']
+                estimate_subscriptions=schedule['total_subs'],
+                estimate_identities=schedule['total_unique']
             )
 
 

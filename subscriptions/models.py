@@ -323,12 +323,13 @@ class EstimatedSend(models.Model):
     send_date = models.DateField()
     messageset = models.ForeignKey(MessageSet, related_name='estimates',
                                    null=False)
-    estimate = models.IntegerField(null=False, blank=False)
-    estimate_unique = models.IntegerField(null=False, blank=False)
+    estimate_subscriptions = models.IntegerField(null=False, blank=False)
+    estimate_identities = models.IntegerField(null=False, blank=False)
 
     class Meta:
         unique_together = (("send_date", "messageset"),)
 
     def __str__(self):
-        return '{},{}:{}'.format(
-            self.send_date, self.messageset.short_name, self.estimate)
+        return '{},{}:{}/{}'.format(
+            self.send_date, self.messageset.short_name,
+            self.estimate_subscriptions, self.estimate_identities)

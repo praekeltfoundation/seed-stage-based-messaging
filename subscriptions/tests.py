@@ -2189,12 +2189,12 @@ class TestDailySendEstimates(AuthenticatedAPITestCase):
 
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_one')
-        self.assertEqual(estimate.estimate_unique, 2)
-        self.assertEqual(estimate.estimate, 3)
+        self.assertEqual(estimate.estimate_identities, 2)
+        self.assertEqual(estimate.estimate_subscriptions, 3)
 
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_two')
-        self.assertEqual(estimate.estimate, 1)
+        self.assertEqual(estimate.estimate_subscriptions, 1)
 
     def test_fire_daily_send_estimate_exclude(self):
         """
@@ -2220,7 +2220,7 @@ class TestDailySendEstimates(AuthenticatedAPITestCase):
         self.assertEqual(EstimatedSend.objects.all().count(), 1)
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_one')
-        self.assertEqual(estimate.estimate, 2)
+        self.assertEqual(estimate.estimate_subscriptions, 2)
 
     def test_fire_daily_send_estimate_api(self):
         """
@@ -2242,7 +2242,7 @@ class TestDailySendEstimates(AuthenticatedAPITestCase):
         self.assertEqual(EstimatedSend.objects.all().count(), 1)
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_one')
-        self.assertEqual(estimate.estimate, 2)
+        self.assertEqual(estimate.estimate_subscriptions, 2)
 
 
 class TestUserCreation(AuthenticatedAPITestCase):
