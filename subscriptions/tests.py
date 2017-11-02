@@ -2171,6 +2171,10 @@ class TestDailySendEstimates(AuthenticatedAPITestCase):
         self.make_subscription()
 
         sub = self.make_subscription()
+        sub.identity = '8646b7bc-BBBB-4965-a90b-e1145e398703'
+        sub.save()
+
+        sub = self.make_subscription()
         sub.messageset = self.messageset_audio
         sub.schedule = self.schedule_monday
         sub.save()
@@ -2185,7 +2189,8 @@ class TestDailySendEstimates(AuthenticatedAPITestCase):
 
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_one')
-        self.assertEqual(estimate.estimate, 2)
+        self.assertEqual(estimate.estimate_unique, 2)
+        self.assertEqual(estimate.estimate, 3)
 
         estimate = EstimatedSend.objects.get(
             send_date=today, messageset__short_name='messageset_two')

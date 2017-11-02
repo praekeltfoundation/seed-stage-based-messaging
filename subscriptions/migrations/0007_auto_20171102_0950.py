@@ -19,7 +19,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('send_date', models.DateField()),
-                ('estimate', models.IntegerField(default=1)),
+                ('estimate', models.IntegerField()),
+                ('estimate_unique', models.IntegerField()),
                 ('messageset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='estimates', to='contentstore.MessageSet')),
             ],
         ),

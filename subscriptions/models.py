@@ -323,7 +323,8 @@ class EstimatedSend(models.Model):
     send_date = models.DateField()
     messageset = models.ForeignKey(MessageSet, related_name='estimates',
                                    null=False)
-    estimate = models.IntegerField(default=1, null=False, blank=False)
+    estimate = models.IntegerField(null=False, blank=False)
+    estimate_unique = models.IntegerField(null=False, blank=False)
 
     class Meta:
         unique_together = (("send_date", "messageset"),)

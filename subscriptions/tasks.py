@@ -691,14 +691,18 @@ class FireDailySendEstimate(Task):
             subscriptions__completed=False,
             subscriptions__process_status=0
         ).values('subscriptions__messageset').annotate(
-            total_subs=Count('subscriptions'))
+            total_subs=Count('subscriptions'),
+            total_unique=Count('subscriptions__identity', distinct=True))
 
         for schedule in schedules:
             EstimatedSend.objects.get_or_create(
                 send_date=now().date(),
                 messageset_id=schedule['subscriptions__messageset'],
-                estimate=schedule['total_subs']
+                estimate=schedule['total_subs'],
+                estimate_unique=schedule['total_unique']
             )
+
+
 
 
 fire_daily_send_estimate = FireDailySendEstimate()
