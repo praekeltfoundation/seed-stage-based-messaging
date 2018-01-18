@@ -381,13 +381,6 @@ class PostSendProcess(Task):
                 log.info("post_send_process not executed")
                 return "post_send_process not executed"
 
-        except ObjectDoesNotExist:
-            log.debug("subscription errored")
-            subscription.process_status = -1  # Errored
-            log.debug("saving subscription")
-            subscription.save()
-            logger.error('Unexpected error', exc_info=True)
-
         except SoftTimeLimitExceeded:
             logger.error(
                 'Soft time limit exceed processing message send search '

@@ -53,17 +53,8 @@ class SubscriptionSend(APIView):
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Outbound message
         """
-        # Look up subscriber
-        subscription_id = kwargs["subscription_id"]
-        if Subscription.objects.filter(id=subscription_id).exists():
-            status = 201
-            accepted = {"accepted": True}
-            send_next_message.apply_async(args=[subscription_id])
-        else:
-            status = 400
-            accepted = {"accepted": False,
-                        "reason": "Missing subscription in control"}
-        return Response(accepted, status=status)
+        send_next_message.delay(kwargs['subscription_id'])
+        return Response({'accepted': True}, status=201)
 
 
 class SubscriptionRequest(APIView):
