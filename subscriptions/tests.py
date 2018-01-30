@@ -31,7 +31,7 @@ from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      fire_sub_action_if_new, disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
                      fire_metric_per_message_set, fire_metric_per_lang,
-                     fire_metric_per_message_format)
+                     fire_metric_per_message_format, ResendRequest)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -106,7 +106,7 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def make_subscription_audio(self):
+    def make_subscription_audio(self, sub={}):
         post_data = {
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
             "messageset": self.messageset_audio,
@@ -120,6 +120,7 @@ class AuthenticatedAPITestCase(APITestCase):
                 "source": "RapidProVoice"
             }
         }
+        post_data.update(sub)
         return Subscription.objects.create(**post_data)
 
     def make_subscription_audio_welcome(self):
@@ -1561,6 +1562,284 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(message_count, 3)
 
         post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
+
+    @responses.activate
+    def test_resend_message(self):
+        """
+        When a resend is triggered it should send the last message that was
+        sent. It should also save a ResendRequest and update it with the
+        outbound id.
+        """
+        # Setup
+        existing = self.make_subscription_audio({'next_sequence_number': 2})
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            json={
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+                "vumi_message_id": None,
+                "content": None,
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {
+                    'voice_speech_url': 'fakefilename.mp3'
+                },
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        # make binarycontent
+        binarycontent_data1 = {
+            "content": "fakefilename1.mp3",
+        }
+        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
+        binarycontent_data2 = {
+            "content": "fakefilename2.mp3",
+        }
+        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
+        binarycontent_data3 = {
+            "content": "fakefilename3.mp3",
+        }
+        binarycontent3 = BinaryContent.objects.create(**binarycontent_data3)
+
+        # make messages
+        message_data1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent1,
+        }
+        Message.objects.create(**message_data1)
+        message_data2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent2,
+        }
+        Message.objects.create(**message_data2)
+        message_data3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent3,
+        }
+        Message.objects.create(**message_data3)
+
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/%s/resend' % (
+            existing.id, ), content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.next_sequence_number, 2)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.process_status, 0)
+
+        outbound_call = responses.calls[1]
+        self.assertEqual(json.loads(outbound_call.request.body), {
+            "delivered": "false",
+            "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "to_addr": "+2345059992222",
+            "metadata": {
+                "voice_speech_url":
+                    "http://example.com/media/fakefilename1.mp3"
+            },
+            "resend": "true"})
+
+        # Check the request body of metric call
+        metric_call = responses.calls[2]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.messageset_two.sum": 1.0
+        })
+
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.sum": 1.0
+        })
+
+        resend_request = ResendRequest.objects.last()
+        self.assertEqual(ResendRequest.objects.count(), 1)
+        self.assertEqual(resend_request.subscription.id, existing.id)
+        self.assertEqual(str(resend_request.outbound),
+                         "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
+
+    @responses.activate
+    def test_resend_message_start(self):
+        """
+        When a resend is triggered and the subscription is still on the first
+        message it should send that message. It should also save a
+        ResendRequest and update it with the outbound id.
+        """
+        # Setup
+        existing = self.make_subscription_audio()
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            json={
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+                "vumi_message_id": None,
+                "content": None,
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {
+                    'voice_speech_url': 'fakefilename.mp3'
+                },
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        # make binarycontent
+        binarycontent_data1 = {
+            "content": "fakefilename1.mp3",
+        }
+        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
+        binarycontent_data2 = {
+            "content": "fakefilename2.mp3",
+        }
+        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
+        binarycontent_data3 = {
+            "content": "fakefilename3.mp3",
+        }
+        binarycontent3 = BinaryContent.objects.create(**binarycontent_data3)
+
+        # make messages
+        message_data1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent1,
+        }
+        Message.objects.create(**message_data1)
+        message_data2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent2,
+        }
+        Message.objects.create(**message_data2)
+        message_data3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "eng_ZA",
+            "binary_content": binarycontent3,
+        }
+        Message.objects.create(**message_data3)
+
+        # Execute
+        response = self.client.post('/api/v1/subscriptions/%s/resend' % (
+            existing.id, ), content_type='application/json')
+        # Check
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        d = Subscription.objects.get(id=existing.id)
+        self.assertEqual(d.version, 1)
+        self.assertEqual(d.next_sequence_number, 1)
+        self.assertEqual(d.active, True)
+        self.assertEqual(d.completed, False)
+        self.assertEqual(d.process_status, 0)
+
+        outbound_call = responses.calls[1]
+        self.assertEqual(json.loads(outbound_call.request.body), {
+            "delivered": "false",
+            "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "to_addr": "+2345059992222",
+            "metadata": {
+                "voice_speech_url":
+                    "http://example.com/media/fakefilename1.mp3"
+            },
+            "resend": "true"})
+
+        # Check the request body of metric call
+        metric_call = responses.calls[2]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.messageset_two.sum": 1.0
+        })
+
+        metric_call = responses.calls[3]
+        self.assertEqual(json.loads(metric_call.request.body), {
+            "message.audio.sum": 1.0
+        })
+
+        resend_request = ResendRequest.objects.last()
+        self.assertEqual(ResendRequest.objects.count(), 1)
+        self.assertEqual(resend_request.subscription.id, existing.id)
+        self.assertEqual(str(resend_request.outbound),
+                         "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
 
     @override_settings(USE_SSL=True)
     def test_make_absolute_url(self):

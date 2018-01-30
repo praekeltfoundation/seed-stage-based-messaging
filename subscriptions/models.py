@@ -333,3 +333,16 @@ class EstimatedSend(models.Model):
         return '{},{}:{}/{}'.format(
             self.send_date, self.messageset.short_name,
             self.estimate_subscriptions, self.estimate_identities)
+
+
+@python_2_unicode_compatible
+class ResendRequest(models.Model):
+
+    """ Resend Request from user, used to trigger a resend.
+    """
+    received_at = models.DateTimeField(auto_now_add=True)
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
+    outbound = models.UUIDField(null=True)
+
+    def __str__(self):
+        return '{}: {}'.format(self.id, self.received_at)

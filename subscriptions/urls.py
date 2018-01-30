@@ -12,6 +12,8 @@ urlpatterns = [
     url(r'^api/v1/', include(router.urls)),
     url(r'^api/v1/subscriptions/(?P<subscription_id>.+)/send$',
         views.SubscriptionSend.as_view()),
+    url(r'^api/v1/subscriptions/(?P<subscription_id>.+)/resend$',
+        views.SubscriptionResend.as_view()),
     url(r'^api/v1/subscriptions/request$',
         views.SubscriptionRequest.as_view()),
     url(r'^api/v1/user/token/$', views.UserView.as_view(),

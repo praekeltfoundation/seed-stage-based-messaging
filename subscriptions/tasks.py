@@ -15,7 +15,8 @@ from django.utils.timezone import now
 from seed_services_client.metrics import MetricsApiClient
 from requests import exceptions as requests_exceptions
 
-from .models import Subscription, SubscriptionSendFailure, EstimatedSend
+from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
+                     ResendRequest)
 from seed_stage_based_messaging import utils
 from contentstore.models import Message, MessageSet, Schedule
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
@@ -60,12 +61,30 @@ class FireMetric(Task):
 fire_metric = FireMetric()
 
 
-class SendNextMessage(Task):
+class StoreResendRequest(Task):
+
+    """
+    Task to save resend request and trigger send last message to the user.
+    """
+    name = "subscriptions.tasks.store_resend_request"
+
+    def run(self, subscription_id, **kwargs):
+        resend_request = ResendRequest.objects.create(
+            subscription_id=subscription_id)
+
+        send_current_message(subscription_id, resend_id=resend_request.id)
+
+        return "Message queued for resend, subscriber: %s" % (subscription_id)
+
+
+store_resend_request = StoreResendRequest()
+
+
+class BaseSendMessage(Task):
 
     """
     Task to load and contruct message and send them off
     """
-    name = "subscriptions.tasks.send_next_message"
     default_retry_delay = 5
     max_retries = 5
 
@@ -76,7 +95,32 @@ class SendNextMessage(Task):
         code.
         """
 
-    def run(self, subscription_id, **kwargs):
+    def get_message_to_send(self, subscription):
+        message = Message.objects.get(
+            messageset=subscription.messageset,
+            sequence_number=subscription.next_sequence_number,
+            lang=subscription.lang)
+
+        return message
+
+    def create_initial_payload(self, to_addr, subscription):
+        payload = {
+            "to_addr": to_addr,
+            "to_identity": subscription.identity,
+            "delivered": "false",
+            "resend": "false",
+            "metadata": {}
+        }
+
+        if subscription.messageset.channel:
+            payload["channel"] = subscription.messageset.channel
+
+        return payload
+
+    def start_post_send_process(self, subscription_id, outbound_id):
+        post_send_process(subscription_id)
+
+    def run(self, subscription_id, resend=None, **kwargs):
         """
         Load and contruct message and send them off
         """
@@ -107,10 +151,7 @@ class SendNextMessage(Task):
 
         try:
             log.info("Loading Message")
-            message = Message.objects.get(
-                messageset=subscription.messageset,
-                sequence_number=subscription.next_sequence_number,
-                lang=subscription.lang)
+            message = self.get_message_to_send(subscription)
         except ObjectDoesNotExist:
             error = ('Missing Message: MessageSet: <%s>, Sequence Number: <%s>'
                      ', Lang: <%s>') % (
@@ -175,15 +216,8 @@ class SendNextMessage(Task):
 
         # All preconditions have been met
         log.info("Preparing message payload with: %s" % message.id)  # noqa
-        payload = {
-            "to_addr": to_addr,
-            "to_identity": subscription.identity,
-            "delivered": "false",
-            "metadata": {}
-        }
 
-        if subscription.messageset.channel:
-            payload["channel"] = subscription.messageset.channel
+        payload = self.create_initial_payload(to_addr, subscription)
 
         prepend_next = None
         if subscription.messageset.content_type == "text":
@@ -274,7 +308,7 @@ class SendNextMessage(Task):
         subscription.save()
 
         log.debug("starting post_send_process task")
-        post_send_process(subscription_id)
+        self.start_post_send_process(subscription_id, result['id'])
         log.debug("finished post_send_process task")
 
         log.debug("Firing SMS/OBD calls sent per message set metric")
@@ -308,7 +342,55 @@ class SendNextMessage(Task):
                                                 kwargs, einfo)
 
 
+class SendNextMessage(BaseSendMessage):
+
+    """
+    Task to load and contruct message and send them off
+    """
+    name = "subscriptions.tasks.send_next_message"
+
+
 send_next_message = SendNextMessage()
+
+
+class SendCurrentMessage(BaseSendMessage):
+
+    """
+    Task to load and contruct last sent message and send it again
+    """
+    name = "subscriptions.tasks.send_current_message"
+
+    def run(self, subscription_id, **kwargs):
+        self.resend_id = kwargs['resend_id']
+        return super(SendCurrentMessage, self).run(subscription_id, **kwargs)
+
+    def create_initial_payload(self, to_addr, subscription):
+        payload = super(SendCurrentMessage, self).create_initial_payload(
+            to_addr, subscription)
+
+        payload['resend'] = "true"
+
+        return payload
+
+    def get_message_to_send(self, subscription):
+        next_sequence_number = subscription.next_sequence_number
+        if next_sequence_number > 1:
+            next_sequence_number -= 1
+
+        message = Message.objects.get(
+            messageset=subscription.messageset,
+            sequence_number=next_sequence_number,
+            lang=subscription.lang)
+
+        return message
+
+    def start_post_send_process(self, subscription_id, outbound_id):
+        resend_request = ResendRequest.objects.get(id=self.resend_id)
+        resend_request.outbound = outbound_id
+        resend_request.save()
+
+
+send_current_message = SendCurrentMessage()
 
 
 class PostSendProcess(Task):
