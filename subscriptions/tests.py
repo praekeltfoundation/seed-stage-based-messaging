@@ -74,6 +74,23 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return MessageSet.objects.create(**messageset_data)
 
+    def make_messages_audio(self, messageset, count=1):
+        for i in range(1, count+1):
+            # make binarycontent
+            binarycontent_data = {
+                "content": "fakefilename{}.mp3".format(i),
+            }
+            binarycontent = BinaryContent.objects.create(**binarycontent_data)
+
+            # make messages
+            message_data = {
+                "messageset": messageset,
+                "sequence_number": i,
+                "lang": "eng_ZA",
+                "binary_content": binarycontent,
+            }
+            Message.objects.create(**message_data)
+
     def make_subscription(self):
         post_data = {
             "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
@@ -1601,7 +1618,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "delivered": False,
                 "attempts": 0,
                 "metadata": {
-                    'voice_speech_url': 'fakefilename.mp3'
+                    'voice_speech_url': 'fakefilename1.mp3'
                 },
                 "created_at": "2016-03-24T13:43:43.614952Z",
                 "updated_at": "2016-03-24T13:43:43.614921Z"
@@ -1618,42 +1635,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
-        # make binarycontent
-        binarycontent_data1 = {
-            "content": "fakefilename1.mp3",
-        }
-        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
-        binarycontent_data2 = {
-            "content": "fakefilename2.mp3",
-        }
-        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
-        binarycontent_data3 = {
-            "content": "fakefilename3.mp3",
-        }
-        binarycontent3 = BinaryContent.objects.create(**binarycontent_data3)
-
-        # make messages
-        message_data1 = {
-            "messageset": existing.messageset,
-            "sequence_number": 1,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent1,
-        }
-        Message.objects.create(**message_data1)
-        message_data2 = {
-            "messageset": existing.messageset,
-            "sequence_number": 2,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent2,
-        }
-        Message.objects.create(**message_data2)
-        message_data3 = {
-            "messageset": existing.messageset,
-            "sequence_number": 3,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent3,
-        }
-        Message.objects.create(**message_data3)
+        self.make_messages_audio(existing.messageset, 3)
 
         # Execute
         response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
@@ -1733,7 +1715,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "delivered": False,
                 "attempts": 0,
                 "metadata": {
-                    'voice_speech_url': 'fakefilename.mp3'
+                    'voice_speech_url': 'fakefilename1.mp3'
                 },
                 "created_at": "2016-03-24T13:43:43.614952Z",
                 "updated_at": "2016-03-24T13:43:43.614921Z"
@@ -1750,42 +1732,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
-        # make binarycontent
-        binarycontent_data1 = {
-            "content": "fakefilename1.mp3",
-        }
-        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
-        binarycontent_data2 = {
-            "content": "fakefilename2.mp3",
-        }
-        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
-        binarycontent_data3 = {
-            "content": "fakefilename3.mp3",
-        }
-        binarycontent3 = BinaryContent.objects.create(**binarycontent_data3)
-
-        # make messages
-        message_data1 = {
-            "messageset": existing.messageset,
-            "sequence_number": 1,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent1,
-        }
-        Message.objects.create(**message_data1)
-        message_data2 = {
-            "messageset": existing.messageset,
-            "sequence_number": 2,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent2,
-        }
-        Message.objects.create(**message_data2)
-        message_data3 = {
-            "messageset": existing.messageset,
-            "sequence_number": 3,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent3,
-        }
-        Message.objects.create(**message_data3)
+        self.make_messages_audio(existing.messageset, 3)
 
         # Execute
         response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
