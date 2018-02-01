@@ -11,7 +11,7 @@ from .models import Subscription, SubscriptionSendFailure
 from .serializers import (SubscriptionSerializer, CreateUserSerializer,
                           SubscriptionSendFailureSerializer)
 from .tasks import (send_next_message, scheduled_metrics, requeue_failed_tasks,
-                    fire_daily_send_estimate)
+                    fire_daily_send_estimate, store_resend_request)
 from seed_stage_based_messaging.utils import get_available_metrics
 
 
@@ -55,6 +55,29 @@ class SubscriptionSend(APIView):
         """
         send_next_message.delay(kwargs['subscription_id'])
         return Response({'accepted': True}, status=201)
+
+
+class SubscriptionResend(APIView):
+
+    """ Triggers a re-send for the current subscription message
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """ Validates subscription data before creating Outbound message
+        """
+        # Look up subscriber
+        subscription_id = kwargs["subscription_id"]
+        if Subscription.objects.filter(id=subscription_id).exists():
+            status = 202
+            accepted = {"accepted": True}
+            store_resend_request.apply_async(args=[subscription_id])
+        else:
+            status = 400
+            accepted = {"accepted": False,
+                        "reason": "Cannot find subscription with ID {}".format(
+                            subscription_id)}
+        return Response(accepted, status=status)
 
 
 class SubscriptionRequest(APIView):
