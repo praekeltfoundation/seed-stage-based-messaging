@@ -78,13 +78,14 @@ class SubscriptionResend(APIView):
         # Look up subscriber
         subscription_id = kwargs["subscription_id"]
         if Subscription.objects.filter(id=subscription_id).exists():
-            status = 201
+            status = 202
             accepted = {"accepted": True}
             store_resend_request.apply_async(args=[subscription_id])
         else:
             status = 400
             accepted = {"accepted": False,
-                        "reason": "Missing subscription in control"}
+                        "reason": "Cannot find subscription with ID {}".format(
+                            subscription_id)}
         return Response(accepted, status=status)
 
 

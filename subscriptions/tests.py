@@ -1641,7 +1641,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
             existing.id), content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.next_sequence_number, 2)
@@ -1674,6 +1674,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         resend_request = ResendRequest.objects.last()
         self.assertEqual(ResendRequest.objects.count(), 1)
         self.assertEqual(resend_request.subscription.id, existing.id)
+        self.assertEqual(resend_request.message.sequence_number, 1)
         self.assertEqual(str(resend_request.outbound),
                          "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
 
@@ -1738,7 +1739,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
             existing.id), content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.next_sequence_number, 1)
@@ -1771,6 +1772,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         resend_request = ResendRequest.objects.last()
         self.assertEqual(ResendRequest.objects.count(), 1)
         self.assertEqual(resend_request.subscription.id, existing.id)
+        self.assertEqual(resend_request.message.sequence_number, 1)
         self.assertEqual(str(resend_request.outbound),
                          "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
 

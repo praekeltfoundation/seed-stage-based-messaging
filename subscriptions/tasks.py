@@ -361,8 +361,8 @@ class SendCurrentMessage(BaseSendMessage):
     """
     name = "subscriptions.tasks.send_current_message"
 
-    def run(self, subscription_id, **kwargs):
-        self.resend_id = kwargs['resend_id']
+    def run(self, subscription_id, resend_id, **kwargs):
+        self.resend_id = resend_id
         return super(SendCurrentMessage, self).run(subscription_id, **kwargs)
 
     def create_initial_payload(self, to_addr, subscription):
@@ -383,11 +383,14 @@ class SendCurrentMessage(BaseSendMessage):
             sequence_number=next_sequence_number,
             lang=subscription.lang)
 
+        self.message = message
+
         return message
 
     def start_post_send_process(self, subscription_id, outbound_id):
         resend_request = ResendRequest.objects.get(id=self.resend_id)
         resend_request.outbound = outbound_id
+        resend_request.message = self.message
         resend_request.save()
 
 

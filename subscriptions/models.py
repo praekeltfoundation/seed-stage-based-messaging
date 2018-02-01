@@ -11,7 +11,7 @@ from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 
-from contentstore.models import MessageSet, Schedule
+from contentstore.models import MessageSet, Schedule, Message
 
 
 @python_2_unicode_compatible
@@ -343,6 +343,8 @@ class ResendRequest(models.Model):
     received_at = models.DateTimeField(auto_now_add=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
     outbound = models.UUIDField(null=True)
+    message = models.ForeignKey(Message, related_name='resend_requests',
+                                null=True)
 
     def __str__(self):
         return '{}: {}'.format(self.id, self.received_at)
