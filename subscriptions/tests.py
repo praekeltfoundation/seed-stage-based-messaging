@@ -1576,7 +1576,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/{}/addresses/msisdn?default=True&use_communicate_through=True".format(existing.identity),  # noqa
             json={
                 "next": None,
                 "previous": None,
@@ -1663,8 +1663,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data3)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/resend' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
+            existing.id), content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         d = Subscription.objects.get(id=existing.id)
@@ -1715,7 +1715,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # mock identity address lookup
         responses.add(
             responses.GET,
-            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            "http://seed-identity-store/api/v1/identities/{}/addresses/msisdn?default=True&use_communicate_through=True".format(existing.identity),  # noqa
             json={
                 "next": None,
                 "previous": None,
@@ -1802,8 +1802,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data3)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/resend' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post('/api/v1/subscriptions/{}/resend'.format(
+            existing.id), content_type='application/json')
         # Check
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         d = Subscription.objects.get(id=existing.id)

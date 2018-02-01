@@ -74,7 +74,8 @@ class StoreResendRequest(Task):
 
         send_current_message(subscription_id, resend_id=resend_request.id)
 
-        return "Message queued for resend, subscriber: %s" % (subscription_id)
+        return "Message queued for resend, subscriber: {}".format(
+            subscription_id)
 
 
 store_resend_request = StoreResendRequest()
