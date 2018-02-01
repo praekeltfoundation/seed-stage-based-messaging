@@ -1618,13 +1618,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
-        responses.add(
-            responses.POST,
-            "http://metrics-url/metrics/",
-            json={"foo": "bar"},
-            status=200, content_type='application/json'
-        )
-
         # make binarycontent
         binarycontent_data1 = {
             "content": "fakefilename1.mp3",
@@ -1750,13 +1743,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
         # Create metrics call - deactivate TestSession for this
         self.session = None
-        responses.add(
-            responses.POST,
-            "http://metrics-url/metrics/",
-            json={"foo": "bar"},
-            status=200, content_type='application/json'
-        )
-
         responses.add(
             responses.POST,
             "http://metrics-url/metrics/",
