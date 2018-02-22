@@ -1,5 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from subscriptions.models import Subscription
 
@@ -22,7 +22,7 @@ class Command(BaseCommand):
                 # handle translations here.
                 if (active_subscription.metadata is not None and
                         "welcome_message" not in active_subscription.metadata):
-                    active_subscription["audo_file_url"] = "audio_file_url"
+                    active_subscription["audio_file_url"] = "audio_file_url"
                     count += 1
         if count > 0:
             self.stdout.write(
