@@ -1,11 +1,14 @@
 import json
 from datetime import datetime
+from mock import patch
 
 import pytz
+import responses
 
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -506,3 +509,23 @@ class TestAdmin(MessageSetTestMixin, TestCase):
         self.assertEqual(clone.short_name, 'new short name!')
         self.assertEqual(clone.messages.count(), message_set.messages.count())
         self.assertNotEqual(clone.pk, message_set.pk)
+
+
+class TestSyncWelcomeAudio(AuthenticatedAPITestCase):
+
+    @responses.activate
+    @patch('sftpclone.sftpclone.SFTPClone.__init__')
+    @patch('sftpclone.sftpclone.SFTPClone.run')
+    def test_sync_welcome_audio(self, sftp_run_mock, sftp_mock):
+
+        sftp_run_mock.return_value = None
+        sftp_mock.return_value = None
+
+        response = self.client.post('/api/v1/sync_audio_files/',
+                                    content_type='application/json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
+        sftp_mock.assert_called_with(
+            '{}/{}/'.format(settings.BASE_DIR, settings.MEDIA_ROOT),
+            'test:secret@localhost:test_directory', port=2222, delete=False)

@@ -53,6 +53,7 @@ setup(
         'croniter==0.3.13',
         'django-cache-url==1.3.1',
         'django-redis==4.7.0',
+        'sftpclone==1.2',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
