@@ -23,4 +23,5 @@ class SyncAudioMessages(Task):
             )
             cloner.run()
 
+
 sync_audio_messages = SyncAudioMessages()
