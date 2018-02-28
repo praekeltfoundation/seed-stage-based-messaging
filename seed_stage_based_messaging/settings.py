@@ -295,8 +295,8 @@ METRICS_AUTH = (
 
 DEFAULT_REQUEST_TIMEOUT = float(os.environ.get("DEFAULT_REQUEST_TIMEOUT", 30))
 
-AUDIO_FTP_HOST = os.environ.get('V2N_FTP_HOST')
-AUDIO_FTP_PORT = os.environ.get('V2N_FTP_PORT')
-AUDIO_FTP_USER = os.environ.get('V2N_FTP_USER')
-AUDIO_FTP_PASS = os.environ.get('V2N_FTP_PASS')
-AUDIO_FTP_ROOT = os.environ.get('V2N_FTP_ROOT')
+AUDIO_FTP_HOST = os.environ.get('AUDIO_FTP_HOST')
+AUDIO_FTP_PORT = os.environ.get('AUDIO_FTP_PORT')
+AUDIO_FTP_USER = os.environ.get('AUDIO_FTP_USER')
+AUDIO_FTP_PASS = os.environ.get('AUDIO_FTP_PASS')
+AUDIO_FTP_ROOT = os.environ.get('AUDIO_FTP_ROOT')
