@@ -17,5 +17,7 @@ urlpatterns = [
     url(r'^api/v1/messageset/(?P<pk>.+)/messages$',
         views.MessagesetMessagesContentView.as_view({'get': 'retrieve'})),
     url(r'^api/v1/messageset_languages/$',
-        views.MessagesetLanguageView.as_view())
+        views.MessagesetLanguageView.as_view()),
+    url(r'^api/v1/sync_audio_files/$',
+        views.SyncAudioFilesView.as_view()),
 ]

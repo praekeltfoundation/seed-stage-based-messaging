@@ -30,3 +30,9 @@ PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
 
 # REST Framework conf defaults
 REST_FRAMEWORK['PAGE_SIZE'] = 2
+
+AUDIO_FTP_HOST = 'localhost'
+AUDIO_FTP_PORT = '2222'
+AUDIO_FTP_USER = 'test'
+AUDIO_FTP_PASS = 'secret'
+AUDIO_FTP_ROOT = 'test_directory'

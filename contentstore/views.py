@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from .serializers import (ScheduleSerializer, MessageSetSerializer,
                           MessageSerializer, BinaryContentSerializer,
                           MessageListSerializer, MessageSetMessagesSerializer)
+from .tasks import sync_audio_messages
 
 
 class IdCursorPagination(CursorPagination):
@@ -94,3 +95,21 @@ class MessagesetLanguageView(APIView):
                 'lang').values_list('lang', flat=True).distinct()
 
         return Response(data, status=status)
+
+
+class SyncAudioFilesView(APIView):
+
+    """ SyncAudioFiles Interaction
+        POST - starts up the task that sync the audio files with a sftp folder.
+    """
+    def post(self, request, *args, **kwargs):
+        status = 202
+
+        task_id = sync_audio_messages.apply_async()
+
+        resp = {
+            "sync_audio_files_initiated": True,
+            "task_id": str(task_id),
+        }
+
+        return Response(resp, status=status)
