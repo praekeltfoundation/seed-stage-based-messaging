@@ -3769,6 +3769,95 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
         self.assertEqual(error, "hub-url and hub-token is required.")
 
 
+class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
+
+    def make_schedule(self):
+        # Create hourly schedule
+        schedule_data = {
+            'hour': 1
+        }
+        return Schedule.objects.create(**schedule_data)
+
+    def make_messageset_text(self):
+        messageset_data = {
+            'short_name': 'messageset_one',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule,
+            'content_type': 'text'
+        }
+        return MessageSet.objects.create(**messageset_data)
+
+    # Create messageset with content_type 'audio'
+    def make_messageset_audio(self):
+        messageset_data = {
+            'short_name': 'messageset_two',
+            'notes': None,
+            'next_set': None,
+            'default_schedule': self.schedule,
+            'content_type': 'audio'
+        }
+        return MessageSet.objects.create(**messageset_data)
+
+    # Create mock active sub with messageset content_type 'text'
+    def make_subscription_text(self):
+        post_data = {
+            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset": self.messageset_text,
+            "next_sequence_number": 1,
+            "lang": "eng_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": self.schedule,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        return Subscription.objects.create(**post_data)
+
+    # Create mock active sub with messageset content_type 'audio'
+    def make_subscription_audio(self, sub={}):
+        post_data = {
+            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "messageset": self.messageset_audio,
+            "next_sequence_number": 1,
+            "lang": "eng_ZA",
+            "active": True,
+            "completed": False,
+            "schedule": self.schedule,
+            "process_status": 0,
+            "metadata": {
+                "source": "RapidProVoice"
+            }
+        }
+        post_data.update(sub)
+        return Subscription.objects.create(**post_data)
+
+    def setUp(self):
+        super(TestAddNotificationToSubscription, self).setUp()
+
+        self.schedule = self.make_schedule()
+        # self.messageset_text = self.make_messageset_text()
+        # self.messageset_audio = self.make_messageset_audio()
+
+    def test_add_prepend_next_to_audio_subscription(self):
+        stdout, stderr = StringIO, StringIO
+
+        # self.messageset_audio = self.make_messageset_audio()
+        self.make_subscription_audio()
+        audio_file = 'http://registration.mama.ng.p16n.org/static/audio/registration/<LANG>/welcome_mother.mp3'
+
+        call_command(
+            'add_prepend_next_to_subscriptions', '--audio-file',
+            audio_file, stdout=stdout, stderr=stderr)
+
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "Updated 1 subscriptions with audio notifications"
+        )
+
+
 class TestFailedTaskAPI(AuthenticatedAPITestCase):
 
     @responses.activate
