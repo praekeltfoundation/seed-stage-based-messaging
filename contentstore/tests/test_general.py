@@ -521,17 +521,20 @@ class TestSyncWelcomeAudio(AuthenticatedAPITestCase):
         return BinaryContent.objects.create(**data)
 
     @responses.activate
+    @patch('contentstore.tasks.SyncAudioMessages._get_existing_files')
     @patch('sftpclone.sftpclone.SFTPClone.__init__')
     @patch('sftpclone.sftpclone.SFTPClone.run')
-    def test_sync_welcome_audio(self, sftp_run_mock, sftp_mock):
+    def test_sync_welcome_audio(
+            self, sftp_run_mock, sftp_mock, get_existing_mock):
         """
-        When there is a POST to the sync audio api endpoint, it should sync the
-        audio files from the django api container then upload it to a sftp
-        folder.
+        When there is a POST to the sync audio api endpoint, it should sync
+        only the missing audio files from the django api container then upload
+        it to a sftp folder. The file should be cleaned up after.
         """
 
         sftp_run_mock.return_value = None
         sftp_mock.return_value = None
+        get_existing_mock.return_value = ['other.mp3']
 
         self.make_binarycontent()
 
@@ -550,5 +553,4 @@ class TestSyncWelcomeAudio(AuthenticatedAPITestCase):
             'test:secret@localhost:test_directory', port=2222, delete=False)
 
         path = '{}/{}/hello.mp3'.format(settings.BASE_DIR, settings.MEDIA_ROOT)
-        self.assertTrue(os.path.isfile(path))
-        os.remove(path)
+        self.assertFalse(os.path.isfile(path))
