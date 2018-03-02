@@ -25,7 +25,7 @@ class SyncAudioMessages(Task):
                     r = requests.get(make_absolute_url(item.content.url))
 
                     local_path = '{}{}'.format(src, item.content.name)
-                    with open(local_path, "w") as f:
+                    with open(local_path, "wb") as f:
                         f.write(r.content)
 
             root = settings.AUDIO_FTP_ROOT
