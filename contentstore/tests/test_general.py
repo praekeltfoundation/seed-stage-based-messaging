@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from mock import patch
+import os
 
 import pytz
 import responses
@@ -14,7 +15,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
-from ..models import Schedule, MessageSet, Message
+from ..models import Schedule, MessageSet, Message, BinaryContent
 
 
 class APITestCase(TestCase):
@@ -513,13 +514,34 @@ class TestAdmin(MessageSetTestMixin, TestCase):
 
 class TestSyncWelcomeAudio(AuthenticatedAPITestCase):
 
+    def make_binarycontent(self, filename='hello.mp3'):
+        data = {
+            'content': filename,
+        }
+        return BinaryContent.objects.create(**data)
+
     @responses.activate
+    @patch('contentstore.tasks.SyncAudioMessages._get_existing_files')
     @patch('sftpclone.sftpclone.SFTPClone.__init__')
     @patch('sftpclone.sftpclone.SFTPClone.run')
-    def test_sync_welcome_audio(self, sftp_run_mock, sftp_mock):
+    def test_sync_welcome_audio(
+            self, sftp_run_mock, sftp_mock, get_existing_mock):
+        """
+        When there is a POST to the sync audio api endpoint, it should sync
+        only the missing audio files from the django api container then upload
+        it to a sftp folder. The file should be cleaned up after.
+        """
 
         sftp_run_mock.return_value = None
         sftp_mock.return_value = None
+        get_existing_mock.return_value = ['other.mp3']
+
+        self.make_binarycontent()
+
+        responses.add(responses.GET,
+                      "http://example.com/media/hello.mp3",
+                      "test file content",
+                      status=200, content_type='text/plain')
 
         response = self.client.post('/api/v1/sync_audio_files/',
                                     content_type='application/json')
@@ -529,3 +551,6 @@ class TestSyncWelcomeAudio(AuthenticatedAPITestCase):
         sftp_mock.assert_called_with(
             '{}/{}/'.format(settings.BASE_DIR, settings.MEDIA_ROOT),
             'test:secret@localhost:test_directory', port=2222, delete=False)
+
+        path = '{}/{}/hello.mp3'.format(settings.BASE_DIR, settings.MEDIA_ROOT)
+        self.assertFalse(os.path.isfile(path))
