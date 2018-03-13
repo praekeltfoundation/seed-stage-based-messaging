@@ -1,5 +1,6 @@
 import responses
 import json
+import pytest
 from uuid import uuid4
 from requests.exceptions import HTTPError
 from datetime import timedelta, datetime
@@ -3778,7 +3779,7 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
         self.make_subscription()
         self.make_subscription_audio_welcome()
 
-        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
 
         call_command('add_prepend_next_to_subscriptions', '--audio-file',
                      audio_file, stdout=stdout, stderr=stderr)
@@ -3790,12 +3791,12 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
     def test_noop_no_audio_file(self):
         stdout, stderr = StringIO(), StringIO()
 
-        call_command('add_prepend_next_to_subscriptions',
-                     stdout=stdout, stderr=stderr)
+        with pytest.raises(Exception) as excinfo:
+            call_command('add_prepend_next_to_subscriptions',
+                         stdout=stdout, stderr=stderr)
 
-        self.assertEqual(stderr.getvalue(), '')
-        error = stdout.getvalue().strip()
-        self.assertEqual(error, "audio-file is required.")
+        self.assertEqual(
+            str(excinfo.value), 'Error: argument --audio-file is required')
 
     def test_add_prepend_next_to_audio_subscription(self):
         stdout, stderr = StringIO(), StringIO()
@@ -3805,7 +3806,7 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
         sub_text = self.make_subscription()
         sub_welcome = self.make_subscription_audio_welcome()
 
-        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
 
         call_command(
             'add_prepend_next_to_subscriptions', '--audio-file',
@@ -3836,7 +3837,7 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
         sub_eng = self.make_subscription_audio()
         sub_zul = self.make_subscription_audio({'lang': 'zul_ZA'})
 
-        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
 
         call_command(
             'add_prepend_next_to_subscriptions', '--audio-file',
