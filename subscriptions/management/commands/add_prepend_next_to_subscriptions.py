@@ -28,13 +28,18 @@ class Command(BaseCommand):
         count = 0
         for active_subscription in active_subscriptions.iterator():
 
-            if (active_subscription.metadata.get("prepend_next_delivery")
-                    is None):
-                active_subscription.metadata["prepend_next_delivery"] = \
-                    audio_file.format(**model_to_dict(active_subscription))
-                active_subscription.save()
+            if not active_subscription.metadata:
+                active_subscription.metadata = {}
 
-                count += 1
+            if (active_subscription.metadata.get("prepend_next_delivery")
+                    is not None):
+                continue
+
+            active_subscription.metadata["prepend_next_delivery"] = \
+                audio_file.format(**model_to_dict(active_subscription))
+            active_subscription.save()
+
+            count += 1
 
         self.success(
             "Updated {} subscription(s) with audio notifications.".format(
