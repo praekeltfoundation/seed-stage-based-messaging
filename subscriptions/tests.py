@@ -3771,82 +3771,41 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
 
 class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
 
-    def make_schedule(self):
-        # Create hourly schedule
-        schedule_data = {
-            'hour': 1
-        }
-        return Schedule.objects.create(**schedule_data)
+    def test_noop(self):
+        stdout, stderr = StringIO(), StringIO()
 
-    def make_messageset_text(self):
-        messageset_data = {
-            'short_name': 'messageset_one',
-            'notes': None,
-            'next_set': None,
-            'default_schedule': self.schedule,
-            'content_type': 'text'
-        }
-        return MessageSet.objects.create(**messageset_data)
+        self.make_subscription_audio({'active': False})
+        self.make_subscription()
+        self.make_subscription_audio_welcome()
 
-    # Create messageset with content_type 'audio'
-    def make_messageset_audio(self):
-        messageset_data = {
-            'short_name': 'messageset_two',
-            'notes': None,
-            'next_set': None,
-            'default_schedule': self.schedule,
-            'content_type': 'audio'
-        }
-        return MessageSet.objects.create(**messageset_data)
+        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
 
-    # Create mock active sub with messageset content_type 'text'
-    def make_subscription_text(self):
-        post_data = {
-            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset": self.messageset_text,
-            "next_sequence_number": 1,
-            "lang": "eng_ZA",
-            "active": True,
-            "completed": False,
-            "schedule": self.schedule,
-            "process_status": 0,
-            "metadata": {
-                "source": "RapidProVoice"
-            }
-        }
-        return Subscription.objects.create(**post_data)
+        call_command('add_prepend_next_to_subscriptions', '--audio-file',
+                     audio_file, stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            'Updated 0 subscription(s) with audio notifications.')
 
-    # Create mock active sub with messageset content_type 'audio'
-    def make_subscription_audio(self, sub={}):
-        post_data = {
-            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset": self.messageset_audio,
-            "next_sequence_number": 1,
-            "lang": "eng_ZA",
-            "active": True,
-            "completed": False,
-            "schedule": self.schedule,
-            "process_status": 0,
-            "metadata": {
-                "source": "RapidProVoice"
-            }
-        }
-        post_data.update(sub)
-        return Subscription.objects.create(**post_data)
+    def test_noop_no_audio_file(self):
+        stdout, stderr = StringIO(), StringIO()
 
-    def setUp(self):
-        super(TestAddNotificationToSubscription, self).setUp()
+        call_command('add_prepend_next_to_subscriptions',
+                     stdout=stdout, stderr=stderr)
 
-        self.schedule = self.make_schedule()
-        # self.messageset_text = self.make_messageset_text()
-        # self.messageset_audio = self.make_messageset_audio()
+        self.assertEqual(stderr.getvalue(), '')
+        error = stdout.getvalue().strip()
+        self.assertEqual(error, "audio-file is required.")
 
     def test_add_prepend_next_to_audio_subscription(self):
-        stdout, stderr = StringIO, StringIO
+        stdout, stderr = StringIO(), StringIO()
 
-        # self.messageset_audio = self.make_messageset_audio()
-        self.make_subscription_audio()
-        audio_file = 'http://registration.mama.ng.p16n.org/static/audio/registration/<LANG>/welcome_mother.mp3'
+        sub_active = self.make_subscription_audio()
+        sub_inactive = self.make_subscription_audio({'active': False})
+        sub_text = self.make_subscription()
+        sub_welcome = self.make_subscription_audio_welcome()
+
+        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
 
         call_command(
             'add_prepend_next_to_subscriptions', '--audio-file',
@@ -3854,8 +3813,48 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
 
         self.assertEqual(
             stdout.getvalue().strip(),
-            "Updated 1 subscriptions with audio notifications"
+            "Updated 1 subscription(s) with audio notifications."
         )
+
+        sub_active.refresh_from_db()
+        sub_inactive.refresh_from_db()
+        sub_text.refresh_from_db()
+        sub_welcome.refresh_from_db()
+
+        self.assertEqual(sub_active.metadata['prepend_next_delivery'],
+                         'http://registration.com/eng_ZA/welcome.mp3')
+
+        self.assertFalse('prepend_next_delivery' in sub_inactive.metadata)
+        self.assertFalse('prepend_next_delivery' in sub_text.metadata)
+
+        self.assertEqual(sub_welcome.metadata['prepend_next_delivery'],
+                         'http://example.com/welcome.mp3')
+
+    def test_add_prepend_next_diff_languages(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        sub_eng = self.make_subscription_audio()
+        sub_zul = self.make_subscription_audio({'lang': 'zul_ZA'})
+
+        audio_file = 'http://registration.com/<LANG>/welcome.mp3'
+
+        call_command(
+            'add_prepend_next_to_subscriptions', '--audio-file',
+            audio_file, stdout=stdout, stderr=stderr)
+
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "Updated 2 subscription(s) with audio notifications."
+        )
+
+        sub_eng.refresh_from_db()
+        sub_zul.refresh_from_db()
+
+        self.assertEqual(sub_eng.metadata['prepend_next_delivery'],
+                         'http://registration.com/eng_ZA/welcome.mp3')
+
+        self.assertEqual(sub_zul.metadata['prepend_next_delivery'],
+                         'http://registration.com/zul_ZA/welcome.mp3')
 
 
 class TestFailedTaskAPI(AuthenticatedAPITestCase):
