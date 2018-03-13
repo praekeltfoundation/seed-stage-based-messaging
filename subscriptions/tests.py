@@ -1,5 +1,6 @@
 import responses
 import json
+import pytest
 from uuid import uuid4
 from requests.exceptions import HTTPError
 from datetime import timedelta, datetime
@@ -3767,6 +3768,94 @@ class TestMarkInvalidSubscription(AuthenticatedAPITestCase):
 
         error = stdout.getvalue().strip()
         self.assertEqual(error, "hub-url and hub-token is required.")
+
+
+class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
+
+    def test_noop(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        self.make_subscription_audio({'active': False})
+        self.make_subscription()
+        self.make_subscription_audio_welcome()
+
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
+
+        call_command('add_prepend_next_to_subscriptions', '--audio-file',
+                     audio_file, stdout=stdout, stderr=stderr)
+        self.assertEqual(stderr.getvalue(), '')
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            'Updated 0 subscription(s) with audio notifications.')
+
+    def test_noop_no_audio_file(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        with pytest.raises(Exception) as excinfo:
+            call_command('add_prepend_next_to_subscriptions',
+                         stdout=stdout, stderr=stderr)
+
+        self.assertTrue(str(excinfo.value).find('--audio-file') != -1)
+        self.assertTrue(str(excinfo.value).find('required') != -1)
+
+    def test_add_prepend_next_to_audio_subscription(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        sub_active = self.make_subscription_audio()
+        sub_inactive = self.make_subscription_audio({'active': False})
+        sub_text = self.make_subscription()
+        sub_welcome = self.make_subscription_audio_welcome()
+
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
+
+        call_command(
+            'add_prepend_next_to_subscriptions', '--audio-file',
+            audio_file, stdout=stdout, stderr=stderr)
+
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "Updated 1 subscription(s) with audio notifications."
+        )
+
+        sub_active.refresh_from_db()
+        sub_inactive.refresh_from_db()
+        sub_text.refresh_from_db()
+        sub_welcome.refresh_from_db()
+
+        self.assertEqual(sub_active.metadata['prepend_next_delivery'],
+                         'http://registration.com/eng_ZA/welcome.mp3')
+
+        self.assertFalse('prepend_next_delivery' in sub_inactive.metadata)
+        self.assertFalse('prepend_next_delivery' in sub_text.metadata)
+
+        self.assertEqual(sub_welcome.metadata['prepend_next_delivery'],
+                         'http://example.com/welcome.mp3')
+
+    def test_add_prepend_next_diff_languages(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        sub_eng = self.make_subscription_audio()
+        sub_zul = self.make_subscription_audio({'lang': 'zul_ZA'})
+
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
+
+        call_command(
+            'add_prepend_next_to_subscriptions', '--audio-file',
+            audio_file, stdout=stdout, stderr=stderr)
+
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "Updated 2 subscription(s) with audio notifications."
+        )
+
+        sub_eng.refresh_from_db()
+        sub_zul.refresh_from_db()
+
+        self.assertEqual(sub_eng.metadata['prepend_next_delivery'],
+                         'http://registration.com/eng_ZA/welcome.mp3')
+
+        self.assertEqual(sub_zul.metadata['prepend_next_delivery'],
+                         'http://registration.com/zul_ZA/welcome.mp3')
 
 
 class TestFailedTaskAPI(AuthenticatedAPITestCase):
