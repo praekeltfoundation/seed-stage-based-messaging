@@ -3795,8 +3795,8 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
             call_command('add_prepend_next_to_subscriptions',
                          stdout=stdout, stderr=stderr)
 
-        self.assertEqual(
-            str(excinfo.value), 'Error: argument --audio-file is required')
+        self.assertTrue(str(excinfo.value).find('--audio-file') != -1)
+        self.assertTrue(str(excinfo.value).find('required') != -1)
 
     def test_add_prepend_next_to_audio_subscription(self):
         stdout, stderr = StringIO(), StringIO()
