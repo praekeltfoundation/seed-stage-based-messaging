@@ -17,13 +17,25 @@ class Command(BaseCommand):
             help='A path to the audio file containing the "\
             "notification message'
         )
+        parser.add_argument(
+            '--message-set',
+            dest="message_set",
+            type=str,
+            help='A string to filter the messagesets by name, only update '
+            'subscriptions linked to these.'
+        )
 
     def handle(self, *args, **options):
         audio_file = options['audio_file']
+        message_set = options['message_set']
 
         active_subscriptions = Subscription.objects.filter(
             active=True,
             messageset__content_type="audio")
+
+        if message_set:
+            active_subscriptions = active_subscriptions.filter(
+                messageset__short_name__contains=message_set)
 
         count = 0
         for active_subscription in active_subscriptions.iterator():
