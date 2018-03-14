@@ -65,9 +65,9 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return MessageSet.objects.create(**messageset_data)
 
-    def make_messageset_audio(self):
+    def make_messageset_audio(self, short_name='messageset_two'):
         messageset_data = {
-            'short_name': 'messageset_two',
+            'short_name': short_name,
             'notes': None,
             'next_set': None,
             'default_schedule': self.schedule,
@@ -3856,6 +3856,33 @@ class TestAddNotificationToSubscription(AuthenticatedAPITestCase):
 
         self.assertEqual(sub_zul.metadata['prepend_next_delivery'],
                          'http://registration.com/zul_ZA/welcome.mp3')
+
+    def test_add_prepend_next_diff_messageset(self):
+        stdout, stderr = StringIO(), StringIO()
+
+        sub_match = self.make_subscription_audio()
+        diff_messageset = self.make_messageset_audio('diff_messageset')
+        sub_diff = self.make_subscription_audio(
+            {"messageset": diff_messageset})
+
+        audio_file = 'http://registration.com/{lang}/welcome.mp3'
+
+        call_command(
+            'add_prepend_next_to_subscriptions', '--audio-file',
+            audio_file, '--message-set', 'two', stdout=stdout, stderr=stderr)
+
+        self.assertEqual(
+            stdout.getvalue().strip(),
+            "Updated 1 subscription(s) with audio notifications."
+        )
+
+        sub_match.refresh_from_db()
+        sub_diff.refresh_from_db()
+
+        self.assertEqual(sub_match.metadata['prepend_next_delivery'],
+                         'http://registration.com/eng_ZA/welcome.mp3')
+
+        self.assertEqual(sub_diff.metadata.get('prepend_next_delivery'), None)
 
 
 class TestFailedTaskAPI(AuthenticatedAPITestCase):
