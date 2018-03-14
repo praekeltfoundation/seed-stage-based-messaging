@@ -300,3 +300,6 @@ AUDIO_FTP_PORT = os.environ.get('AUDIO_FTP_PORT')
 AUDIO_FTP_USER = os.environ.get('AUDIO_FTP_USER')
 AUDIO_FTP_PASS = os.environ.get('AUDIO_FTP_PASS')
 AUDIO_FTP_ROOT = os.environ.get('AUDIO_FTP_ROOT')
+
+DRY_RUN_MESSAGESETS = map(int, filter(bool, os.environ.get(
+    'DRY_RUN_MESSAGESETS', '').split(',')))

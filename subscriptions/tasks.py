@@ -121,6 +121,53 @@ class BaseSendMessage(Task):
     def start_post_send_process(self, subscription_id, outbound_id):
         post_send_process(subscription_id)
 
+    def send_message(
+            self, log, payload, subscription, prepend_next, retry_delay):
+        """
+        Sends the specified message to the message sender, handling errors
+        and retrying the task if necessary
+        """
+        log.info("Sending message to Message Sender")
+        message_sender_client = MessageSenderApiClient(
+            settings.MESSAGE_SENDER_TOKEN,
+            settings.MESSAGE_SENDER_URL,
+            retries=5,
+            timeout=settings.DEFAULT_REQUEST_TIMEOUT,
+        )
+        try:
+            return message_sender_client.create_outbound(payload)
+        except requests_exceptions.ConnectionError as exc:
+            log.info('Connection Error to Message Sender')
+            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.HTTPError as exc:
+            # Recoverable HTTP errors: 500, 401
+            log.info('Message Sender Request failed due to status: %s' %
+                     exc.response.status_code)
+            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
+                           exc.response.status_code)
+            fire_metric.delay(metric_name, 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+        except requests_exceptions.Timeout as exc:
+            log.info('Message Sender Request failed due to timeout')
+            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
+            # Reset the prepend next delivery that was cleared above.
+            if prepend_next is not None:
+                subscription.metadata["prepend_next_delivery"] = prepend_next
+            subscription.process_status = 0
+            subscription.save()
+            self.retry(exc=exc, countdown=retry_delay)
+
     def run(self, subscription_id, resend=None, **kwargs):
         """
         Load and contruct message and send them off
@@ -262,46 +309,13 @@ class BaseSendMessage(Task):
                     make_absolute_url(
                         message.binary_content.content.url)
 
-        log.info("Sending message to Message Sender")
-        message_sender_client = MessageSenderApiClient(
-            settings.MESSAGE_SENDER_TOKEN,
-            settings.MESSAGE_SENDER_URL,
-            retries=5,
-            timeout=settings.DEFAULT_REQUEST_TIMEOUT,
-        )
-        try:
-            result = message_sender_client.create_outbound(payload)
-        except requests_exceptions.ConnectionError as exc:
-            log.info('Connection Error to Message Sender')
-            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.HTTPError as exc:
-            # Recoverable HTTP errors: 500, 401
-            log.info('Message Sender Request failed due to status: %s' %
-                     exc.response.status_code)
-            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
-                           exc.response.status_code)
-            fire_metric.delay(metric_name, 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.Timeout as exc:
-            log.info('Message Sender Request failed due to timeout')
-            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
+        if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
+            log.info('Skipping sending of message')
+            message_id = None
+        else:
+            result = self.send_message(
+                log, payload, subscription, prepend_next, retry_delay)
+            message_id = result['id']
 
         log.debug("setting process status back to 0")
         subscription.process_status = 0  # ready
@@ -309,7 +323,7 @@ class BaseSendMessage(Task):
         subscription.save()
 
         log.debug("starting post_send_process task")
-        self.start_post_send_process(subscription_id, result['id'])
+        self.start_post_send_process(subscription_id, message_id)
         log.debug("finished post_send_process task")
 
         log.debug("Firing SMS/OBD calls sent per message set metric")
@@ -328,8 +342,8 @@ class BaseSendMessage(Task):
             "metric_value": 1.0
         })
 
-        log.debug("Message queued for send. ID: <%s>" % str(result["id"]))  # noqa
-        return "Message queued for send. ID: <%s>" % str(result["id"])  # noqa
+        log.debug("Message queued for send. ID: <%s>" % str(message_id))
+        return "Message queued for send. ID: <%s>" % str(message_id)
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         if self.request.retries == self.max_retries:
