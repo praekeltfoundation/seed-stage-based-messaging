@@ -353,7 +353,7 @@ class BaseSendMessage(Task):
                 reason=einfo.exception.message,
                 task_id=task_id
             )
-        super(SendNextMessage, self).on_failure(exc, task_id, args,
+        super(BaseSendMessage, self).on_failure(exc, task_id, args,
                                                 kwargs, einfo)
 
 
