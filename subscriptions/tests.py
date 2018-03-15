@@ -1796,7 +1796,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             "to_addr": "+2345059992222",
             "metadata": {
                 "voice_speech_url":
-                    "http://example.com/media/fakefilename1.mp3"
+                    ["http://example.com/media/fakefilename1.mp3"]
             },
             "resend": "true"})
 
@@ -1894,7 +1894,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             "to_addr": "+2345059992222",
             "metadata": {
                 "voice_speech_url":
-                    "http://example.com/media/fakefilename1.mp3"
+                    ["http://example.com/media/fakefilename1.mp3"]
             },
             "resend": "true"})
 

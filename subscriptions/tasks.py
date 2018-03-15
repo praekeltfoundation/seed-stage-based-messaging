@@ -305,9 +305,10 @@ class BaseSendMessage(Task):
                     "prepend_next_delivery"] = None
                 subscription.save()
             else:
-                payload["metadata"]["voice_speech_url"] = \
+                payload["metadata"]["voice_speech_url"] = [
                     make_absolute_url(
                         message.binary_content.content.url)
+                ]
 
         if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
             log.info('Skipping sending of message')
