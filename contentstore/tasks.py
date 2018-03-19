@@ -4,6 +4,7 @@ import paramiko
 
 from celery.task import Task
 from django.conf import settings
+from django.utils._os import abspathu
 from sftpclone import sftpclone
 
 from .models import BinaryContent
@@ -22,8 +23,9 @@ class SyncAudioMessages(Task):
 
     def run(self, **kwargs):
         if settings.AUDIO_FTP_HOST:
-
-            src = '{}/{}/'.format(settings.BASE_DIR, settings.MEDIA_ROOT)
+            src = abspathu(settings.MEDIA_ROOT)
+            if not src.endswith('/'):
+                src += '/'
 
             root = settings.AUDIO_FTP_ROOT
             host = settings.AUDIO_FTP_HOST
