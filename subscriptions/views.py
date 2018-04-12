@@ -28,6 +28,8 @@ class SubscriptionFilter(filters.FilterSet):
         name="created_at", lookup_type="gte")
     created_before = django_filters.IsoDateTimeFilter(
         name="created_at", lookup_type="lte")
+    metadata_contains = django_filters.CharFilter(name='metadata',
+                                                  lookup_type='has_key')
 
     class Meta:
         model = Subscription
