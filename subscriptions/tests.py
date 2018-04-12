@@ -380,6 +380,46 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
 
+    def test_filter_subscription_metadata_has_key(self):
+        sub1 = self.make_subscription()
+        sub2 = self.make_subscription()
+        self.make_subscription()
+
+        sub1.metadata['new_key'] = 'stuff'
+        sub1.save()
+        sub2.metadata['new_key'] = 'things'
+        sub2.save()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"metadata_has_key": "new_key"},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub1.id), str(sub2.id)]), ids)
+
+    def test_filter_subscription_metadata_not_has_key(self):
+        sub1 = self.make_subscription()
+        sub2 = self.make_subscription()
+        sub3 = self.make_subscription()
+
+        sub2.metadata['new_key'] = 'things'
+        sub2.save()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"metadata_not_has_key": "new_key"},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+        ids = set(s['id'] for s in response.data['results'])
+        self.assertEqual(set([str(sub1.id), str(sub3.id)]), ids)
+
     def test_update_subscription_data(self):
         # Setup
         existing = self.make_subscription()
