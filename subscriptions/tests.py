@@ -392,7 +392,7 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
 
         response = self.client.get(
             '/api/v1/subscriptions/',
-            {"metadata_contains": "new_key"},
+            {"metadata_has_key": "new_key"},
             content_type='application/json'
         )
 
