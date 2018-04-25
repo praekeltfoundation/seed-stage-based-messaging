@@ -2005,9 +2005,6 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
         # Check
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.maxDiff = None
-        for r in sorted(response.data['metrics_available']):
-            print(r)
         self.assertEqual(
             sorted(response.data["metrics_available"]), sorted([
                 'message.audio.messageset_two.sum',
