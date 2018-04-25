@@ -208,21 +208,6 @@ CELERY_ROUTES = {
     'subscriptions.tasks.scheduled_metrics': {
         'queue': 'metrics',
     },
-    'subscriptions.tasks.fire_active_last': {
-        'queue': 'metrics',
-    },
-    'subscriptions.tasks.fire_created_last': {
-        'queue': 'metrics',
-    },
-    'subscriptions.tasks.fire_broken_last': {
-        'queue': 'metrics',
-    },
-    'subscriptions.tasks.fire_completed_last': {
-        'queue': 'metrics',
-    },
-    'subscriptions.tasks.fire_incomplete_last': {
-        'queue': 'metrics',
-    },
 }
 
 CELERYD_MAX_TASKS_PER_CHILD = 50
@@ -234,14 +219,16 @@ CACHES = {
 
 METRICS_REALTIME = [
     'subscriptions.created.sum',
-    'subscriptions.send_next_message_errored.sum'
+    'subscriptions.send_next_message_errored.sum',
+    'sbm.send_next_message.connection_error.sum',
+    'sbm.send_next_message.http_error.400.sum',
+    'sbm.send_next_message.http_error.401.sum',
+    'sbm.send_next_message.http_error.403.sum',
+    'sbm.send_next_message.http_error.404.sum',
+    'sbm.send_next_message.http_error.500.sum',
+    'sbm.send_next_message.timeout.sum',
 ]
-# Note metrics with variable names of messageset short_names not included here
 METRICS_SCHEDULED = [
-    'subscriptions.active.last',
-    'subscriptions.created.last',
-    'subscriptions.broken.last',
-    'subscriptions.completed.last',
     'subscriptions.send.estimate.0.last',
     'subscriptions.send.estimate.1.last',
     'subscriptions.send.estimate.2.last',
@@ -249,22 +236,9 @@ METRICS_SCHEDULED = [
     'subscriptions.send.estimate.4.last',
     'subscriptions.send.estimate.5.last',
     'subscriptions.send.estimate.6.last',
-    'subscriptions.send_next_message.connection_error.sum',
-    'subscriptions.send_next_message.http_error.400.sum',
-    'subscriptions.send_next_message.http_error.401.sum',
-    'subscriptions.send_next_message.http_error.403.sum',
-    'subscriptions.send_next_message.http_error.404.sum',
-    'subscriptions.send_next_message.http_error.500.sum',
-    'subscriptions.send_next_message.timeout.sum',
 ]
 METRICS_SCHEDULED_TASKS = [
-    'fire_active_last',
-    'fire_created_last',
-    'fire_broken_last',
-    'fire_completed_last',
-    'fire_incomplete_last',
-    'fire_messagesets_tasks',
-    'fire_week_estimate_last'
+    'fire_week_estimate_last',
 ]
 
 CELERY_TASK_SERIALIZER = 'json'
