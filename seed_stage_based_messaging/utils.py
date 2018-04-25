@@ -2,7 +2,6 @@ import random
 import re
 from django.conf import settings
 from contentstore.models import MessageSet
-from subscriptions.models import Subscription
 from seed_services_client import IdentityStoreApiClient
 
 NORMALISE_METRIC_RE = re.compile(r'\W+')
@@ -40,39 +39,13 @@ def get_available_metrics():
     available_metrics.extend(settings.METRICS_REALTIME)
     available_metrics.extend(settings.METRICS_SCHEDULED)
 
-    messagesets = MessageSet.objects.all()
-    for messageset in messagesets:
-        messageset_name = normalise_metric_name(messageset.short_name)
+    for messageset in MessageSet.objects.all().iterator():
+        send_type = normalise_metric_name(messageset.content_type)
+        ms_name = normalise_metric_name(messageset.short_name)
         available_metrics.append(
-            "subscriptions.%s.active.last" % messageset.short_name)
+            'message.{}.{}.sum'.format(send_type, ms_name))
         available_metrics.append(
-            "subscriptions.message_set.{}.sum".format(messageset_name))
-        available_metrics.append(
-            "subscriptions.message_set.{}.total.last".format(messageset_name))
-
-    languages = Subscription.objects.order_by('lang').distinct('lang')\
-        .values_list('lang', flat=True)
-    for lang in languages:
-        lang_normal = normalise_metric_name(lang)
-        available_metrics.append(
-            "subscriptions.language.{}.sum".format(lang_normal))
-        available_metrics.append(
-            "subscriptions.language.{}.total.last".format(lang_normal))
-
-    content_types = MessageSet._meta.get_field('content_type').choices
-    for content_type in content_types:
-        type_normal = normalise_metric_name(content_type[0])
-        available_metrics.append(
-            "subscriptions.message_format.{}.sum".format(type_normal))
-        available_metrics.append(
-            "subscriptions.message_format.{}.total.last".format(type_normal))
-        available_metrics.append(
-            "message.{}.sum".format(type_normal))
-
-        for messageset in messagesets:
-            messageset_name = normalise_metric_name(messageset.short_name)
-            available_metrics.append(
-                "message.{}.{}.sum".format(type_normal, messageset_name))
+            'message.{}.sum'.format(send_type))
 
     return available_metrics
 

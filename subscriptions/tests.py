@@ -32,8 +32,7 @@ from rest_framework.authtoken.models import Token
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      fire_sub_action_if_new, disable_schedule_if_complete,
                      disable_schedule_if_deactivated, fire_metrics_if_new,
-                     fire_metric_per_message_set, fire_metric_per_lang,
-                     fire_metric_per_message_format, ResendRequest)
+                     ResendRequest)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
@@ -169,10 +168,6 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.disconnect(disable_schedule_if_deactivated,
                              sender=Subscription)
         post_save.disconnect(fire_metrics_if_new, sender=Subscription)
-        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
-        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
-        post_save.disconnect(fire_metric_per_message_format,
-                             sender=Subscription)
         assert not has_listeners(), (
             "Subscription model still has post_save listeners. Make sure"
             " helpers cleaned up properly in earlier tests.")
@@ -187,9 +182,6 @@ class AuthenticatedAPITestCase(APITestCase):
         post_save.connect(disable_schedule_if_complete, sender=Subscription)
         post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
         post_save.connect(fire_metrics_if_new, sender=Subscription)
-        post_save.connect(fire_metric_per_message_set, sender=Subscription)
-        post_save.connect(fire_metric_per_lang, sender=Subscription)
-        post_save.connect(fire_metric_per_message_format, sender=Subscription)
 
     def _add_metrics_response(self):
         responses.add(
@@ -2015,12 +2007,18 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
 
         self.assertEqual(
             sorted(response.data["metrics_available"]), sorted([
+                'message.audio.messageset_two.sum',
+                'message.audio.sum',
+                'message.text.messageset_one.sum',
+                'message.text.sum',
+                'sbm.send_next_message.connection_error.sum',
+                'sbm.send_next_message.http_error.400.sum',
+                'sbm.send_next_message.http_error.401.sum',
+                'sbm.send_next_message.http_error.403.sum',
+                'sbm.send_next_message.http_error.404.sum',
+                'sbm.send_next_message.http_error.500.sum',
+                'sbm.send_next_message.timeout.sum',
                 'subscriptions.created.sum',
-                'subscriptions.send_next_message_errored.sum',
-                'subscriptions.active.last',
-                'subscriptions.created.last',
-                'subscriptions.broken.last',
-                'subscriptions.completed.last',
                 'subscriptions.send.estimate.0.last',
                 'subscriptions.send.estimate.1.last',
                 'subscriptions.send.estimate.2.last',
@@ -2028,31 +2026,7 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                 'subscriptions.send.estimate.4.last',
                 'subscriptions.send.estimate.5.last',
                 'subscriptions.send.estimate.6.last',
-                'subscriptions.send_next_message.connection_error.sum',
-                'subscriptions.send_next_message.http_error.400.sum',
-                'subscriptions.send_next_message.http_error.401.sum',
-                'subscriptions.send_next_message.http_error.403.sum',
-                'subscriptions.send_next_message.http_error.404.sum',
-                'subscriptions.send_next_message.http_error.500.sum',
-                'subscriptions.send_next_message.timeout.sum',
-                'subscriptions.messageset_one.active.last',
-                'subscriptions.messageset_two.active.last',
-                'subscriptions.message_set.messageset_one.sum',
-                'subscriptions.message_set.messageset_two.sum',
-                'subscriptions.message_set.messageset_one.total.last',
-                'subscriptions.message_set.messageset_two.total.last',
-                'subscriptions.language.eng_ZA.sum',
-                'subscriptions.language.eng_ZA.total.last',
-                'subscriptions.message_format.text.sum',
-                'subscriptions.message_format.text.total.last',
-                'subscriptions.message_format.audio.sum',
-                'subscriptions.message_format.audio.total.last',
-                'message.text.messageset_one.sum',
-                'message.audio.messageset_one.sum',
-                'message.text.messageset_two.sum',
-                'message.audio.messageset_two.sum',
-                'message.text.sum',
-                'message.audio.sum',
+                'subscriptions.send_next_message_errored.sum',
             ])
         )
 
@@ -2167,359 +2141,11 @@ class TestMetrics(AuthenticatedAPITestCase):
         # Execute
         result = scheduled_metrics.apply_async()
         # Check
-        self.assertEqual(result.get(), "7 Scheduled metrics launched")
-        # fire_messagesets_tasks fires two metrics, therefore extra call
-        total = 7
+        self.assertEqual(result.get(), "1 Scheduled metrics launched")
         # fire_week_estimate_last can fire up to 7 extra metrics based on the
         # day of the week
-        total = total + (7 - datetime.today().weekday())
+        total = (7 - datetime.today().weekday())
         self.assertEqual(len(responses.calls), total)
-
-    @responses.activate
-    def test_metric_per_message_set_sum(self):
-        """
-        When a new subscription is created, a sum metric should be fired for
-        that subscription's message set.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_message_set, sender=Subscription)
-
-        self.make_subscription()
-
-        [sum_call, _] = responses.calls
-        self.assertEqual(json.loads(sum_call.request.body), {
-            "subscriptions.message_set.messageset_one.sum": 1.0
-        })
-
-        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
-
-    @responses.activate
-    def test_metric_per_message_set_last(self):
-        """
-        When a new subscription is created, a last metric should be fired for
-        the total amount of subscriptions for that message set.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_message_set, sender=Subscription)
-
-        self.make_subscription()
-        self.make_subscription()
-
-        [_, last_call1, _, last_call2] = responses.calls
-        self.assertEqual(json.loads(last_call1.request.body), {
-            "subscriptions.message_set.messageset_one.total.last": 1.0
-        })
-        self.assertEqual(json.loads(last_call2.request.body), {
-            "subscriptions.message_set.messageset_one.total.last": 2.0
-        })
-
-        post_save.disconnect(fire_metric_per_message_set, sender=Subscription)
-
-    @responses.activate
-    def test_metric_per_language_sum(self):
-        """
-        When a new subscription is created, a sum metric should be fired for
-        that subscription's language.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_lang, sender=Subscription)
-
-        self.make_subscription()
-
-        [sum_call, _] = responses.calls
-        self.assertEqual(json.loads(sum_call.request.body), {
-            "subscriptions.language.eng_ZA.sum": 1.0
-        })
-
-        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
-
-    @responses.activate
-    def test_metric_per_language_last(self):
-        """
-        When a new subscription is created, a last metric should be fired for
-        the total amount of subscriptions for that language.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_lang, sender=Subscription)
-
-        self.make_subscription()
-        self.make_subscription()
-
-        [_, last_call1, _, last_call2] = responses.calls
-        self.assertEqual(json.loads(last_call1.request.body), {
-            "subscriptions.language.eng_ZA.total.last": 1.0
-        })
-        self.assertEqual(json.loads(last_call2.request.body), {
-            "subscriptions.language.eng_ZA.total.last": 2.0
-        })
-
-        post_save.disconnect(fire_metric_per_lang, sender=Subscription)
-
-    @responses.activate
-    def test_metric_per_message_format_sum(self):
-        """
-        When a new subscription is created, a sum metric should be fired for
-        that subscription's message format.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_message_format, sender=Subscription)
-
-        self.make_subscription()
-
-        [sum_call, _] = responses.calls
-        self.assertEqual(json.loads(sum_call.request.body), {
-            "subscriptions.message_format.text.sum": 1.0
-        })
-
-        post_save.disconnect(fire_metric_per_message_format,
-                             sender=Subscription)
-
-    @responses.activate
-    def test_metric_per_message_format_last(self):
-        """
-        When a new subscription is created, a last metric should be fired for
-        the total amount of subscriptions for that message format.
-        """
-        # deactivate Testsession for this test
-        self.session = None
-        # add metric post response
-        responses.add(responses.POST,
-                      "http://metrics-url/metrics/",
-                      json={"foo": "bar"},
-                      status=200, content_type='application/json')
-        post_save.connect(fire_metric_per_message_format, sender=Subscription)
-
-        self.make_subscription()
-        self.make_subscription_audio()
-        self.make_subscription()
-
-        [_, last_call1, _, last_call2, _, last_call3] = responses.calls
-        self.assertEqual(json.loads(last_call1.request.body), {
-            "subscriptions.message_format.text.total.last": 1.0
-        })
-        self.assertEqual(json.loads(last_call2.request.body), {
-            "subscriptions.message_format.audio.total.last": 1.0
-        })
-        self.assertEqual(json.loads(last_call3.request.body), {
-            "subscriptions.message_format.text.total.last": 2.0
-        })
-
-        post_save.disconnect(fire_metric_per_message_format,
-                             sender=Subscription)
-
-    @responses.activate
-    def test_fire_active_last(self):
-        """
-        Ensure that the subscriptions.active.last metric gets called with the
-        correct amount of active subscriptions.
-        """
-        # make two active and one inactive subscription
-        self.make_subscription()
-        self.make_subscription()
-        sub = self.make_subscription()
-        sub.active = False
-        sub.completed = True
-        sub.save()
-
-        # Execute
-        result = tasks.fire_active_last.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.active.last> with value <2.0>"
-        )
-        self.check_request(
-            responses.calls[-1].request, 'POST',
-            data={"subscriptions.active.last": 2.0}
-        )
-
-    @responses.activate
-    def test_fire_created_last(self):
-        """
-        Ensure that the subscriptions.created.last metric gets called with the
-        correct amount of created subscriptions.
-        """
-        # make two active and one inactive subscription
-        self.make_subscription()
-        self.make_subscription()
-        sub = self.make_subscription()
-        sub.active = False
-        sub.completed = True
-        sub.save()
-
-        # Execute
-        result = tasks.fire_created_last.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.created.last> with value <3.0>"
-        )
-        request = responses.calls[-1].request
-        self.check_request(
-            request, 'POST',
-            data={"subscriptions.created.last": 3.0}
-        )
-
-    @responses.activate
-    def test_fire_broken_last(self):
-        """
-        Ensure that the subscriptions.broken.last metric gets called with the
-        correct amount of broken subscriptions.
-        """
-        # make two healthy subscriptions
-        self.make_subscription()
-        sub = self.make_subscription()
-        sub.process_status = 1
-        sub.save()
-        # make two broken subscriptions
-        sub = self.make_subscription()
-        sub.process_status = -1
-        sub.save()
-        sub = self.make_subscription()
-        sub.messageset = self.messageset_audio
-        sub.process_status = -1
-        sub.save()
-
-        # Execute
-        result = tasks.fire_broken_last.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.broken.last> with value <2.0>"
-        )
-        request = responses.calls[-1].request
-        self.check_request(
-            request, 'POST',
-            data={"subscriptions.broken.last": 2.0}
-        )
-
-    @responses.activate
-    def test_fire_completed_last(self):
-        """
-        Ensure that the subscriptions.completed.last metric gets called with
-        the correct amount of completed subscriptions.
-        """
-        # make two incomplete and one complete subscription
-        self.make_subscription()
-        self.make_subscription()
-        sub = self.make_subscription()
-        sub.completed = True
-        sub.save()
-
-        # Execute
-        result = tasks.fire_completed_last.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.completed.last> with value <1.0>"
-        )
-        self.check_request(
-            responses.calls[-1].request, 'POST',
-            data={"subscriptions.completed.last": 1.0}
-        )
-
-    @responses.activate
-    def test_fire_incomplete_last(self):
-        """
-        Ensure that the subscriptions.incomplete.last metric gets called with
-        the correct amount of incomplete subscriptions.
-        """
-        # make two incomplete and one complete subscription
-        self.make_subscription()
-        self.make_subscription()
-        sub = self.make_subscription()
-        sub.completed = True
-        sub.save()
-
-        # Execute
-        result = tasks.fire_incomplete_last.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.incomplete.last> with value <2.0>"
-        )
-        self.check_request(
-            responses.calls[-1].request, 'POST',
-            data={"subscriptions.incomplete.last": 2.0}
-        )
-
-    @responses.activate
-    def test_messagesets_tasks(self):
-        """
-        Ensure that the `fire_messagesets_tasks` fires the correct amount of
-        messageset metric tasks.
-        """
-        self.make_subscription()
-
-        # Execute
-        result = tasks.fire_messagesets_tasks.apply_async()
-
-        # Check
-        self.assertEqual(
-            result.get(),
-            "2 MessageSet metrics launched"
-        )
-
-    @responses.activate
-    def test_mesageset_last(self):
-        """
-        Ensure that the subscriptions.<messageset>.active.last metric gets
-        called with the correct amount of active subscriptions for that
-        messageset.
-        """
-        self.make_subscription()
-
-        # Execute
-        result = tasks.fire_messageset_last.apply_async(kwargs={
-            "msgset_id": self.messageset.id,
-            "short_name": self.messageset.short_name
-        })
-
-        # Check
-        self.assertEqual(
-            result.get().get(),
-            "Fired metric <subscriptions.messageset_one.active.last> with "
-            "value <1.0>"
-        )
-        self.check_request(
-            responses.calls[-1].request, 'POST',
-            data={"subscriptions.messageset_one.active.last": 1.0}
-        )
 
     @responses.activate
     def test_fire_week_estimate_last(self):
