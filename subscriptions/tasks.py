@@ -18,7 +18,7 @@ from requests import exceptions as requests_exceptions
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      ResendRequest)
 from seed_stage_based_messaging import utils
-from contentstore.models import Message, MessageSet, Schedule
+from contentstore.models import Message, Schedule
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
 
 logger = get_task_logger(__name__)
