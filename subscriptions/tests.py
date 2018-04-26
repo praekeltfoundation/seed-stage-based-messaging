@@ -412,6 +412,22 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
         ids = set(s['id'] for s in response.data['results'])
         self.assertEqual(set([str(sub1.id), str(sub3.id)]), ids)
 
+    def test_filter_subscription_messageset_contains(self):
+        self.make_subscription()
+        sub = self.make_subscription_audio()
+        self.make_subscription()
+
+        response = self.client.get(
+            '/api/v1/subscriptions/',
+            {"messageset_contains": "_two"},
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        result_id = [s['id'] for s in response.data['results']][0]
+        self.assertEqual(str(sub.id), result_id)
+
     def test_update_subscription_data(self):
         # Setup
         existing = self.make_subscription()

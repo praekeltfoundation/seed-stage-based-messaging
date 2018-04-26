@@ -32,6 +32,8 @@ class SubscriptionFilter(filters.FilterSet):
                                                  lookup_type='has_key')
     metadata_not_has_key = django_filters.CharFilter(
         name='metadata', lookup_type='has_key', exclude=True)
+    messageset_contains = django_filters.CharFilter(
+        name='messageset__short_name', lookup_type='contains')
 
     class Meta:
         model = Subscription
