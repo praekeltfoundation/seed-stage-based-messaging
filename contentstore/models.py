@@ -194,7 +194,7 @@ class Message(models.Model):
         if (
                 'whatsapp' in (self.messageset.channel or '').lower() and
                 self.WHATSAPP_INVALID_VALUE_PATTERN.findall(self.text_content)
-            ):
+                ):
             raise ValidationError(
                 _('Text for WhatsApp must not include newline, tabs, or 4 '
                   'consecutive spaces.')

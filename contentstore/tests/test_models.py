@@ -50,7 +50,7 @@ class TestMessage(MessageSetTestMixin, TestCase):
         ]
         for message in messages:
             with self.assertRaises(ValidationError):
-                m = Message.objects.create(
+                Message.objects.create(
                     sequence_number=1,
                     messageset_id=messageset.id,
                     text_content=message,
