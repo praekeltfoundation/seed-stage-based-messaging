@@ -2,6 +2,8 @@
 
 from datetime import datetime
 import os.path
+import re
+
 from rest_framework.serializers import ValidationError
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
@@ -177,6 +179,8 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    WHATSAPP_INVALID_VALUE_PATTERN = re.compile(r'(\n|\t|\s{4})')
+
     class Meta:
         ordering = ['sequence_number']
         unique_together = ('messageset', 'sequence_number', 'lang')
@@ -186,6 +190,15 @@ class Message(models.Model):
         if any([self.text_content, self.binary_content]) is False:
             raise ValidationError(
                 _('Messages must have text or file attached'))
+        # Check for WhatsApp disallowed characters
+        if (
+                'whatsapp' in (self.messageset.channel or '').lower() and
+                self.WHATSAPP_INVALID_VALUE_PATTERN.findall(self.text_content)
+            ):
+            raise ValidationError(
+                _('Text for WhatsApp must not include newline, tabs, or 4 '
+                  'consecutive spaces.')
+            )
 
     def save(self, *args, **kwargs):
         self.clean()
