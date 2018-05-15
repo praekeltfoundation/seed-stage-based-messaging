@@ -36,3 +36,22 @@ class TestMessage(MessageSetTestMixin, TestCase):
                 messageset_id=messageset.id,
                 text_content=special_chars,)
             m.full_clean()
+
+    def test_raises_validation_error_for_whatsapp_invalid_chars(self):
+        """
+        Should raise a validation error if any of the disallowed characters
+        are present in the text content.
+        """
+        messageset = self.make_messageset(channel='TEST_WHATSAPP_CHANNEL')
+        messages = [
+            "Message with \n newline",
+            "Message with \t tab",
+            "Message with    four spaces",
+        ]
+        for message in messages:
+            with self.assertRaises(ValidationError):
+                Message.objects.create(
+                    sequence_number=1,
+                    messageset_id=messageset.id,
+                    text_content=message,
+                )

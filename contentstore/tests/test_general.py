@@ -34,14 +34,15 @@ class MessageSetTestMixin():
         return Schedule.objects.create(**schedule_data)
 
     def make_messageset(self, short_name='messageset_one', notes=None,
-                        next_set=None, schedule=None):
+                        next_set=None, schedule=None, channel=None):
         if schedule is None:
             schedule = self.make_schedule()
         messageset_data = {
             'short_name': short_name,
             'notes': notes,
             'next_set': next_set,
-            'default_schedule': schedule
+            'default_schedule': schedule,
+            'channel': channel,
         }
         return MessageSet.objects.create(**messageset_data)
 
