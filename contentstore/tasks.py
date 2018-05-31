@@ -7,8 +7,9 @@ from django.conf import settings
 from django.utils._os import abspathu
 from sftpclone import sftpclone
 
+from subscriptions.models import Subscription
+from subscriptions.tasks import make_absolute_url, send_next_message
 from .models import BinaryContent
-from subscriptions.tasks import make_absolute_url
 
 
 class SyncAudioMessages(Task):
@@ -64,3 +65,23 @@ class SyncAudioMessages(Task):
 
 
 sync_audio_messages = SyncAudioMessages()
+
+
+class QueueSubscriptionSend(Task):
+    """
+    Queues the send next message task for all of the subscriptions tied to
+    the schedule.
+    """
+    def run(self, schedule_id, **kwargs):
+        """
+        Arguments:
+            schedule_id {int} -- The schedule to send messages for
+        """
+        subscriptions = Subscription.objects.filter(
+            schedule_id=schedule_id,
+            active=True,
+            completed=False,
+            process_status=0,
+        ).values('id')
+        for subscription in subscriptions.iterator():
+            send_next_message.delay(str(subscription['id']))
