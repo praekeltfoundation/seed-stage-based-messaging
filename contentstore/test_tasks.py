@@ -11,6 +11,7 @@ from subscriptions.models import (
 from contentstore.models import Schedule, MessageSet
 from contentstore.tasks import QueueSubscriptionSend
 
+
 class QueueSubscriptionSendTaskTests(TestCase):
     """
     Tests for the queue subscription send task

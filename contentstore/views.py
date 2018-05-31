@@ -1,4 +1,6 @@
 from .models import Schedule, MessageSet, Message, BinaryContent
+from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +9,7 @@ from rest_framework.response import Response
 from .serializers import (ScheduleSerializer, MessageSetSerializer,
                           MessageSerializer, BinaryContentSerializer,
                           MessageListSerializer, MessageSetMessagesSerializer)
-from .tasks import sync_audio_messages
+from .tasks import sync_audio_messages, QueueSubscriptionSend
 
 
 class IdCursorPagination(CursorPagination):
@@ -23,6 +25,16 @@ class ScheduleViewSet(ModelViewSet):
     queryset = Schedule.objects.all()
     serializer_class = ScheduleSerializer
     pagination_class = IdCursorPagination
+
+    @action(methods=['post'], detail=True)
+    def send(self, request, pk=None):
+        """
+        Sends all the subscriptions for the specified schedule
+        """
+        schedule = self.get_object()
+        QueueSubscriptionSend.delay(str(schedule.id))
+
+        return Response({}, status=status.HTTP_202_ACCEPTED)
 
 
 class MessageSetViewSet(ModelViewSet):
