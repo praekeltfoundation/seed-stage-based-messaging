@@ -1,10 +1,12 @@
-from rest_framework import filters, viewsets, status, mixins
+from rest_framework import viewsets, status, mixins
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import JSONField
+from django_filters import rest_framework as filters
 import django_filters
 
 from .models import Subscription, SubscriptionSendFailure
@@ -25,18 +27,24 @@ class IdCursorPagination(CursorPagination):
 
 class SubscriptionFilter(filters.FilterSet):
     created_after = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_type="gte")
+        name="created_at", lookup_expr="gte")
     created_before = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_type="lte")
+        name="created_at", lookup_expr="lte")
     metadata_has_key = django_filters.CharFilter(name='metadata',
-                                                 lookup_type='has_key')
+                                                 lookup_expr='has_key')
     metadata_not_has_key = django_filters.CharFilter(
-        name='metadata', lookup_type='has_key', exclude=True)
+        name='metadata', lookup_expr='has_key', exclude=True)
     messageset_contains = django_filters.CharFilter(
-        name='messageset__short_name', lookup_type='contains')
+        name='messageset__short_name', lookup_expr='contains')
 
     class Meta:
         model = Subscription
+        exclude = ()
+        filter_overrides = {
+            JSONField: {
+                'filter_class': django_filters.CharFilter,
+            }
+        }
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
