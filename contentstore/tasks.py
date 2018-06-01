@@ -72,6 +72,8 @@ class QueueSubscriptionSend(Task):
     Queues the send next message task for all of the subscriptions tied to
     the schedule.
     """
+    name = "contentstore.tasks.queue_subscription_send"
+
     def run(self, schedule_id, **kwargs):
         """
         Arguments:
@@ -85,3 +87,5 @@ class QueueSubscriptionSend(Task):
         ).values('id')
         for subscription in subscriptions.iterator():
             send_next_message.delay(str(subscription['id']))
+
+queue_subscription_send = QueueSubscriptionSend()

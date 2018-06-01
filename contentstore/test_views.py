@@ -16,7 +16,7 @@ class ScheduleViewsetTests(APITestCase):
     """
     Tests for the schedule viewset
     """
-    @patch('contentstore.views.QueueSubscriptionSend')
+    @patch('contentstore.views.queue_subscription_send')
     def test_send_action(self, task):
         """
         The send action on the schedule detail should trigger the celery

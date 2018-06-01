@@ -210,6 +210,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.scheduled_metrics': {
         'queue': 'metrics',
     },
+    'contentstore.tasks.queue_subscription_send': {
+        'queue': 'highmemory',
+    }
 }
 
 CELERYD_MAX_TASKS_PER_CHILD = 50

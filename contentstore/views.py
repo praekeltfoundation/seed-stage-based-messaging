@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from .serializers import (ScheduleSerializer, MessageSetSerializer,
                           MessageSerializer, BinaryContentSerializer,
                           MessageListSerializer, MessageSetMessagesSerializer)
-from .tasks import sync_audio_messages, QueueSubscriptionSend
+from .tasks import sync_audio_messages, queue_subscription_send
 
 
 class IdCursorPagination(CursorPagination):
@@ -32,7 +32,7 @@ class ScheduleViewSet(ModelViewSet):
         Sends all the subscriptions for the specified schedule
         """
         schedule = self.get_object()
-        QueueSubscriptionSend.delay(str(schedule.id))
+        queue_subscription_send.delay(str(schedule.id))
 
         return Response({}, status=status.HTTP_202_ACCEPTED)
 

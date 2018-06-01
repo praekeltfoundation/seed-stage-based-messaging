@@ -9,7 +9,7 @@ from mock import patch
 from subscriptions.models import (
     Subscription, fire_sub_action_if_new, fire_metrics_if_new)
 from contentstore.models import Schedule, MessageSet
-from contentstore.tasks import QueueSubscriptionSend
+from contentstore.tasks import queue_subscription_send
 
 
 class QueueSubscriptionSendTaskTests(TestCase):
@@ -59,5 +59,5 @@ class QueueSubscriptionSendTaskTests(TestCase):
         subscription = Subscription.objects.create(
             messageset=messageset, schedule=schedule1)
 
-        QueueSubscriptionSend()(str(schedule1.id))
+        queue_subscription_send(str(schedule1.id))
         send_next_message.delay.assert_called_once_with(str(subscription.id))
