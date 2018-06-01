@@ -37,6 +37,7 @@ from contentstore.models import Schedule, MessageSet, BinaryContent, Message
 from .tasks import (schedule_create, schedule_disable, fire_metric,
                     scheduled_metrics)
 from . import tasks
+from seed_stage_based_messaging import test_utils as utils
 
 
 class APITestCase(TestCase):
@@ -157,32 +158,6 @@ class AuthenticatedAPITestCase(APITestCase):
         }
         return Subscription.objects.create(**post_data)
 
-    def _replace_post_save_hooks(self):
-        def has_listeners():
-            return post_save.has_listeners(Subscription)
-        assert has_listeners(), (
-            "Subscription model has no post_save listeners. Make sure"
-            " helpers cleaned up properly in earlier tests.")
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
-        post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
-        post_save.disconnect(disable_schedule_if_deactivated,
-                             sender=Subscription)
-        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
-        assert not has_listeners(), (
-            "Subscription model still has post_save listeners. Make sure"
-            " helpers cleaned up properly in earlier tests.")
-
-    def _restore_post_save_hooks(self):
-        def has_listeners():
-            return post_save.has_listeners(Subscription)
-        assert not has_listeners(), (
-            "Subscription model still has post_save listeners. Make sure"
-            " helpers removed them properly in earlier tests.")
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        post_save.connect(disable_schedule_if_complete, sender=Subscription)
-        post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
-        post_save.connect(fire_metrics_if_new, sender=Subscription)
-
     def _add_metrics_response(self):
         responses.add(
             responses.POST, 'http://metrics-url/metrics/', json={}, status=201)
@@ -190,7 +165,7 @@ class AuthenticatedAPITestCase(APITestCase):
     def setUp(self):
         super(AuthenticatedAPITestCase, self).setUp()
 
-        self._replace_post_save_hooks()
+        utils.disable_signals()
 
         self.username = 'testuser'
         self.password = 'testpass'
@@ -212,7 +187,7 @@ class AuthenticatedAPITestCase(APITestCase):
         self._add_metrics_response()
 
     def tearDown(self):
-        self._restore_post_save_hooks()
+        utils.enable_signals()
 
 
 class TestLogin(AuthenticatedAPITestCase):

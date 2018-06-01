@@ -1,6 +1,14 @@
+from django.db.models.signals import post_delete, post_save
 from django.test import TestCase
 
 from .utils import normalise_metric_name
+from contentstore.signals import schedule_deleted, schedule_saved
+from contentstore.models import Schedule
+from subscriptions.models import (
+    Subscription, fire_sub_action_if_new, fire_metrics_if_new,
+    disable_schedule_if_complete, disable_schedule_if_deactivated
+)
+
 
 
 class NormaliseMetricNameTest(TestCase):
@@ -12,3 +20,31 @@ class NormaliseMetricNameTest(TestCase):
         self.assertEqual(normalise_metric_name('foo^& bar'), 'foo_bar')
         self.assertEqual(normalise_metric_name('foo   bar'), 'foo_bar')
         self.assertEqual(normalise_metric_name('_foo!bar,'), 'foo_bar')
+
+
+post_save_signals = (
+    (fire_sub_action_if_new, Subscription),
+    (disable_schedule_if_complete, Subscription),
+    (disable_schedule_if_deactivated, Subscription),
+    (fire_metrics_if_new, Subscription),
+    (schedule_saved, Schedule),
+)
+
+
+post_delete_signals = (
+    (schedule_deleted, Schedule),
+)
+
+
+def disable_signals():
+    for (signal, model) in post_save_signals:
+        post_save.disconnect(signal, sender=model)
+    for (signal, model) in post_delete_signals:
+        post_delete.disconnect(signal, sender=model)
+
+
+def enable_signals():
+    for (signal, model) in post_save_signals:
+        post_save.disconnect(signal, sender=model)
+    for (signal, model) in post_delete_signals:
+        post_delete.disconnect(signal, sender=model)

@@ -3,19 +3,27 @@ Tests for the contentstore views
 """
 
 from django.contrib.auth.models import User
-from django.shortcuts import reverse
+from django.db.models.signals import post_save, post_delete
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 from mock import patch
 
 from contentstore.models import Schedule
+from contentstore.signals import schedule_deleted, schedule_saved
+from seed_stage_based_messaging import test_utils as utils
 
 
 class ScheduleViewsetTests(APITestCase):
     """
     Tests for the schedule viewset
     """
+    def setUp(self):
+        utils.disable_signals()
+
+    def tearDown(self):
+        utils.enable_signals()
+
     @patch('contentstore.views.queue_subscription_send')
     def test_send_action(self, task):
         """

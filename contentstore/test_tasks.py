@@ -2,14 +2,13 @@
 Tests for the contentstore tasks
 """
 
-from django.db.models.signals import post_save
 from django.test import TestCase
 from mock import patch
 
-from subscriptions.models import (
-    Subscription, fire_sub_action_if_new, fire_metrics_if_new)
+from subscriptions.models import Subscription
 from contentstore.models import Schedule, MessageSet
 from contentstore.tasks import queue_subscription_send
+from seed_stage_based_messaging import test_utils as utils
 
 
 class QueueSubscriptionSendTaskTests(TestCase):
@@ -17,24 +16,10 @@ class QueueSubscriptionSendTaskTests(TestCase):
     Tests for the queue subscription send task
     """
     def setUp(self):
-        self.disable_signal_hooks()
+        utils.disable_signals()
 
     def tearDown(self):
-        self.enable_signal_hooks()
-
-    def disable_signal_hooks(self):
-        """
-        Remove the signal hooks
-        """
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
-        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
-
-    def enable_signal_hooks(self):
-        """
-        Replace the disabled signal hooks
-        """
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        post_save.connect(fire_metrics_if_new, sender=Subscription)
+        utils.enable_signals()
 
     @patch('contentstore.tasks.send_next_message')
     def test_queue_subscription_send(self, send_next_message):

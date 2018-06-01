@@ -16,16 +16,20 @@ from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
 from ..models import Schedule, MessageSet, Message, BinaryContent
+from seed_stage_based_messaging import test_utils as utils
 
 
 class APITestCase(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        utils.disable_signals()
+
+    def tearDown(self):
+        utils.enable_signals()
 
 
 class MessageSetTestMixin():
-
     def make_schedule(self):
         # Create hourly schedule
         schedule_data = {
