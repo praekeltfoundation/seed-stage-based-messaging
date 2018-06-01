@@ -4,9 +4,13 @@ import paramiko
 
 from celery.task import Task
 from django.conf import settings
+from django.db.models.signals import post_save
 from django.utils._os import abspathu
 from sftpclone import sftpclone
+from seed_services_client.scheduler import SchedulerApiClient
 
+from contentstore.models import Schedule
+from contentstore.signals import schedule_saved
 from subscriptions.models import Subscription
 from subscriptions.tasks import make_absolute_url, send_next_message
 from .models import BinaryContent
@@ -89,3 +93,84 @@ class QueueSubscriptionSend(Task):
             send_next_message.delay(str(subscription['id']))
 
 queue_subscription_send = QueueSubscriptionSend()
+
+
+class SyncSchedule(Task):
+    """
+    Task for synchronising schedules to the scheduler service
+    """
+
+    name = "contentstore.tasks.sync_schedule"
+    scheduler = SchedulerApiClient(
+        settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
+
+    def run(self, schedule_id, **kwargs):
+        """
+        Synchronises the schedule specified by the ID `schedule_id` to the
+        scheduler service.
+
+        Arguments:
+            schedule_id {str} -- The ID of the schedule to sync
+        """
+        log = self.get_logger(**kwargs)
+
+        try:
+            schedule = Schedule.objects.get(id=schedule_id)
+        except Schedule.DoesNotExist:
+            log.error('Missing Schedule %s', schedule_id, exc_info=True)
+
+        if schedule.scheduler_schedule_id is None:
+            # Create the new schedule
+            result = self.scheduler.create_schedule(schedule.scheduler_format)
+            schedule.scheduler_schedule_id = result['id']
+            # Disable update signal here to avoid calling twice
+            post_save.disconnect(schedule_saved, sender=Schedule)
+            schedule.save(update_fields=('scheduler_schedule_id',))
+            post_save.connect(schedule_saved, sender=Schedule)
+
+            log.info(
+                "Created schedule %s on scheduler for schedule %s",
+                schedule.scheduler_schedule_id, schedule.id)
+        else:
+            # Update the existing schedule
+            result = self.scheduler.update_schedule(
+                str(schedule.scheduler_schedule_id), schedule.scheduler_format)
+            log.info(
+                "Updated schedule %s on scheduler for schedule %s",
+                schedule.scheduler_schedule_id, schedule.id)
+
+
+sync_schedule = SyncSchedule()
+
+
+class DeactivateSchedule(Task):
+    """
+    Task for deavtivating schedules in the scheduler service
+    """
+
+    name = "contentstore.tasks.deactivate_schedule"
+    scheduler = SchedulerApiClient(
+        settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
+
+    def run(self, scheduler_schedule_id, **kwargs):
+        """
+        Deactivates the schedule specified by the ID `scheduler_schedule_id` in
+        the scheduler service.
+
+        Arguments:
+            scheduler_schedule_id {str} -- The ID of the schedule to deactivate
+        """
+        log = self.get_logger(**kwargs)
+
+        self.scheduler.update_schedule(
+            scheduler_schedule_id,
+            {
+                'active': False,
+            },
+        )
+        log.info(
+            "Deactivated schedule %s in the scheduler service",
+            scheduler_schedule_id)
+
+
+deactivate_schedule = DeactivateSchedule()

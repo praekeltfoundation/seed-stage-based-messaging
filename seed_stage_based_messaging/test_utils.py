@@ -10,7 +10,6 @@ from subscriptions.models import (
 )
 
 
-
 class NormaliseMetricNameTest(TestCase):
     def test_normalise_metric_name(self):
         """
@@ -45,6 +44,6 @@ def disable_signals():
 
 def enable_signals():
     for (signal, model) in post_save_signals:
-        post_save.disconnect(signal, sender=model)
+        post_save.connect(signal, sender=model)
     for (signal, model) in post_delete_signals:
-        post_delete.disconnect(signal, sender=model)
+        post_delete.connect(signal, sender=model)

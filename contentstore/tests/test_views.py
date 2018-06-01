@@ -3,14 +3,12 @@ Tests for the contentstore views
 """
 
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save, post_delete
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 from mock import patch
 
 from contentstore.models import Schedule
-from contentstore.signals import schedule_deleted, schedule_saved
 from seed_stage_based_messaging import test_utils as utils
 
 
@@ -34,9 +32,7 @@ class ScheduleViewsetTests(APITestCase):
         token = Token.objects.create(user=user)
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
         schedule = Schedule.objects.create()
-        url = reverse('schedule-detail', args=[str(schedule.id)])
-        url = "{}send/".format(url)
 
-        response = self.client.post(url, {}, format='json')
+        response = self.client.post(schedule.send_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         task.delay.assert_called_once_with(str(schedule.id))

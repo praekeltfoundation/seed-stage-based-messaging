@@ -357,6 +357,12 @@ class TestContentStoreApi(AuthenticatedAPITestCase):
 
 
 class TestMessageSet(MessageSetTestMixin, TestCase):
+    def setUp(self):
+        utils.disable_signals()
+
+    def tearDown(self):
+        utils.enable_signals()
+
     def test_get_all_run_dates(self):
         ms = self.make_messageset()
         for i in range(3):
@@ -474,14 +480,17 @@ class TestSchedule(TestCase):
 
 
 class TestAdmin(MessageSetTestMixin, TestCase):
-
     def setUp(self):
+        utils.disable_signals()
         username = 'testuser'
         password = 'testpass'
         User.objects.create_superuser(
             username, 'testuser@example.com', password)
         self.client.login(username=username, password=password)
         self.change_url = reverse('admin:contentstore_messageset_changelist')
+
+    def tearDown(self):
+        utils.enable_signals()
 
     def test_clone_action_validation(self):
         message_set = self.make_messageset(short_name='messageset')
