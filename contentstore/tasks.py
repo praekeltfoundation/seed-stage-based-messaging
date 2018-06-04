@@ -92,6 +92,7 @@ class QueueSubscriptionSend(Task):
         for subscription in subscriptions.iterator():
             send_next_message.delay(str(subscription['id']))
 
+
 queue_subscription_send = QueueSubscriptionSend()
 
 
