@@ -5,6 +5,7 @@ from rest_framework.serializers import ValidationError
 
 from ..models import Message, validate_special_characters
 from .test_general import MessageSetTestMixin
+from seed_stage_based_messaging import test_utils as utils
 
 
 class TestValidators(TestCase):
@@ -26,6 +27,12 @@ class TestValidators(TestCase):
 
 
 class TestMessage(MessageSetTestMixin, TestCase):
+    def setUp(self):
+        utils.disable_signals()
+
+    def tearDown(self):
+        utils.enable_signals()
+
     def test_raises_validation_error_for_special_chars(self):
         messageset = self.make_messageset()
         special_chars = u'This text has a special character – there'

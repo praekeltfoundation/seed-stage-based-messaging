@@ -536,59 +536,6 @@ class ScheduleDisable(Task):
 schedule_disable = ScheduleDisable()
 
 
-class ScheduleCreate(Task):
-
-    """ Task to tell scheduler a new subscription created
-    """
-    name = "subscriptions.tasks.schedule_create"
-
-    def scheduler_client(self):
-        return SchedulerApiClient(
-            settings.SCHEDULER_API_TOKEN,
-            settings.SCHEDULER_URL)
-
-    def run(self, subscription_id, **kwargs):
-        """ Returns remote scheduler_id UUID
-        """
-
-        log = self.get_logger(**kwargs)
-        log.info("Creating schedule for <%s>" % (subscription_id,))
-        try:
-            subscription = Subscription.objects.get(id=subscription_id)
-            if subscription.process_status == 0:
-                schedule = {
-                    "frequency": None,
-                    "cron_definition": subscription.schedule.cron_string,
-                    "endpoint": "%s/%s/send" % (
-                        settings.STAGE_BASED_MESSAGING_URL, subscription_id),
-                    "auth_token": settings.SCHEDULER_INBOUND_API_TOKEN
-                }
-                scheduler = self.scheduler_client()
-                result = scheduler.create_schedule(schedule)
-                log.info("Created schedule <%s> on scheduler for sub <%s>" % (
-                    result["id"], subscription_id))
-                if subscription.metadata is None:
-                    subscription.metadata = {"scheduler_schedule_id": result["id"]}  # noqa
-                else:
-                    subscription.metadata["scheduler_schedule_id"] = result["id"]  # noqa
-                subscription.save()
-                return result["id"]
-
-        except ObjectDoesNotExist:
-            logger.error('Missing Subscription', exc_info=True)
-
-        except SoftTimeLimitExceeded:
-            logger.error(
-                'Soft time limit exceed processing schedule create '
-                'via Celery.',
-                exc_info=True)
-
-        return False
-
-
-schedule_create = ScheduleCreate()
-
-
 class ScheduledMetrics(Task):
 
     """ Fires off tasks for all the metrics that should run

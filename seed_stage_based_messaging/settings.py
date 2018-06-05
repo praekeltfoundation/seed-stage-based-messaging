@@ -156,7 +156,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
 }
 
 # Celery configuration options
@@ -208,6 +210,9 @@ CELERY_ROUTES = {
     'subscriptions.tasks.scheduled_metrics': {
         'queue': 'metrics',
     },
+    'contentstore.tasks.queue_subscription_send': {
+        'queue': 'highmemory',
+    }
 }
 
 CELERYD_MAX_TASKS_PER_CHILD = 50

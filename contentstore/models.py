@@ -3,9 +3,15 @@
 from datetime import datetime
 import os.path
 import re
+try:
+    from urlparse import urljoin
+except ImportError:
+    from urllib.parse import urljoin
 
 from rest_framework.serializers import ValidationError
+from django.conf import settings
 from django.db import models
+from django.shortcuts import reverse
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import python_2_unicode_compatible
 from croniter import croniter
@@ -49,6 +55,9 @@ class Schedule(models.Model):
     month_of_year = models.CharField(
         _('month of year'), max_length=64, default='*',
     )
+    scheduler_schedule_id = models.UUIDField(
+        _('scheduler schedule id'), null=True, blank=True, default=None,
+    )
 
     class Meta:
         verbose_name = _('schedule')
@@ -74,6 +83,28 @@ class Schedule(models.Model):
             self.rfield(self.day_of_week), self.rfield(self.day_of_month),
             self.rfield(self.month_of_year),
         )
+
+    @property
+    def send_url(self):
+        """
+        Returns the URL to send this schedule's subscriptions
+        """
+        callback_path = reverse('schedule-detail', args=[str(self.id)])
+        callback_path = "{}send/".format(callback_path)
+        return urljoin(
+            settings.STAGE_BASED_MESSAGING_URL, callback_path)
+
+    @property
+    def scheduler_format(self):
+        """
+        Returns the format that the scheduler service is expecting.
+        """
+        return {
+            "frequency": None,
+            "cron_definition": self.cron_string,
+            "endpoint": self.send_url,
+            "auth_token": settings.SCHEDULER_INBOUND_API_TOKEN
+        }
 
     def get_run_times_between(self, start, end):
         """Gets a list of datetimes for when this cron schedule would be
