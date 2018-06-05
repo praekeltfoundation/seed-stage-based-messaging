@@ -10,3 +10,15 @@ The Stage-Based Messaging Store has the following key responsibilities:
 - Store the stage-based content (both audio and text).
 - Store the stage-based content schedules.
 - Store the stage-based content subscriptions for each user.
+
+
+Changelog
+---------
+
+0.10.0
+______
+ - Changed to having a schedule per schedule, instead of a schedule per 
+   subscription. Any new or updated schedules will automatically be created or
+   updated in the scheduler, but for existing schedules, there's a
+   `sync_schedules` management command. Existing schedules linking directly
+   to subscriptions will be cancelled whenever they get called.
