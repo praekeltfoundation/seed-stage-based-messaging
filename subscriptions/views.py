@@ -12,7 +12,7 @@ import django_filters
 from .models import Subscription, SubscriptionSendFailure
 from .serializers import (SubscriptionSerializer, CreateUserSerializer,
                           SubscriptionSendFailureSerializer)
-from .tasks import (send_next_message, scheduled_metrics, requeue_failed_tasks,
+from .tasks import (schedule_disable, scheduled_metrics, requeue_failed_tasks,
                     fire_daily_send_estimate, store_resend_request)
 from seed_stage_based_messaging.utils import get_available_metrics
 
@@ -67,7 +67,7 @@ class SubscriptionSend(APIView):
     def post(self, request, *args, **kwargs):
         """ Validates subscription data before creating Outbound message
         """
-        send_next_message.delay(kwargs['subscription_id'])
+        schedule_disable.delay(kwargs['subscription_id'])
         return Response({'accepted': True}, status=201)
 
 

@@ -11,7 +11,7 @@ router.register(r'failed-tasks', views.FailedTaskViewSet)
 urlpatterns = [
     url(r'^api/v1/', include(router.urls)),
     url(r'^api/v1/subscriptions/(?P<subscription_id>.+)/send$',
-        views.SubscriptionSend.as_view()),
+        views.SubscriptionSend.as_view(), name='subscription-send'),
     url(r'^api/v1/subscriptions/(?P<subscription_id>.+)/resend$',
         views.SubscriptionResend.as_view()),
     url(r'^api/v1/subscriptions/request$',

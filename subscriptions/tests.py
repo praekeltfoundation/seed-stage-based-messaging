@@ -758,10 +758,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data_zul_3)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
@@ -901,10 +901,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data_zul_3)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
@@ -1008,10 +1008,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data2)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
@@ -1129,10 +1129,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data2)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
@@ -1314,10 +1314,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data2)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
@@ -1421,10 +1421,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data2)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.next_sequence_number, 2)
@@ -1529,10 +1529,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data2)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.next_sequence_number, 2)
@@ -1569,10 +1569,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(scheds_all.count(), 1)
 
         # Execute
-        response = self.client.post('/api/v1/subscriptions/%s/send' % (
-            existing.id, ), content_type='application/json')
+        response = self.client.post(
+            existing.schedule.send_url, content_type='application/json')
         # Check
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)
         self.assertEqual(d.version, 1)
         self.assertEqual(d.messageset.id, self.messageset.id)
