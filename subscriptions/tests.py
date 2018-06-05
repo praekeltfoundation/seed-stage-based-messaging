@@ -30,12 +30,10 @@ from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
-                     fire_sub_action_if_new, disable_schedule_if_complete,
-                     disable_schedule_if_deactivated, fire_metrics_if_new,
+                     fire_metrics_if_new,
                      ResendRequest)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import (schedule_create, schedule_disable, fire_metric,
-                    scheduled_metrics)
+from .tasks import schedule_disable, fire_metric, scheduled_metrics
 from . import tasks
 from seed_stage_based_messaging import test_utils as utils
 
@@ -439,99 +437,6 @@ class TestSubscriptionsAPI(AuthenticatedAPITestCase):
 class TestCreateScheduleTask(AuthenticatedAPITestCase):
 
     @responses.activate
-    def test_create_schedule_task(self):
-        # Setup
-        # make schedule
-        schedule_data = {
-            "minute": "1",
-            "hour": "6",
-            "day_of_week": "1",
-            "day_of_month": "*",
-            "month_of_year": "*"
-        }
-        schedule = Schedule.objects.create(**schedule_data)
-
-        # make messageset
-        messageset_data = {
-            "short_name": "pregnancy",
-            "notes": "Base pregancy set",
-            "next_set": None,
-            "default_schedule": schedule
-        }
-        messageset = MessageSet.objects.create(**messageset_data)
-
-        # make binarycontent
-        binarycontent_data1 = {
-            "content": "fakefilename",
-        }
-        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
-        binarycontent_data2 = {
-            "content": "fakefilename",
-        }
-        binarycontent2 = BinaryContent.objects.create(**binarycontent_data2)
-
-        # make messages
-        message_data1 = {
-            "messageset": messageset,
-            "sequence_number": 1,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent1,
-        }
-        Message.objects.create(**message_data1)
-        message_data2 = {
-            "messageset": messageset,
-            "sequence_number": 2,
-            "lang": "eng_ZA",
-            "binary_content": binarycontent2,
-        }
-        Message.objects.create(**message_data2)
-
-        # make subscription
-        post_data = {
-            "identity": "8646b7bc-b511-4965-a90b-e1145e398703",
-            "messageset": messageset,
-            "next_sequence_number": 1,
-            "lang": "eng_ZA",
-            "active": True,
-            "completed": False,
-            "schedule": schedule,
-            "process_status": 0,
-            "metadata": {
-                "source": "RapidProVoice"
-            }
-        }
-        existing = Subscription.objects.create(**post_data)
-
-        # Create schedule
-        schedule_post = {
-            "id": "6455245a-028b-4fa1-82fc-6b639c4e7710",
-            "cron_definition": "1 6 1 * *",
-            "endpoint": "%s/%s/%s/send" % (
-                "http://seed-stage-based-messaging/api/v1",
-                "subscription",
-                str(existing.id)),
-            "frequency": None,
-            "messages": None,
-            "triggered": 0,
-            "created_at": "2015-04-05T21:59:28Z",
-            "updated_at": "2015-04-05T21:59:28Z"
-        }
-        responses.add(responses.POST,
-                      "http://seed-scheduler/api/v1/schedule/",
-                      json.dumps(schedule_post),
-                      status=200, content_type='application/json')
-
-        result = schedule_create.apply_async(args=[str(existing.id)])
-        self.assertEqual(
-            str(result.get()), "6455245a-028b-4fa1-82fc-6b639c4e7710")
-
-        d = Subscription.objects.get(pk=existing.id)
-        self.assertIsNotNone(d.id)
-        self.assertEqual(
-            d.metadata["scheduler_schedule_id"],
-            "6455245a-028b-4fa1-82fc-6b639c4e7710")
-
-    @responses.activate
     def test_disable_schedule_task(self):
         # Setup
         subscription = self.make_subscription()
@@ -643,16 +548,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
     @responses.activate
     def test_send_message_task_to_mother_text(self):
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        # mock schedule sending
-        responses.add(
-            responses.POST,
-            "http://seed-scheduler/api/v1/schedule/",
-            json={
-                "id": "1234"
-            },
-            status=201, content_type='application/json'
-        )
         # Setup
         existing = self.make_subscription()
         self.messageset.channel = 'CHANNEL1'
@@ -773,21 +668,21 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 5)
+        self.assertEqual(len(responses.calls), 4)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
 
         # check that channel is sent to message sender
-        sender_call = responses.calls[2]
+        sender_call = responses.calls[1]
         self.assertEqual(json.loads(sender_call.request.body).get("channel"),
                          "CHANNEL1")
 
@@ -795,8 +690,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_count = existing.messageset.messages.filter(
             lang=existing.lang).count()
         self.assertEqual(message_count, 3)
-
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @override_settings()
     @responses.activate
@@ -806,16 +699,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         still process, but it shouldn't send the actual message to the
         message sender
         """
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        # mock schedule sending
-        responses.add(
-            responses.POST,
-            "http://seed-scheduler/api/v1/schedule/",
-            json={
-                "id": "1234"
-            },
-            status=201, content_type='application/json'
-        )
         # Setup
         existing = self.make_subscription()
         self.messageset.channel = 'CHANNEL1'
@@ -916,15 +799,15 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 4)
+        self.assertEqual(len(responses.calls), 3)
 
         # Check the request body of metric call
-        metric_call = responses.calls[2]
+        metric_call = responses.calls[1]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -933,8 +816,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_count = existing.messageset.messages.filter(
             lang=existing.lang).count()
         self.assertEqual(message_count, 3)
-
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_mother_text_welcome(self):
@@ -1035,7 +916,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
     @responses.activate
     def test_send_message_task_to_mother_text_last(self):
         # Setup
-        post_save.connect(disable_schedule_if_complete, sender=Subscription)
         schedule_id = "6455245a-028b-4fa1-82fc-6b639c4e7710"
         existing = self.make_subscription()
         existing.metadata["scheduler_schedule_id"] = schedule_id
@@ -1089,13 +969,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
             status=200, content_type='application/json'
         )
 
-        # mock schedule update
-        responses.add(
-            responses.PATCH,
-            "http://seed-scheduler/api/v1/schedule/%s/" % schedule_id,
-            json.dumps({"enabled": False}),
-            status=200, content_type='application/json')
-
         # Create metrics call - deactivate TestSession for this
         self.session = None
         responses.add(
@@ -1140,7 +1013,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, False)
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
-        self.assertEqual(len(responses.calls), 5)
+        self.assertEqual(len(responses.calls), 4)
 
         # make sure a subscription is created on the next message set
         subs_active = Subscription.objects.filter(
@@ -1152,16 +1025,14 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_active[0].completed, False)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
-
-        post_save.disconnect(disable_schedule_if_complete, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_mother_text_in_process(self):
@@ -1238,8 +1109,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
         self.assertEqual(len(responses.calls), 0)
-
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_send_message_task_to_other_text(self):
@@ -1549,16 +1418,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
 
     @responses.activate
     def test_send_message_task_to_mother_text_no_content(self):
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        # mock schedule sending
-        responses.add(
-            responses.POST,
-            "http://seed-scheduler/api/v1/schedule/",
-            json={
-                "id": "1234"
-            },
-            status=201, content_type='application/json'
-        )
         # Setup
         existing = self.make_subscription()
 
@@ -1585,22 +1444,9 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 1)
-
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_retry_send_message_task_to_mother_text(self):
-        post_save.connect(fire_sub_action_if_new, sender=Subscription)
-        # mock schedule sending
-        responses.add(
-            responses.POST,
-            "http://seed-scheduler/api/v1/schedule/",
-            json={
-                "id": "1234"
-            },
-            status=201, content_type='application/json'
-        )
         # Setup
         existing = self.make_subscription()
 
@@ -1723,15 +1569,15 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
-        self.assertEqual(len(responses.calls), 5)
+        self.assertEqual(len(responses.calls), 4)
 
         # Check the request body of metric call
-        metric_call = responses.calls[3]
+        metric_call = responses.calls[2]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.messageset_one.sum": 1.0
         })
 
-        metric_call = responses.calls[4]
+        metric_call = responses.calls[3]
         self.assertEqual(json.loads(metric_call.request.body), {
             "message.text.sum": 1.0
         })
@@ -1740,8 +1586,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         message_count = existing.messageset.messages.filter(
             lang=existing.lang).count()
         self.assertEqual(message_count, 3)
-
-        post_save.disconnect(fire_sub_action_if_new, sender=Subscription)
 
     @responses.activate
     def test_resend_message(self):
@@ -1956,33 +1800,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(
             tasks.make_absolute_url('/foo'),
             'http://example.com/foo')
-
-
-class TestDeactivateSubscription(AuthenticatedAPITestCase):
-
-    @responses.activate
-    def test_deactivation_deactivates_schedule(self):
-        # Setup
-        post_save.connect(disable_schedule_if_deactivated, sender=Subscription)
-        schedule_id = "6455245a-028b-4fa1-82fc-6b639c4e7710"
-        sub = self.make_subscription()
-        sub.metadata["scheduler_schedule_id"] = schedule_id
-        sub.save()
-
-        # mock schedule update
-        responses.add(
-            responses.PATCH,
-            "http://seed-scheduler/api/v1/schedule/%s/" % schedule_id,
-            json.dumps({"enabled": False}),
-            status=200, content_type='application/json')
-
-        # Execute
-        sub.active = False
-        sub.save()
-        # Check
-        self.assertEqual(len(responses.calls), 1)
-        post_save.disconnect(disable_schedule_if_deactivated,
-                             sender=Subscription)
 
 
 class TestMetricsAPI(AuthenticatedAPITestCase):

@@ -5,8 +5,7 @@ from .utils import normalise_metric_name
 from contentstore.signals import schedule_deleted, schedule_saved
 from contentstore.models import Schedule
 from subscriptions.models import (
-    Subscription, fire_sub_action_if_new, fire_metrics_if_new,
-    disable_schedule_if_complete, disable_schedule_if_deactivated
+    Subscription, fire_metrics_if_new,
 )
 
 
@@ -22,9 +21,6 @@ class NormaliseMetricNameTest(TestCase):
 
 
 post_save_signals = (
-    (fire_sub_action_if_new, Subscription),
-    (disable_schedule_if_complete, Subscription),
-    (disable_schedule_if_deactivated, Subscription),
     (fire_metrics_if_new, Subscription),
     (schedule_saved, Schedule),
 )
