@@ -1,4 +1,4 @@
-from io import BytesIO
+from six import BytesIO
 from django.core.management import call_command
 from django.test import TestCase
 from mock import patch
