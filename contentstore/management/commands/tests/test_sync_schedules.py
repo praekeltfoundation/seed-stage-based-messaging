@@ -1,4 +1,4 @@
-from six import BytesIO
+from six import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 from mock import patch
@@ -18,7 +18,7 @@ class SyncSchedulesTests(TestCase):
         schedule = Schedule.objects.create()
         utils.enable_signals()
 
-        out = BytesIO()
+        out = StringIO()
         call_command('sync_schedules', stdout=out)
 
         sync_task.assert_called_once_with(str(schedule.id))
