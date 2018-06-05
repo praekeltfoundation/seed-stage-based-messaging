@@ -34,9 +34,8 @@ class ScheduleSignalsTests(TestCase):
     @patch('contentstore.tasks.SyncSchedule.scheduler')
     def test_schedule_modified(self, scheduler):
         """
-        When a schedule is created, then a corresponding schedule should be
-        created in the scheduler service, and the ID of that schedule saved
-        onto the model.
+        When a schedule is modified, then the corresponding schedule should be
+        updated in the scheduler service.
         """
         scheduler.create_schedule.return_value = {
             'id': '460fa767-2540-4ab7-bfce-e2cf54efdeb2',
@@ -52,9 +51,8 @@ class ScheduleSignalsTests(TestCase):
     @patch('contentstore.tasks.DeactivateSchedule.scheduler')
     def test_schedule_deleted(self, scheduler):
         """
-        When a schedule is created, then a corresponding schedule should be
-        created in the scheduler service, and the ID of that schedule saved
-        onto the model.
+        When a schedule is deleted, then the corresponding schedule should be
+        deactivated in the scheduler service.
         """
         utils.disable_signals()
         schedule = Schedule.objects.create()
