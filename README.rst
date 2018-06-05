@@ -22,3 +22,5 @@ ______
    updated in the scheduler, but for existing schedules, there's a
    `sync_schedules` management command. Existing schedules linking directly
    to subscriptions will be cancelled whenever they get called.
+ - Added a new celery queue, 'highmemory', which has the task to queue up all
+   the subscription sends for each schedule when the endpoint is called
