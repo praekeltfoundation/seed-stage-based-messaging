@@ -1417,6 +1417,98 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         })
 
     @responses.activate
+    def test_send_message_task_with_image(self):
+        # Setup
+        existing = self.make_subscription()
+
+        # mock identity address lookup
+        responses.add(
+            responses.GET,
+            "http://seed-identity-store/api/v1/identities/%s/addresses/msisdn?default=True&use_communicate_through=True" % (existing.identity, ),  # noqa
+            json={
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+2345059992222"}]
+            },
+            status=200, content_type='application/json',
+            match_querystring=True
+        )
+
+        # Create message sender call
+        responses.add(
+            responses.POST,
+            "http://seed-message-sender/api/v1/outbound/",
+            json={
+                "url": "http://seed-message-sender/api/v1/outbound/c7f3c839-2bf5-42d1-86b9-ccb886645fb4/",  # noqa
+                "id": "c7f3c839-2bf5-42d1-86b9-ccb886645fb4",
+                "version": 1,
+                "to_addr": "+2345059992222",
+                "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+                "vumi_message_id": None,
+                "content": "The text part of the message",
+                "delivered": False,
+                "attempts": 0,
+                "metadata": {
+                    'voice_speech_url': [
+                        'http://example.com/welcome.mp3', 'fakefilename.kpg'
+                    ]
+                },
+                "created_at": "2016-03-24T13:43:43.614952Z",
+                "updated_at": "2016-03-24T13:43:43.614921Z"
+            },
+            status=200, content_type='application/json'
+        )
+
+        # Create metrics call - deactivate TestSession for this
+        self.session = None
+        responses.add(
+            responses.POST,
+            "http://metrics-url/metrics/",
+            json={"foo": "bar"},
+            status=200, content_type='application/json'
+        )
+
+        # make binarycontent
+        binarycontent_data1 = {
+            "content": "fakefilename.jpg",
+        }
+        binarycontent1 = BinaryContent.objects.create(**binarycontent_data1)
+
+        # make messages
+        message_data1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "text_content": "The text part of the message",
+            "binary_content": binarycontent1,
+        }
+        Message.objects.create(**message_data1)
+        message_data2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "eng_ZA",
+            "text_content": "The text part of the message 2",
+            "binary_content": binarycontent1,
+        }
+        Message.objects.create(**message_data2)
+
+        # Execute
+        self.client.post(
+            existing.schedule.send_url, content_type='application/json')
+        # Check
+        outbound_call = responses.calls[1]
+        self.assertEqual(json.loads(outbound_call.request.body), {
+            "delivered": "false",
+            "to_addr": "+2345059992222",
+            "content": "The text part of the message",
+            "to_identity": "8646b7bc-b511-4965-a90b-e1145e398703",
+            "resend": "false",
+            "metadata": {
+                "image_url": "http://example.com/media/fakefilename.jpg"
+            }
+        })
+
+    @responses.activate
     def test_send_message_task_to_mother_text_no_content(self):
         # Setup
         existing = self.make_subscription()
