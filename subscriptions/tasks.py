@@ -286,6 +286,11 @@ class BaseSendMessage(Task):
             else:
                 log.debug("Loading default content")
                 payload["content"] = message.text_content
+
+            if message.binary_content:
+                payload["metadata"]["image_url"] = make_absolute_url(
+                    message.binary_content.content.url)
+
             log.debug("text content loaded")
         else:
             # TODO - audio media handling on MC
