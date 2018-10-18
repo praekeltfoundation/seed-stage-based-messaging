@@ -8,6 +8,8 @@ class CreateUserSerializer(serializers.Serializer):
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
+    messageset_label = serializers.SlugRelatedField(
+        source='messageset', slug_field='label', read_only=True)
 
     class Meta:
         model = Subscription
@@ -16,7 +18,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'url', 'id', 'version', 'identity', 'messageset',
             'next_sequence_number', 'lang', 'active', 'completed', 'schedule',
             'process_status', 'metadata', 'created_at', 'updated_at',
-            'initial_sequence_number')
+            'initial_sequence_number', 'messageset_label')
 
 
 class SubscriptionSendFailureSerializer(

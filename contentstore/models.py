@@ -131,6 +131,8 @@ class MessageSet(models.Model):
     )
 
     short_name = models.CharField(_('Short name'), max_length=100, unique=True)
+    label = models.CharField(
+        _('User-readable name'), max_length=100, blank=True, default='')
     notes = models.TextField(_('Notes'), null=True, blank=True)
     channel = models.CharField(_('Channel'), max_length=64, null=True,
                                blank=True)

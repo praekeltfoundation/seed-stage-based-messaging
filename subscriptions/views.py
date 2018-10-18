@@ -52,7 +52,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     """ API endpoint that allows Subscription models to be viewed or edited.
     """
     permission_classes = (IsAuthenticated,)
-    queryset = Subscription.objects.all()
+    queryset = Subscription.objects.all().select_related('messageset')
     serializer_class = SubscriptionSerializer
     filter_class = SubscriptionFilter
     pagination_class = CreatedAtCursorPagination
