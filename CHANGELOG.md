@@ -6,3 +6,13 @@
    ([#119](https://github.com/praekeltfoundation/seed-stage-based-messaging/pull/119))
 1. Add human-readable labels for message sets
    ([#120](https://github.com/praekeltfoundation/seed-stage-based-messaging/pull/120))
+
+## 0.10.0 (2018-06-05)
+### Enhancements
+ - Changed to having a schedule per schedule, instead of a schedule per 
+   subscription. Any new or updated schedules will automatically be created or
+   updated in the scheduler, but for existing schedules, there's a
+   `sync_schedules` management command. Existing schedules linking directly
+   to subscriptions will be cancelled whenever they get called.
+ - Added a new celery queue, 'highmemory', which has the task to queue up all
+   the subscription sends for each schedule when the endpoint is called
