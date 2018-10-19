@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
-import djcelery
 import dj_database_url
 import django_cache_url
 import mimetypes
@@ -47,10 +46,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    # documentation
-    'rest_framework_docs',
     # 3rd party
-    'djcelery',
     'raven.contrib.django.raven_compat',
     'rest_framework',
     'rest_framework.authtoken',
@@ -61,12 +57,11 @@ INSTALLED_APPS = (
 
 )
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -161,22 +156,18 @@ REST_FRAMEWORK = {
     ),
 }
 
-# Celery configuration options
-CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
-CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
-
-BROKER_URL = os.environ.get(
+CELERY_BROKER_URL = os.environ.get(
     'BROKER_URL',
     'amqp://localhost:5672//seed_stage_based_messaging')
 
-CELERY_DEFAULT_QUEUE = 'seed_stage_based_messaging'
-CELERY_QUEUES = (
+CELERY_TASK_DEFAULT_QUEUE = 'seed_stage_based_messaging'
+CELERY_TASK_QUEUES = (
     Queue('seed_stage_based_messaging',
           Exchange('seed_stage_based_messaging'),
           routing_key='seed_stage_based_messaging'),
 )
 
-CELERY_ALWAYS_EAGER = False
+CELERY_TASK_ALWAYS_EAGER = False
 
 # Tell Celery where to find the tasks
 CELERY_IMPORTS = (
@@ -184,8 +175,8 @@ CELERY_IMPORTS = (
     'contentstore.tasks'
 )
 
-CELERY_CREATE_MISSING_QUEUES = True
-CELERY_ROUTES = {
+CELERY_TASK_CREATE_MISSING_QUEUES = True
+CELERY_TASK_ROUTES = {
     'celery.backend_cleanup': {
         'queue': 'mediumpriority',
     },
@@ -215,7 +206,7 @@ CELERY_ROUTES = {
     }
 }
 
-CELERYD_MAX_TASKS_PER_CHILD = 50
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
 
 CACHE_URL = os.environ.get('STAGE_BASED_MESSAGING_CACHE', 'locmem://')
 CACHES = {
@@ -249,9 +240,7 @@ METRICS_SCHEDULED_TASKS = [
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_IGNORE_RESULT = True
-
-djcelery.setup_loader()
+CELERY_TASK_IGNORE_RESULT = True
 
 STAGE_BASED_MESSAGING_URL = os.environ.get("STAGE_BASED_MESSAGING_URL", None)
 

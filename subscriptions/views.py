@@ -27,15 +27,15 @@ class IdCursorPagination(CursorPagination):
 
 class SubscriptionFilter(filters.FilterSet):
     created_after = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_expr="gte")
+        field_name="created_at", lookup_expr="gte")
     created_before = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_expr="lte")
-    metadata_has_key = django_filters.CharFilter(name='metadata',
+        field_name="created_at", lookup_expr="lte")
+    metadata_has_key = django_filters.CharFilter(field_name='metadata',
                                                  lookup_expr='has_key')
     metadata_not_has_key = django_filters.CharFilter(
-        name='metadata', lookup_expr='has_key', exclude=True)
+        field_name='metadata', lookup_expr='has_key', exclude=True)
     messageset_contains = django_filters.CharFilter(
-        name='messageset__short_name', lookup_expr='contains')
+        field_name='messageset__short_name', lookup_expr='contains')
 
     class Meta:
         model = Subscription
