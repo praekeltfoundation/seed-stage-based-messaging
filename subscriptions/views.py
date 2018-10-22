@@ -54,7 +54,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = Subscription.objects.all().select_related('messageset')
     serializer_class = SubscriptionSerializer
-    filter_class = SubscriptionFilter
+    filterset_class = SubscriptionFilter
     pagination_class = CreatedAtCursorPagination
 
 
