@@ -1,6 +1,6 @@
 # This is a development Dockerfile. For versioned Dockerfiles see:
 # https://github.com/praekeltfoundation/docker-seed
-FROM praekeltfoundation/django-bootstrap:py2
+FROM praekeltfoundation/django-bootstrap:py3.6-stretch
 
 COPY . /app
 RUN pip install -e .

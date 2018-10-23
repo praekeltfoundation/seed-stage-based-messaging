@@ -4,7 +4,7 @@ import pytest
 from uuid import uuid4
 from requests.exceptions import HTTPError
 from datetime import timedelta, datetime
-from mock import patch
+from unittest.mock import patch
 
 try:
     from StringIO import StringIO

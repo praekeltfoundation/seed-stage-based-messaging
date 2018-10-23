@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from mock import patch
+from unittest.mock import patch
 import os
 
 import pytz
@@ -8,7 +8,7 @@ import responses
 
 from django.test import TestCase
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.conf import settings
 
 from rest_framework import status
