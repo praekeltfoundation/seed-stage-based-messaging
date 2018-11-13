@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 (2018-11-13)
+### Fixes
+1. Upgrade to Django 2.1 and update all other requirements
+   ([#121](https://github.com/praekelt/seed-stage-based-messaging/pull/121))
+1. Upgrade requests to fix security vulnerability
+
 ## 0.10.1 (2018-10-18)
 ### Enhancements
 1. Send images with text messages
