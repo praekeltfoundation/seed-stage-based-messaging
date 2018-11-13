@@ -45,7 +45,7 @@ setup(
         'django-filter==2.0.0',
         'celery==4.2.1',
         'pytz==2018.5',
-        'requests==2.18.4',
+        'requests==2.20.1',
         'seed-services-client==0.37.0',
         'croniter==0.3.25',
         'django-cache-url==3.0.0',
