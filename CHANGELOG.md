@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1 (2018-11-13)
+### Fixes
+1. Fix flake8 check on testsettings.py
+
 ## 0.11.0 (2018-11-13)
 ### Fixes
 1. Upgrade to Django 2.1 and update all other requirements
