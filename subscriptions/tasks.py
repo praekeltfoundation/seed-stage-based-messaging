@@ -192,10 +192,9 @@ class BaseSendMessage(Task):
         if not subscription.is_ready_for_processing:
             if (subscription.process_status == 2 or
                     subscription.completed is True):
-                # Disable the subscription's scheduler
-                schedule_disable.apply_async(args=[subscription_id])
-                log.info("Scheduler deactivation task fired")
-                context['error'] = 'Scheduler deactivation task fired'
+                # Subscription is complete
+                log.info("Subscription has completed")
+                context['error'] = "Subscription has completed"
 
             else:
                 log.info("Message sending aborted - busy, broken or inactive")
