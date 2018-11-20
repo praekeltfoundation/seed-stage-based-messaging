@@ -1,4 +1,4 @@
-from seed_stage_based_messaging.settings import *  # flake8: noqa
+from seed_stage_based_messaging.settings import *  # noqa
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'TESTSEKRET'
@@ -29,7 +29,7 @@ PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
 
 
 # REST Framework conf defaults
-REST_FRAMEWORK['PAGE_SIZE'] = 2
+REST_FRAMEWORK['PAGE_SIZE'] = 2 # noqa
 
 AUDIO_FTP_HOST = 'localhost'
 AUDIO_FTP_PORT = '2222'
