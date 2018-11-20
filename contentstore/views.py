@@ -45,7 +45,7 @@ class MessageSetViewSet(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = MessageSet.objects.all()
     serializer_class = MessageSetSerializer
-    filter_fields = ('short_name', 'content_type', )
+    filterset_fields = ('short_name', 'content_type', )
     pagination_class = IdCursorPagination
 
 
@@ -57,7 +57,7 @@ class MessageViewSet(ModelViewSet):
     permission_classes = (IsAuthenticated,)
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
-    filter_fields = ('messageset', 'sequence_number', 'lang', )
+    filterset_fields = ('messageset', 'sequence_number', 'lang', )
     pagination_class = IdCursorPagination
 
 

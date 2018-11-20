@@ -27,15 +27,15 @@ class IdCursorPagination(CursorPagination):
 
 class SubscriptionFilter(filters.FilterSet):
     created_after = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_expr="gte")
+        field_name="created_at", lookup_expr="gte")
     created_before = django_filters.IsoDateTimeFilter(
-        name="created_at", lookup_expr="lte")
-    metadata_has_key = django_filters.CharFilter(name='metadata',
+        field_name="created_at", lookup_expr="lte")
+    metadata_has_key = django_filters.CharFilter(field_name='metadata',
                                                  lookup_expr='has_key')
     metadata_not_has_key = django_filters.CharFilter(
-        name='metadata', lookup_expr='has_key', exclude=True)
+        field_name='metadata', lookup_expr='has_key', exclude=True)
     messageset_contains = django_filters.CharFilter(
-        name='messageset__short_name', lookup_expr='contains')
+        field_name='messageset__short_name', lookup_expr='contains')
 
     class Meta:
         model = Subscription
@@ -52,9 +52,9 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     """ API endpoint that allows Subscription models to be viewed or edited.
     """
     permission_classes = (IsAuthenticated,)
-    queryset = Subscription.objects.all()
+    queryset = Subscription.objects.all().select_related('messageset')
     serializer_class = SubscriptionSerializer
-    filter_class = SubscriptionFilter
+    filterset_class = SubscriptionFilter
     pagination_class = CreatedAtCursorPagination
 
 

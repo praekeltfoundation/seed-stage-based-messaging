@@ -3,7 +3,7 @@ Tests for the contentstore tasks
 """
 
 from django.test import TestCase
-from mock import patch
+from unittest.mock import patch
 
 from subscriptions.models import Subscription
 from contentstore.models import Schedule, MessageSet

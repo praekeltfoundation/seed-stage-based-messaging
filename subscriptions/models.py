@@ -23,7 +23,7 @@ class Subscription(models.Model):
         max_length=36, null=False, blank=False, db_index=True)
     version = models.IntegerField(default=1)
     messageset = models.ForeignKey(MessageSet, related_name='subscriptions',
-                                   null=False)
+                                   null=False, on_delete=models.PROTECT)
     initial_sequence_number = models.IntegerField(default=1, null=False,
                                                   blank=False)
     next_sequence_number = models.IntegerField(default=1, null=False,
@@ -32,15 +32,15 @@ class Subscription(models.Model):
     active = models.BooleanField(default=True)
     completed = models.BooleanField(default=False)
     schedule = models.ForeignKey(Schedule, related_name='subscriptions',
-                                 null=False)
+                                 null=False, on_delete=models.PROTECT)
     process_status = models.IntegerField(default=0, null=False, blank=False)
     metadata = JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, related_name='subscriptions_created',
-                                   null=True)
+                                   null=True, on_delete=models.SET_NULL)
     updated_by = models.ForeignKey(User, related_name='subscriptions_updated',
-                                   null=True)
+                                   null=True, on_delete=models.SET_NULL)
     user = property(lambda self: self.created_by)
 
     def get_scheduler_id(self):
@@ -201,7 +201,7 @@ class EstimatedSend(models.Model):
     """
     send_date = models.DateField()
     messageset = models.ForeignKey(MessageSet, related_name='estimates',
-                                   null=False)
+                                   null=False, on_delete=models.CASCADE)
     estimate_subscriptions = models.IntegerField(null=False, blank=False)
     estimate_identities = models.IntegerField(null=False, blank=False)
 
@@ -223,7 +223,7 @@ class ResendRequest(models.Model):
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
     outbound = models.UUIDField(null=True)
     message = models.ForeignKey(Message, related_name='resend_requests',
-                                null=True)
+                                null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return '{}: {}'.format(self.id, self.received_at)

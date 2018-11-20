@@ -15,8 +15,8 @@ class MessageSetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MessageSet
-        fields = ('id', 'short_name', 'content_type', 'notes', 'next_set',
-                  'default_schedule', 'created_at', 'updated_at')
+        fields = ('id', 'short_name', 'label', 'content_type', 'notes',
+                  'next_set', 'default_schedule', 'created_at', 'updated_at')
 
 
 class BinaryContentSerializer(serializers.ModelSerializer):

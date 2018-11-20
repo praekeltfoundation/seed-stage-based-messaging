@@ -1,7 +1,7 @@
 from six import StringIO
 from django.core.management import call_command
 from django.test import TestCase
-from mock import patch
+from unittest.mock import patch
 
 from contentstore.models import Schedule
 from seed_stage_based_messaging import test_utils as utils

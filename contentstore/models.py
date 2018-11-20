@@ -131,15 +131,19 @@ class MessageSet(models.Model):
     )
 
     short_name = models.CharField(_('Short name'), max_length=100, unique=True)
+    label = models.CharField(
+        _('User-readable name'), max_length=100, blank=True, default='')
     notes = models.TextField(_('Notes'), null=True, blank=True)
     channel = models.CharField(_('Channel'), max_length=64, null=True,
                                blank=True)
     next_set = models.ForeignKey('self',
                                  null=True,
-                                 blank=True)
+                                 blank=True,
+                                 on_delete=models.SET_NULL)
     default_schedule = models.ForeignKey(Schedule,
                                          related_name='message_sets',
-                                         null=False)
+                                         null=False,
+                                         on_delete=models.PROTECT)
     content_type = models.CharField(choices=CONTENT_TYPES, max_length=20,
                                     default='text')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -199,14 +203,16 @@ class Message(models.Model):
     """
     messageset = models.ForeignKey(MessageSet,
                                    related_name='messages',
-                                   null=False)
+                                   null=False,
+                                   on_delete=models.CASCADE)
     sequence_number = models.IntegerField(null=False, blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
     text_content = models.TextField(
         null=True, blank=True, validators=[validate_special_characters])
     binary_content = models.ForeignKey(BinaryContent,
                                        related_name='message',
-                                       null=True, blank=True)
+                                       null=True, blank=True,
+                                       on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

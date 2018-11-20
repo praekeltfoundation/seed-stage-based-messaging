@@ -1,4 +1,4 @@
-from seed_stage_based_messaging.settings import *  # noqa
+from seed_stage_based_messaging.settings import *  # noqa: F403
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'TESTSEKRET'
@@ -8,10 +8,8 @@ DEBUG = True
 
 TEMPLATE_DEBUG = True
 
-CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-CELERY_ALWAYS_EAGER = True
-BROKER_BACKEND = 'memory'
-CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_ALWAYS_EAGER = True
 
 SCHEDULER_URL = "http://seed-scheduler/api/v1"
 SCHEDULER_API_TOKEN = "REPLACEME"
@@ -29,7 +27,7 @@ PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
 
 
 # REST Framework conf defaults
-REST_FRAMEWORK['PAGE_SIZE'] = 2 # noqa
+REST_FRAMEWORK['PAGE_SIZE'] = 2  # noqa: F405
 
 AUDIO_FTP_HOST = 'localhost'
 AUDIO_FTP_PORT = '2222'
