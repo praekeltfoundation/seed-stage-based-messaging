@@ -180,14 +180,7 @@ class BaseSendMessage(Task):
         }
 
         log.info("Loading Subscription")
-        try:
-            subscription = Subscription.objects.get(id=subscription_id)
-        except Subscription.DoesNotExist:
-            logger.error('Could not load subscription <%s>' % subscription_id,
-                         exc_info=True)
-            context['error'] = ('Could not load subscription <%s>' %
-                                subscription_id)
-            return context
+        subscription = Subscription.objects.get(id=subscription_id)
 
         if not subscription.is_ready_for_processing:
             if (subscription.process_status == 2 or
