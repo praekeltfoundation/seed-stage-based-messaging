@@ -18,6 +18,7 @@ from requests import exceptions as requests_exceptions
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      ResendRequest)
 from seed_stage_based_messaging import utils
+from seed_stage_based_messaging.celery import app
 from contentstore.models import Message, Schedule
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
 
@@ -72,7 +73,7 @@ class StoreResendRequest(Task):
         resend_request = ResendRequest.objects.create(
             subscription_id=subscription_id)
 
-        send_current_message(subscription_id, resend_id=resend_request.id)
+        send_current_message.delay(subscription_id, resend_request.id)
 
         return "Message queued for resend, subscriber: {}".format(
             subscription_id)
@@ -96,14 +97,6 @@ class BaseSendMessage(Task):
         code.
         """
 
-    def get_message_to_send(self, subscription):
-        message = Message.objects.get(
-            messageset=subscription.messageset,
-            sequence_number=subscription.next_sequence_number,
-            lang=subscription.lang)
-
-        return message
-
     def create_initial_payload(self, to_addr, subscription):
         payload = {
             "to_addr": to_addr,
@@ -117,9 +110,6 @@ class BaseSendMessage(Task):
             payload["channel"] = subscription.messageset.channel
 
         return payload
-
-    def start_post_send_process(self, subscription_id, outbound_id):
-        return
 
     def send_message(
             self, log, payload, subscription, prepend_next, retry_delay):
@@ -168,58 +158,21 @@ class BaseSendMessage(Task):
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
 
-    def run(self, subscription_id, resend=None, **kwargs):
+    def run(self, context, **kwargs):
         """
         Load and contruct message and send them off
         """
+        if "error" in context:
+            return context
+
         log = self.get_logger(**kwargs)
 
-        context = {
-            "subscription_id": subscription_id,
-            "resend": resend
-        }
-
-        log.info("Loading Subscription")
-        subscription = Subscription.objects.get(id=subscription_id)
-
-        if not subscription.is_ready_for_processing:
-            if (subscription.process_status == 2 or
-                    subscription.completed is True):
-                # Subscription is complete
-                log.info("Subscription has completed")
-                context['error'] = "Subscription has completed"
-
-            else:
-                log.info("Message sending aborted - busy, broken or inactive")
-                # TODO: retry if busy (process_status = 1)
-                # TODO: be more specific about why it aborted
-                context['error'] = ("Message sending aborted, status <%s>" %
-                                    subscription.process_status)
-            return context
-
-        try:
-            log.info("Loading Message")
-            message = self.get_message_to_send(subscription)
-        except ObjectDoesNotExist:
-            error = ('Missing Message: MessageSet: <%s>, Sequence Number: <%s>'
-                     ', Lang: <%s>') % (
-                subscription.messageset,
-                subscription.next_sequence_number,
-                subscription.lang)
-            logger.error(error, exc_info=True)
-            context['error'] = "Message sending aborted, missing message"
-            return context
+        subscription = Subscription.objects.get(id=context["subscription_id"])
 
         if self.request.retries > 0:
             retry_delay = utils.calculate_retry_delay(self.request.retries)
         else:
             retry_delay = self.default_retry_delay
-
-        # Start processing
-        log.debug("setting process status to 1")
-        subscription.process_status = 1  # in process
-        log.debug("saving subscription")
-        subscription.save()
 
         log.info("Loading Initial Recipient Identity")
         try:
@@ -265,7 +218,7 @@ class BaseSendMessage(Task):
             return context
 
         # All preconditions have been met
-        log.info("Preparing message payload with: %s" % message.id)  # noqa
+        log.info("Preparing message payload with: %s" % context["message_id"])  # noqa
 
         payload = self.create_initial_payload(to_addr, subscription)
 
@@ -279,7 +232,7 @@ class BaseSendMessage(Task):
                 log.debug("Prepending next delivery")
                 payload["content"] = "%s\n%s" % (
                     subscription.metadata["prepend_next_delivery"],
-                    message.text_content)
+                    context["message_text_content"])
                 # clear prepend_next_delivery
                 log.debug("Clearing prepended message")
                 subscription.metadata[
@@ -287,11 +240,11 @@ class BaseSendMessage(Task):
                 subscription.save()
             else:
                 log.debug("Loading default content")
-                payload["content"] = message.text_content
+                payload["content"] = context["message_text_content"]
 
-            if message.binary_content:
+            if "message_binary_content_url" in context:
                 payload["metadata"]["image_url"] = make_absolute_url(
-                    message.binary_content.content.url)
+                    context["message_binary_content_url"])
 
             log.debug("text content loaded")
         else:
@@ -305,7 +258,7 @@ class BaseSendMessage(Task):
                 payload["metadata"]["voice_speech_url"] = [
                     subscription.metadata["prepend_next_delivery"],
                     make_absolute_url(
-                        message.binary_content.content.url),
+                        context["message_binary_content_url"]),
                 ]
                 # clear prepend_next_delivery
                 subscription.metadata[
@@ -314,25 +267,20 @@ class BaseSendMessage(Task):
             else:
                 payload["metadata"]["voice_speech_url"] = [
                     make_absolute_url(
-                        message.binary_content.content.url)
+                        context["message_binary_content_url"])
                 ]
 
         if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
             log.info('Skipping sending of message')
-            message_id = None
         else:
             result = self.send_message(
                 log, payload, subscription, prepend_next, retry_delay)
-            message_id = result['id']
+            context["outbound_id"] = result['id']
 
         log.debug("setting process status back to 0")
         subscription.process_status = 0  # ready
         log.debug("saving subscription")
         subscription.save()
-
-        log.debug("starting post_send_process task")
-        self.start_post_send_process(subscription_id, message_id)
-        log.debug("finished post_send_process task")
 
         log.debug("Firing SMS/OBD calls sent per message set metric")
         send_type = utils.normalise_metric_name(
@@ -350,7 +298,8 @@ class BaseSendMessage(Task):
             "metric_value": 1.0
         })
 
-        log.debug("Message queued for send. ID: <%s>" % str(message_id))
+        log.debug("Message queued for send. ID: <%s>" % str(
+            context.get("outbound_id")))
         return context
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -383,9 +332,9 @@ class SendCurrentMessage(BaseSendMessage):
     """
     name = "subscriptions.tasks.send_current_message"
 
-    def run(self, subscription_id, resend_id, **kwargs):
-        self.resend_id = resend_id
-        return super(SendCurrentMessage, self).run(subscription_id, **kwargs)
+    def run(self, context, **kwargs):
+        self.resend_id = context["resend_id"]
+        return super(SendCurrentMessage, self).run(context, **kwargs)
 
     def create_initial_payload(self, to_addr, subscription):
         payload = super(SendCurrentMessage, self).create_initial_payload(
@@ -395,9 +344,39 @@ class SendCurrentMessage(BaseSendMessage):
 
         return payload
 
-    def get_message_to_send(self, subscription):
+
+send_current_message_inner = SendCurrentMessage()
+
+
+@app.task
+def pre_send_process(subscription_id, resend_id=None):
+    context = {"subscription_id": subscription_id}
+
+    if resend_id:
+        context["resend_id"] = resend_id
+
+    logger.info("Loading Subscription")
+    subscription = Subscription.objects.get(id=context["subscription_id"])
+
+    if not subscription.is_ready_for_processing:
+        if (subscription.process_status == 2 or
+                subscription.completed is True):
+            # Subscription is complete
+            logger.info("Subscription has completed")
+            context['error'] = "Subscription has completed"
+
+        else:
+            logger.info("Message sending aborted - busy, broken or inactive")
+            # TODO: retry if busy (process_status = 1)
+            # TODO: be more specific about why it aborted
+            context['error'] = ("Message sending aborted, status <%s>" %
+                                subscription.process_status)
+        return context
+
+    try:
+        logger.info("Loading Message")
         next_sequence_number = subscription.next_sequence_number
-        if next_sequence_number > 1:
+        if next_sequence_number > 1 and resend_id:
             next_sequence_number -= 1
 
         message = Message.objects.get(
@@ -405,18 +384,30 @@ class SendCurrentMessage(BaseSendMessage):
             sequence_number=next_sequence_number,
             lang=subscription.lang)
 
-        self.message = message
+        context["message_id"] = message.id
+        if subscription.messageset.content_type == "text":
+            context["message_text_content"] = message.text_content
 
-        return message
+        if message.binary_content:
+            context["message_binary_content_url"] = \
+                message.binary_content.content.url
+    except ObjectDoesNotExist:
+        error = ('Missing Message: MessageSet: <%s>, Sequence Number: <%s>'
+                 ', Lang: <%s>') % (
+            subscription.messageset,
+            subscription.next_sequence_number,
+            subscription.lang)
+        logger.error(error, exc_info=True)
+        context['error'] = "Message sending aborted, missing message"
+        return context
 
-    def start_post_send_process(self, subscription_id, outbound_id):
-        resend_request = ResendRequest.objects.get(id=self.resend_id)
-        resend_request.outbound = outbound_id
-        resend_request.message = self.message
-        resend_request.save()
+    # Start processing
+    logger.debug("setting process status to 1")
+    subscription.process_status = 1  # in process
+    logger.debug("saving subscription")
+    subscription.save()
 
-
-send_current_message = SendCurrentMessage()
+    return context
 
 
 class PostSendProcess(Task):
@@ -505,7 +496,26 @@ class PostSendProcess(Task):
 post_send_process = PostSendProcess()
 
 
-send_next_message = (send_next_message_inner.s() | post_send_process.s())
+@app.task
+def post_send_process_resend(context):
+    resend_request = ResendRequest.objects.get(id=context["resend_id"])
+    if "outbound_id" in context:
+        resend_request.outbound = context["outbound_id"]
+    resend_request.message_id = context["message_id"]
+    resend_request.save()
+
+
+send_next_message = (
+    pre_send_process.s()
+    | send_next_message_inner.s()
+    | post_send_process.s()
+)
+
+send_current_message = (
+    pre_send_process.s()
+    | send_current_message_inner.s()
+    | post_send_process_resend.s()
+)
 
 
 class ScheduleDisable(Task):
