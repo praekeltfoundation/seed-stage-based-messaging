@@ -167,7 +167,8 @@ class BaseSendMessage(Task):
 
         log = self.get_logger(**kwargs)
 
-        subscription = Subscription.objects.get(id=context["subscription_id"])
+        subscription = Subscription.objects.select_related("messageset").get(
+            id=context["subscription_id"])
 
         if self.request.retries > 0:
             retry_delay = utils.calculate_retry_delay(self.request.retries)
@@ -356,7 +357,8 @@ def pre_send_process(subscription_id, resend_id=None):
         context["resend_id"] = resend_id
 
     logger.info("Loading Subscription")
-    subscription = Subscription.objects.get(id=context["subscription_id"])
+    subscription = Subscription.objects.select_related("messageset").get(
+        id=context["subscription_id"])
 
     if not subscription.is_ready_for_processing:
         if (subscription.process_status == 2 or
