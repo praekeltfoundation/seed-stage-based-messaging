@@ -36,6 +36,11 @@ class Command(BaseCommand):
             "--message-set", dest="message_set", default=None, type=int,
             help=("Only apply the action to the subscriptions that are for "
                   "the specified message set, defaults to all message sets."))
+        parser.add_argument(
+            "--messages-limit", dest="messages_limit", default=None, type=int,
+            help=("Only apply the action to subscriptions that are behind by"
+                  "the limit or less than the limit. Defaults to no limit.")
+        )
 
     def handle(self, *args, **options):
         action = options['action']
@@ -43,6 +48,7 @@ class Command(BaseCommand):
         end_date = options['end_date']
         end_date = end_date.replace(tzinfo=timezone.utc)
         message_set = options['message_set']
+        messages_limit = options['messages_limit']
 
         behind = 0
         forwards = 0
@@ -55,6 +61,11 @@ class Command(BaseCommand):
 
         for sub in subscriptions.iterator():
             number, complete = sub.get_expected_next_sequence_number(end_date)
+
+            if (
+                    messages_limit is not None and
+                    number - sub.next_sequence_number > messages_limit):
+                continue
 
             if number > sub.next_sequence_number:
 
