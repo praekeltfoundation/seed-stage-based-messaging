@@ -6,14 +6,14 @@ except ImportError:
 from celery.task import Task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
-
+from demands import HTTPServiceError
 from django.db.models import Count, Q
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.timezone import now
 from seed_services_client.metrics import MetricsApiClient
-from requests import exceptions as requests_exceptions
+from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      ResendRequest)
@@ -85,10 +85,9 @@ store_resend_request = StoreResendRequest()
 class BaseSendMessage(Task):
 
     """
-    Task to load and contruct message and send them off
+    Base Task for sending messages
     """
     default_retry_delay = 5
-    max_retries = 5
 
     class FailedEventRequest(Exception):
 
@@ -96,6 +95,29 @@ class BaseSendMessage(Task):
         The attempted task failed because of a non-200 HTTP return
         code.
         """
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        if self.request.retries == 0:
+            if isinstance(args[0], dict):
+                subscription_id = args[0]["subscription_id"]
+            else:
+                subscription_id = args[0]
+
+            SubscriptionSendFailure.objects.create(
+                subscription_id=subscription_id,
+                initiated_at=self.request.eta or now(),
+                reason=str(exc),
+                task_id=task_id
+            )
+        super(BaseSendMessage, self).on_failure(exc, task_id, args,
+                                                kwargs, einfo)
+
+
+class SendMessage(BaseSendMessage):
+
+    """
+    Task to load and contruct message and send them off
+    """
 
     def create_initial_payload(self, to_addr, subscription):
         payload = {
@@ -126,7 +148,7 @@ class BaseSendMessage(Task):
         )
         try:
             return message_sender_client.create_outbound(payload)
-        except requests_exceptions.ConnectionError as exc:
+        except ConnectionError as exc:
             log.info('Connection Error to Message Sender')
             fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
             # Reset the prepend next delivery that was cleared above.
@@ -135,7 +157,7 @@ class BaseSendMessage(Task):
             subscription.process_status = 0
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.HTTPError as exc:
+        except HTTPError as exc:
             # Recoverable HTTP errors: 500, 401
             log.info('Message Sender Request failed due to status: %s' %
                      exc.response.status_code)
@@ -148,7 +170,7 @@ class BaseSendMessage(Task):
             subscription.process_status = 0
             subscription.save()
             self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.Timeout as exc:
+        except Timeout as exc:
             log.info('Message Sender Request failed due to timeout')
             fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
             # Reset the prepend next delivery that was cleared above.
@@ -170,58 +192,10 @@ class BaseSendMessage(Task):
         subscription = Subscription.objects.select_related("messageset").get(
             id=context["subscription_id"])
 
-        if self.request.retries > 0:
-            retry_delay = utils.calculate_retry_delay(self.request.retries)
-        else:
-            retry_delay = self.default_retry_delay
-
-        log.info("Loading Initial Recipient Identity")
-        try:
-            to_addr = utils.get_identity_address(
-                subscription.identity,
-                use_communicate_through=True)
-        except requests_exceptions.ConnectionError as exc:
-            log.info('Connection Error to Identity Store')
-            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.HTTPError as exc:
-            # Recoverable HTTP errors: 500, 401
-            log.info('Identity Store Request failed due to status: %s' %
-                     exc.response.status_code)
-            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
-                           exc.response.status_code)
-            fire_metric.delay(metric_name, 1)
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except requests_exceptions.Timeout as exc:
-            log.info('Identity Store Request failed due to timeout')
-            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        log.debug("to_addr determined - %s" % to_addr)
-
-        if to_addr is None:
-            log.info("No valid recipient to_addr found")
-            subscription.process_status = -1  # Error
-            log.debug("saving subscription")
-            subscription.save()
-            log.debug("Firing error metric")
-            fire_metric.apply_async(kwargs={
-                "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
-                "metric_value": 1.0
-            })
-            log.debug("Fired error metric")
-            context['error'] = "Valid recipient could not be found"
-            return context
-
         # All preconditions have been met
         log.info("Preparing message payload with: %s" % context["message_id"])  # noqa
 
-        payload = self.create_initial_payload(to_addr, subscription)
+        payload = self.create_initial_payload(context["to_addr"], subscription)
 
         prepend_next = None
         if subscription.messageset.content_type == "text":
@@ -271,6 +245,11 @@ class BaseSendMessage(Task):
                         context["message_binary_content_url"])
                 ]
 
+        if self.request.retries > 0:
+            retry_delay = utils.calculate_retry_delay(self.request.retries)
+        else:
+            retry_delay = self.default_retry_delay
+
         if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
             log.info('Skipping sending of message')
         else:
@@ -303,19 +282,8 @@ class BaseSendMessage(Task):
             context.get("outbound_id")))
         return context
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        if self.request.retries == self.max_retries:
-            SubscriptionSendFailure.objects.create(
-                subscription_id=args[0],
-                initiated_at=self.request.eta,
-                reason=einfo.exception.message,
-                task_id=task_id
-            )
-        super(BaseSendMessage, self).on_failure(exc, task_id, args,
-                                                kwargs, einfo)
 
-
-class SendNextMessage(BaseSendMessage):
+class SendNextMessage(SendMessage):
 
     """
     Task to load and contruct message and send them off
@@ -326,16 +294,12 @@ class SendNextMessage(BaseSendMessage):
 send_next_message_inner = SendNextMessage()
 
 
-class SendCurrentMessage(BaseSendMessage):
+class SendCurrentMessage(SendMessage):
 
     """
     Task to load and contruct last sent message and send it again
     """
     name = "subscriptions.tasks.send_current_message"
-
-    def run(self, context, **kwargs):
-        self.resend_id = context["resend_id"]
-        return super(SendCurrentMessage, self).run(context, **kwargs)
 
     def create_initial_payload(self, to_addr, subscription):
         payload = super(SendCurrentMessage, self).create_initial_payload(
@@ -359,6 +323,8 @@ def pre_send_process(subscription_id, resend_id=None):
     logger.info("Loading Subscription")
     subscription = Subscription.objects.select_related("messageset").get(
         id=context["subscription_id"])
+
+    context["identity"] = subscription.identity
 
     if not subscription.is_ready_for_processing:
         if (subscription.process_status == 2 or
@@ -412,6 +378,41 @@ def pre_send_process(subscription_id, resend_id=None):
     return context
 
 
+@app.task(
+    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=15,
+    acks_late=True,
+    time_limit=10,
+    base=BaseSendMessage
+)
+def get_identity_address(context):
+    if "error" in context:
+        return context
+
+    to_addr = utils.get_identity_address(
+        context["identity"], use_communicate_through=True)
+
+    if to_addr is None:
+        logger.info("No valid recipient to_addr found")
+        subscription = Subscription.objects.get(id=context["subscription_id"])
+        subscription.process_status = -1  # Error
+        logger.debug("saving subscription")
+        subscription.save()
+        logger.debug("Firing error metric")
+        fire_metric.apply_async(kwargs={
+            "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
+            "metric_value": 1.0
+        })
+        logger.debug("Fired error metric")
+        context['error'] = "Valid recipient could not be found"
+    else:
+        context["to_addr"] = to_addr
+
+    return context
+
+
 class PostSendProcess(Task):
 
     """
@@ -438,8 +439,8 @@ class PostSendProcess(Task):
         log.info("Loading Subscription")
         # Process moving to next message, next set or finished
         try:
-            subscription = Subscription.objects.get(
-                    id=context["subscription_id"])
+            subscription = Subscription.objects.select_related(
+                "messageset").get(id=context["subscription_id"])
             if subscription.process_status == 0:
                 log.debug("setting process status to 1")
                 subscription.process_status = 1  # in process
@@ -509,12 +510,14 @@ def post_send_process_resend(context):
 
 send_next_message = (
     pre_send_process.s()
+    | get_identity_address.s()
     | send_next_message_inner.s()
     | post_send_process.s()
 )
 
 send_current_message = (
     pre_send_process.s()
+    | get_identity_address.s()
     | send_current_message_inner.s()
     | post_send_process_resend.s()
 )
