@@ -119,7 +119,7 @@ class BaseSendMessage(Task):
         return payload
 
     def start_post_send_process(self, subscription_id, outbound_id):
-        post_send_process(subscription_id)
+        return
 
     def send_message(
             self, log, payload, subscription, prepend_next, retry_delay):
@@ -174,28 +174,28 @@ class BaseSendMessage(Task):
         """
         log = self.get_logger(**kwargs)
 
+        context = {
+            "subscription_id": subscription_id,
+            "resend": resend
+        }
+
         log.info("Loading Subscription")
-        try:
-            subscription = Subscription.objects.get(id=subscription_id)
-        except Subscription.DoesNotExist:
-            logger.error('Could not load subscription <%s>' % subscription_id,
-                         exc_info=True)
-            return
+        subscription = Subscription.objects.get(id=subscription_id)
 
         if not subscription.is_ready_for_processing:
             if (subscription.process_status == 2 or
                     subscription.completed is True):
-                # Disable the subscription's scheduler
-                schedule_disable.apply_async(args=[subscription_id])
-                log.info("Scheduler deactivation task fired")
-                return "Schedule deactivation task fired"
+                # Subscription is complete
+                log.info("Subscription has completed")
+                context['error'] = "Subscription has completed"
 
             else:
                 log.info("Message sending aborted - busy, broken or inactive")
                 # TODO: retry if busy (process_status = 1)
                 # TODO: be more specific about why it aborted
-                return ("Message sending aborted, status <%s>" %
-                        subscription.process_status)
+                context['error'] = ("Message sending aborted, status <%s>" %
+                                    subscription.process_status)
+            return context
 
         try:
             log.info("Loading Message")
@@ -207,7 +207,8 @@ class BaseSendMessage(Task):
                 subscription.next_sequence_number,
                 subscription.lang)
             logger.error(error, exc_info=True)
-            return "Message sending aborted, missing message"
+            context['error'] = "Message sending aborted, missing message"
+            return context
 
         if self.request.retries > 0:
             retry_delay = utils.calculate_retry_delay(self.request.retries)
@@ -260,7 +261,8 @@ class BaseSendMessage(Task):
                 "metric_value": 1.0
             })
             log.debug("Fired error metric")
-            return "Valid recipient could not be found"
+            context['error'] = "Valid recipient could not be found"
+            return context
 
         # All preconditions have been met
         log.info("Preparing message payload with: %s" % message.id)  # noqa
@@ -349,7 +351,7 @@ class BaseSendMessage(Task):
         })
 
         log.debug("Message queued for send. ID: <%s>" % str(message_id))
-        return "Message queued for send. ID: <%s>" % str(message_id)
+        return context
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         if self.request.retries == self.max_retries:
@@ -371,7 +373,7 @@ class SendNextMessage(BaseSendMessage):
     name = "subscriptions.tasks.send_next_message"
 
 
-send_next_message = SendNextMessage()
+send_next_message_inner = SendNextMessage()
 
 
 class SendCurrentMessage(BaseSendMessage):
@@ -431,16 +433,20 @@ class PostSendProcess(Task):
         code.
         """
 
-    def run(self, subscription_id, **kwargs):
+    def run(self, context, **kwargs):
         """
         Load subscription and process
         """
+        if "error" in context:
+            return context
+
         log = self.get_logger(**kwargs)
 
         log.info("Loading Subscription")
         # Process moving to next message, next set or finished
         try:
-            subscription = Subscription.objects.get(id=subscription_id)
+            subscription = Subscription.objects.get(
+                    id=context["subscription_id"])
             if subscription.process_status == 0:
                 log.debug("setting process status to 1")
                 subscription.process_status = 1  # in process
@@ -497,6 +503,9 @@ class PostSendProcess(Task):
 
 
 post_send_process = PostSendProcess()
+
+
+send_next_message = (send_next_message_inner.s() | post_send_process.s())
 
 
 class ScheduleDisable(Task):
