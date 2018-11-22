@@ -97,20 +97,19 @@ class BaseSendMessage(Task):
         """
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
-        if self.request.retries == 0:
-            if isinstance(args[0], dict):
-                subscription_id = args[0]["subscription_id"]
-            else:
-                subscription_id = args[0]
+        if isinstance(args[0], dict):
+            subscription_id = args[0]["subscription_id"]
+        else:
+            subscription_id = args[0]
 
-            SubscriptionSendFailure.objects.create(
-                subscription_id=subscription_id,
-                initiated_at=self.request.eta or now(),
-                reason=str(exc),
-                task_id=task_id
-            )
-        super(BaseSendMessage, self).on_failure(exc, task_id, args,
-                                                kwargs, einfo)
+        SubscriptionSendFailure.objects.create(
+            subscription_id=subscription_id,
+            initiated_at=self.request.eta or now(),
+            reason=str(exc),
+            task_id=task_id
+        )
+        super(BaseSendMessage, self).on_failure(exc, task_id, args, kwargs,
+                                                einfo)
 
 
 @app.task
