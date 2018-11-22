@@ -97,6 +97,9 @@ class BaseSendMessage(Task):
         """
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+        # This function only gets called once all retries have failed, not with
+        # each retry, this was tested in real life but doesn't work with unit
+        # tests when CELERY_ALWAYS_EAGER is True
         if isinstance(args[0], dict):
             subscription_id = args[0]["subscription_id"]
         else:
