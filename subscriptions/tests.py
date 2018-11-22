@@ -28,12 +28,14 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
+from requests.exceptions import ConnectionError
 
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      fire_metrics_if_new,
                      ResendRequest)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_disable, fire_metric, scheduled_metrics
+from .tasks import (schedule_disable, fire_metric, scheduled_metrics,
+                    send_next_message)
 from . import tasks
 from seed_stage_based_messaging import test_utils as utils
 
@@ -1874,6 +1876,25 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(resend_request.message.sequence_number, 1)
         self.assertEqual(str(resend_request.outbound),
                          "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
+
+    @override_settings(CELERY_TASK_EAGER_PROPAGATES=False)
+    def test_on_failure_sending_tasks(self):
+        """
+        When something fails in a function task using BaseSendMessage as base
+        make sure the SubscriptionSendFailure item is created.
+        """
+
+        # Setup
+        existing = self.make_subscription_audio()
+        self.make_messages_audio(existing.messageset, 3)
+
+        with pytest.raises(ConnectionError) as excinfo:
+            send_next_message(str(existing.id))
+
+        self.assertTrue(
+            str(excinfo.value).find("Failed to establish a new conn") != -1)
+
+        self.assertEqual(SubscriptionSendFailure.objects.all().count(), 1)
 
     @override_settings(USE_SSL=True)
     def test_make_absolute_url(self):
