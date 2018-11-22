@@ -113,206 +113,6 @@ class BaseSendMessage(Task):
                                                 kwargs, einfo)
 
 
-class SendMessage(BaseSendMessage):
-
-    """
-    Task to load and contruct message and send them off
-    """
-
-    def create_initial_payload(self, to_addr, subscription):
-        payload = {
-            "to_addr": to_addr,
-            "to_identity": subscription.identity,
-            "delivered": "false",
-            "resend": "false",
-            "metadata": {}
-        }
-
-        if subscription.messageset.channel:
-            payload["channel"] = subscription.messageset.channel
-
-        return payload
-
-    def send_message(
-            self, log, payload, subscription, prepend_next, retry_delay):
-        """
-        Sends the specified message to the message sender, handling errors
-        and retrying the task if necessary
-        """
-        log.info("Sending message to Message Sender")
-        message_sender_client = MessageSenderApiClient(
-            settings.MESSAGE_SENDER_TOKEN,
-            settings.MESSAGE_SENDER_URL,
-            retries=5,
-            timeout=settings.DEFAULT_REQUEST_TIMEOUT,
-        )
-        try:
-            return message_sender_client.create_outbound(payload)
-        except ConnectionError as exc:
-            log.info('Connection Error to Message Sender')
-            fire_metric.delay('sbm.send_next_message.connection_error.sum', 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except HTTPError as exc:
-            # Recoverable HTTP errors: 500, 401
-            log.info('Message Sender Request failed due to status: %s' %
-                     exc.response.status_code)
-            metric_name = ('sbm.send_next_message.http_error.%s.sum' %
-                           exc.response.status_code)
-            fire_metric.delay(metric_name, 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-        except Timeout as exc:
-            log.info('Message Sender Request failed due to timeout')
-            fire_metric.delay('sbm.send_next_message.timeout.sum', 1)
-            # Reset the prepend next delivery that was cleared above.
-            if prepend_next is not None:
-                subscription.metadata["prepend_next_delivery"] = prepend_next
-            subscription.process_status = 0
-            subscription.save()
-            self.retry(exc=exc, countdown=retry_delay)
-
-    def run(self, context, **kwargs):
-        """
-        Load and contruct message and send them off
-        """
-        if "error" in context:
-            return context
-
-        log = self.get_logger(**kwargs)
-
-        subscription = Subscription.objects.select_related("messageset").get(
-            id=context["subscription_id"])
-
-        # All preconditions have been met
-        log.info("Preparing message payload with: %s" % context["message_id"])  # noqa
-
-        payload = self.create_initial_payload(context["to_addr"], subscription)
-
-        prepend_next = None
-        if subscription.messageset.content_type == "text":
-            log.debug("Determining payload content")
-            if subscription.metadata is not None and \
-               "prepend_next_delivery" in subscription.metadata \
-               and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                prepend_next = subscription.metadata["prepend_next_delivery"]
-                log.debug("Prepending next delivery")
-                payload["content"] = "%s\n%s" % (
-                    subscription.metadata["prepend_next_delivery"],
-                    context["message_text_content"])
-                # clear prepend_next_delivery
-                log.debug("Clearing prepended message")
-                subscription.metadata[
-                    "prepend_next_delivery"] = None
-                subscription.save()
-            else:
-                log.debug("Loading default content")
-                payload["content"] = context["message_text_content"]
-
-            if "message_binary_content_url" in context:
-                payload["metadata"]["image_url"] = make_absolute_url(
-                    context["message_binary_content_url"])
-
-            log.debug("text content loaded")
-        else:
-            # TODO - audio media handling on MC
-            # audio
-
-            if subscription.metadata is not None and \
-               "prepend_next_delivery" in subscription.metadata \
-               and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
-                prepend_next = subscription.metadata["prepend_next_delivery"]
-                payload["metadata"]["voice_speech_url"] = [
-                    subscription.metadata["prepend_next_delivery"],
-                    make_absolute_url(
-                        context["message_binary_content_url"]),
-                ]
-                # clear prepend_next_delivery
-                subscription.metadata[
-                    "prepend_next_delivery"] = None
-                subscription.save()
-            else:
-                payload["metadata"]["voice_speech_url"] = [
-                    make_absolute_url(
-                        context["message_binary_content_url"])
-                ]
-
-        if self.request.retries > 0:
-            retry_delay = utils.calculate_retry_delay(self.request.retries)
-        else:
-            retry_delay = self.default_retry_delay
-
-        if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
-            log.info('Skipping sending of message')
-        else:
-            result = self.send_message(
-                log, payload, subscription, prepend_next, retry_delay)
-            context["outbound_id"] = result['id']
-
-        log.debug("setting process status back to 0")
-        subscription.process_status = 0  # ready
-        log.debug("saving subscription")
-        subscription.save()
-
-        log.debug("Firing SMS/OBD calls sent per message set metric")
-        send_type = utils.normalise_metric_name(
-                        subscription.messageset.content_type)
-        ms_name = utils.normalise_metric_name(
-                        subscription.messageset.short_name)
-        fire_metric.apply_async(kwargs={
-            "metric_name":
-                'message.{}.{}.sum'.format(send_type, ms_name),
-            "metric_value": 1.0
-        })
-        fire_metric.apply_async(kwargs={
-            "metric_name":
-                'message.{}.sum'.format(send_type),
-            "metric_value": 1.0
-        })
-
-        log.debug("Message queued for send. ID: <%s>" % str(
-            context.get("outbound_id")))
-        return context
-
-
-class SendNextMessage(SendMessage):
-
-    """
-    Task to load and contruct message and send them off
-    """
-    name = "subscriptions.tasks.send_next_message"
-
-
-send_next_message_inner = SendNextMessage()
-
-
-class SendCurrentMessage(SendMessage):
-
-    """
-    Task to load and contruct last sent message and send it again
-    """
-    name = "subscriptions.tasks.send_current_message"
-
-    def create_initial_payload(self, to_addr, subscription):
-        payload = super(SendCurrentMessage, self).create_initial_payload(
-            to_addr, subscription)
-
-        payload['resend'] = "true"
-
-        return payload
-
-
-send_current_message_inner = SendCurrentMessage()
-
-
 @app.task
 def pre_send_process(subscription_id, resend_id=None):
     context = {"subscription_id": subscription_id}
@@ -400,16 +200,103 @@ def get_identity_address(context):
         subscription.process_status = -1  # Error
         logger.debug("saving subscription")
         subscription.save()
-        logger.debug("Firing error metric")
-        fire_metric.apply_async(kwargs={
-            "metric_name": 'subscriptions.send_next_message_errored.sum',  # noqa
-            "metric_value": 1.0
-        })
-        logger.debug("Fired error metric")
+
         context['error'] = "Valid recipient could not be found"
     else:
         context["to_addr"] = to_addr
 
+    return context
+
+
+@app.task(
+    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=15,
+    acks_late=True,
+    time_limit=10,
+    base=BaseSendMessage
+)
+def send_message(context):
+    if "error" in context:
+        return context
+
+    subscription = Subscription.objects.select_related("messageset").get(
+            id=context["subscription_id"])
+
+    payload = {
+        "to_addr": context["to_addr"],
+        "to_identity": subscription.identity,
+        "delivered": "false",
+        "resend": "true" if "resend_id" in context else "false",
+        "metadata": {}
+    }
+
+    if subscription.messageset.channel:
+        payload["channel"] = subscription.messageset.channel
+
+    prepend_next = None
+    if subscription.messageset.content_type == "text":
+        logger.debug("Determining payload content")
+        if subscription.metadata is not None and \
+            "prepend_next_delivery" in subscription.metadata \
+            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+            prepend_next = subscription.metadata["prepend_next_delivery"]
+            logger.debug("Prepending next delivery")
+            payload["content"] = "%s\n%s" % (
+                subscription.metadata["prepend_next_delivery"],
+                context["message_text_content"])
+        else:
+            logger.debug("Loading default content")
+            payload["content"] = context["message_text_content"]
+
+        if "message_binary_content_url" in context:
+            payload["metadata"]["image_url"] = make_absolute_url(
+                context["message_binary_content_url"])
+
+        logger.debug("text content loaded")
+    else:
+        # TODO - audio media handling on MC
+        # audio
+
+        if subscription.metadata is not None and \
+            "prepend_next_delivery" in subscription.metadata \
+            and subscription.metadata["prepend_next_delivery"] is not None:  # noqa
+            prepend_next = subscription.metadata["prepend_next_delivery"]
+            payload["metadata"]["voice_speech_url"] = [
+                subscription.metadata["prepend_next_delivery"],
+                make_absolute_url(
+                    context["message_binary_content_url"]),
+            ]
+        else:
+            payload["metadata"]["voice_speech_url"] = [
+                make_absolute_url(
+                    context["message_binary_content_url"])
+            ]
+
+    if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
+        logger.info('Skipping sending of message')
+    else:
+        logger.info("Sending message to Message Sender")
+        message_sender_client = MessageSenderApiClient(
+            settings.MESSAGE_SENDER_TOKEN,
+            settings.MESSAGE_SENDER_URL,
+            retries=5,
+            timeout=settings.DEFAULT_REQUEST_TIMEOUT,
+        )
+        result = message_sender_client.create_outbound(payload)
+        context["outbound_id"] = result['id']
+
+    if prepend_next:
+        logger.debug("Clearing prepended message")
+        subscription.metadata["prepend_next_delivery"] = None
+    logger.debug("setting process status back to 0")
+    subscription.process_status = 0  # ready
+    logger.debug("saving subscription")
+    subscription.save()
+
+    logger.debug("Message queued for send. ID: <%s>" % str(
+        context.get("outbound_id")))
     return context
 
 
@@ -511,14 +398,14 @@ def post_send_process_resend(context):
 send_next_message = (
     pre_send_process.s()
     | get_identity_address.s()
-    | send_next_message_inner.s()
+    | send_message.s()
     | post_send_process.s()
 )
 
 send_current_message = (
     pre_send_process.s()
     | get_identity_address.s()
-    | send_current_message_inner.s()
+    | send_message.s()
     | post_send_process_resend.s()
 )
 
