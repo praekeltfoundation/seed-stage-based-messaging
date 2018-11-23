@@ -33,7 +33,8 @@ from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
                      fire_metrics_if_new,
                      ResendRequest)
 from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_disable, fire_metric, scheduled_metrics
+from .tasks import (schedule_disable, fire_metric, scheduled_metrics,
+                    BaseSendMessage)
 from . import tasks
 from seed_stage_based_messaging import test_utils as utils
 
@@ -1626,6 +1627,43 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(resend_request.message.sequence_number, 1)
         self.assertEqual(str(resend_request.outbound),
                          "c7f3c839-2bf5-42d1-86b9-ccb886645fb4")
+
+    def test_base_send_message_on_failure_list(self):
+        """
+        When on_failure is called with the subscription_id it should create a
+        SubscriptionSendFailure record.
+        """
+        # Setup
+        existing = self.make_subscription_audio()
+
+        base_send_message = BaseSendMessage()
+        base_send_message.on_failure(
+            Exception("Hey!"), existing.id, [existing.id], {}, "")
+
+        self.assertEqual(SubscriptionSendFailure.objects.all().count(), 1)
+
+        fail = SubscriptionSendFailure.objects.first()
+        self.assertEqual(fail.subscription_id, existing.id)
+        self.assertEqual(fail.reason, "Hey!")
+
+    def test_base_send_message_on_failure_dict(self):
+        """
+        When on_failure is called with the subscription_id in a context dict it
+        should create a SubscriptionSendFailure record.
+        """
+        # Setup
+        existing = self.make_subscription_audio()
+
+        base_send_message = BaseSendMessage()
+        base_send_message.on_failure(
+            Exception("Hey!"), existing.id, [{"subscription_id": existing.id}],
+            {}, "")
+
+        self.assertEqual(SubscriptionSendFailure.objects.all().count(), 1)
+
+        fail = SubscriptionSendFailure.objects.first()
+        self.assertEqual(fail.subscription_id, existing.id)
+        self.assertEqual(fail.reason, "Hey!")
 
     @override_settings(USE_SSL=True)
     def test_make_absolute_url(self):

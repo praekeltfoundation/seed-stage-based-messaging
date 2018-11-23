@@ -98,8 +98,11 @@ class BaseSendMessage(Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         # This function only gets called once all retries have failed, not with
-        # each retry, this was tested in real life but doesn't work with unit
-        # tests when CELERY_ALWAYS_EAGER is True
+        # each retry, this was tested in real life and is tested on a Celery
+        # level but doesn't work with unit tests when CELERY_ALWAYS_EAGER is
+        # True.
+        # The function is called directly in the unit tests to make sure this
+        # functionality works
         if isinstance(args[0], dict):
             subscription_id = args[0]["subscription_id"]
         else:
