@@ -566,3 +566,29 @@ class RequeueFailedTasks(Task):
 
 
 requeue_failed_tasks = RequeueFailedTasks()
+
+
+@app.task
+def calculate_subscription_lifecycle(subscription_id):
+    """
+    Calculates the expected lifecycle position the subscription in
+    subscription_ids, and creates a BehindSubscription entry for them.
+
+    Args:
+        subscription_id (str): ID of subscription to calculate lifecycle for
+    """
+
+
+@app.task
+def find_behind_subscriptions():
+    """
+    Finds any subscriptions that are behind according to where they should be,
+    and creates a BehindSubscription entry for them.
+    """
+    subscriptions = Subscription.objects.filter(
+        active=True, completed=False, process_status=0,
+    ).values_list(
+        "id", flat=True
+    )
+    for subscription_id in subscriptions.iterator():
+        calculate_subscription_lifecycle.delay(str(subscription_id))
