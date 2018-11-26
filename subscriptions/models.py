@@ -227,3 +227,32 @@ class ResendRequest(models.Model):
 
     def __str__(self):
         return '{}: {}'.format(self.id, self.received_at)
+
+
+class BehindSubscription(models.Model):
+    """
+    Subscriptions that are behind where they should be. Filled out by
+    subscriptions.tasks.find_behind_subscriptions
+    """
+    subscription = models.ForeignKey(
+        to=Subscription, on_delete=models.CASCADE,
+        help_text="The subscription that is behind",
+    )
+    messages_behind = models.IntegerField(
+        help_text="The number of messages the subscription is behind by"
+    )
+    current_messageset = models.ForeignKey(
+        to=MessageSet, on_delete=models.CASCADE, related_name="+",
+        help_text="The message set the the subscription is on",
+    )
+    current_sequence_number = models.IntegerField(
+        help_text="Which sequence in the messageset we are at",
+    )
+    expected_messageset = models.ForeignKey(
+        to=MessageSet, on_delete=models.CASCADE, related_name="+",
+        help_text="The messageset that the subscription should be on",
+    )
+    expected_sequence_number = models.IntegerField(
+        help_text="Which sequence in the messageset we expect to be",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
