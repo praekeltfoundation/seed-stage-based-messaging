@@ -87,7 +87,6 @@ class BaseSendMessage(Task):
     """
     Base Task for sending messages
     """
-    default_retry_delay = 5
 
     class FailedEventRequest(Exception):
 
@@ -190,9 +189,10 @@ def pre_send_process(subscription_id, resend_id=None):
     max_retries=15,
     acks_late=True,
     time_limit=10,
-    base=BaseSendMessage
+    base=BaseSendMessage,
+    bind=True
 )
-def get_identity_address(context):
+def get_identity_address(self, context):
     if "error" in context:
         return context
 
@@ -220,9 +220,10 @@ def get_identity_address(context):
     max_retries=15,
     acks_late=True,
     time_limit=10,
-    base=BaseSendMessage
+    base=BaseSendMessage,
+    bind=True
 )
-def send_message(context):
+def send_message(self, context):
     if "error" in context:
         return context
 
