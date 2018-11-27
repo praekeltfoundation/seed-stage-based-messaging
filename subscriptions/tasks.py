@@ -16,7 +16,7 @@ from seed_services_client.metrics import MetricsApiClient
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 from .models import (Subscription, SubscriptionSendFailure, EstimatedSend,
-                     ResendRequest)
+                     ResendRequest, BehindSubscription)
 from seed_stage_based_messaging import utils
 from seed_stage_based_messaging.celery import app
 from contentstore.models import Message, Schedule
@@ -577,6 +577,27 @@ def calculate_subscription_lifecycle(subscription_id):
     Args:
         subscription_id (str): ID of subscription to calculate lifecycle for
     """
+    subscription = Subscription.objects.select_related(
+        "messageset", "schedule"
+    ).get(
+        id=subscription_id
+    )
+    number, completed = subscription.get_expected_next_sequence_number()
+    if number <= subscription.next_sequence_number and completed is False:
+        return
+
+    current_messageset = subscription.messageset
+    current_sequence_number = subscription.next_sequence_number
+    end_subscription = Subscription.fast_forward_lifecycle(
+        subscription, save=False)[-1]
+    BehindSubscription.objects.create(
+        subscription=subscription,
+        messages_behind=number - current_sequence_number,
+        current_messageset=current_messageset,
+        current_sequence_number=current_sequence_number,
+        expected_messageset=end_subscription.messageset,
+        expected_sequence_number=end_subscription.next_sequence_number,
+    )
 
 
 @app.task
