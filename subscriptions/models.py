@@ -256,3 +256,8 @@ class BehindSubscription(models.Model):
         help_text="Which sequence in the messageset we expect to be",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        permissions = (
+            ("can_find_behind_subscriptions", "Can find behind subscriptions"),
+        )

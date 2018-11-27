@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Subscription, SubscriptionSendFailure
+from .models import BehindSubscription, Subscription, SubscriptionSendFailure
 
 
 class CreateUserSerializer(serializers.Serializer):
@@ -29,3 +29,24 @@ class SubscriptionSendFailureSerializer(
         model = SubscriptionSendFailure
         fields = ('url', 'id', 'subscription', 'subscription_id', 'task_id',
                   'initiated_at', 'reason')
+
+
+class BehindSubscriptionSerializer(serializers.HyperlinkedModelSerializer):
+    subscription_id = serializers.PrimaryKeyRelatedField(read_only=True)
+    current_messageset_id = serializers.PrimaryKeyRelatedField(read_only=True)
+    current_messageset_name = serializers.StringRelatedField(
+        source="current_messageset")
+    expected_messageset_id = serializers.PrimaryKeyRelatedField(read_only=True)
+    expected_messageset_name = serializers.StringRelatedField(
+        source="expected_messageset")
+
+    class Meta:
+        model = BehindSubscription
+        fields = (
+            "id", "subscription", "subscription_id", "messages_behind",
+            "current_messageset", "current_messageset_id",
+            "current_messageset_name", "current_sequence_number",
+            "expected_messageset", "expected_messageset_id",
+            "expected_messageset_name", "expected_sequence_number",
+            "created_at"
+        )
