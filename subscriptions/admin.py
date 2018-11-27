@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Subscription
+from .models import BehindSubscription, Subscription
 
 
 class SubscriptionAdmin(admin.ModelAdmin):
@@ -14,3 +14,12 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Subscription, SubscriptionAdmin)
+
+
+@admin.register(BehindSubscription)
+class BehindSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("subscription", "messages_behind", "created_at")
+    list_filter = ("messages_behind", "current_messageset")
+    list_select_related = ("current_messageset", "subscription")
+    raw_id_fields = ("subscription",)
+    readonly_fields = ("created_at",)
