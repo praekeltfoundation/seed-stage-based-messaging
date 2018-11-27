@@ -1,6 +1,7 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.urls import reverse
 from django.test import TestCase
+from unittest.mock import patch
 
 from contentstore.models import Schedule, MessageSet
 from subscriptions.models import BehindSubscription, Subscription
@@ -42,3 +43,59 @@ class TestBehindSubscriptionAdmin(TestCase):
         # 7: Number of messages behind for filtering
         with self.assertNumQueries(7):
             self.client.get(url)
+
+    def test_find_behind_subscriptions_not_staff(self):
+        """
+        Redirects to admin login if the user isn't staff
+        """
+        user = User.objects.create_user("test")
+        user.is_staff = False
+        user.save()
+        self.client.force_login(user)
+
+        url = reverse("admin:find_behind_subscriptions")
+        response = self.client.get(url)
+        self.assertRedirects(response, "{}?next={}".format(
+            reverse("admin:login"), url))
+
+    @patch('subscriptions.admin.find_behind_subscriptions.delay')
+    def test_find_behind_subscriptions_no_permission(self, task):
+        """
+        If the user is staff, but doesn't have permission to find behind
+        subscriptions, it should redirect to the changelist view
+        """
+        user = User.objects.create_user("test")
+        user.is_staff = True
+        permission = Permission.objects.get(codename="view_behindsubscription")
+        user.user_permissions.add(permission)
+        user.save()
+        self.client.force_login(user)
+
+        url = reverse("admin:find_behind_subscriptions")
+        response = self.client.get(url)
+        self.assertRedirects(
+            response,
+            reverse("admin:subscriptions_behindsubscription_changelist"))
+        task.assert_not_called()
+
+    @patch('subscriptions.admin.find_behind_subscriptions.delay')
+    def test_find_behind_subscription_valid(self, task):
+        """
+        Should run the task and redirect to the changelist view
+        """
+        user = User.objects.create_user("test")
+        user.is_staff = True
+        permission = Permission.objects.get(codename="view_behindsubscription")
+        user.user_permissions.add(permission)
+        permission = Permission.objects.get(
+            codename="can_find_behind_subscriptions")
+        user.user_permissions.add(permission)
+        user.save()
+        self.client.force_login(user)
+
+        url = reverse("admin:find_behind_subscriptions")
+        response = self.client.get(url)
+        self.assertRedirects(
+            response,
+            reverse("admin:subscriptions_behindsubscription_changelist"))
+        task.assert_called_once_with()
