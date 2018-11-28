@@ -1,6 +1,9 @@
 from rest_framework import viewsets, status, mixins
+from rest_framework.decorators import action
 from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import (
+    DjangoModelPermissions, IsAuthenticated, IsAdminUser
+)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -9,11 +12,15 @@ from django.contrib.postgres.fields import JSONField
 from django_filters import rest_framework as filters
 import django_filters
 
-from .models import Subscription, SubscriptionSendFailure
-from .serializers import (SubscriptionSerializer, CreateUserSerializer,
-                          SubscriptionSendFailureSerializer)
-from .tasks import (schedule_disable, scheduled_metrics, requeue_failed_tasks,
-                    fire_daily_send_estimate, store_resend_request)
+from .models import BehindSubscription, Subscription, SubscriptionSendFailure
+from .serializers import (
+    BehindSubscriptionSerializer, SubscriptionSerializer, CreateUserSerializer,
+    SubscriptionSendFailureSerializer
+)
+from .tasks import (
+    schedule_disable, scheduled_metrics, requeue_failed_tasks,
+    fire_daily_send_estimate, store_resend_request, find_behind_subscriptions
+)
 from seed_stage_based_messaging.utils import get_available_metrics
 
 
@@ -226,3 +233,50 @@ class DailyEstimateRun(APIView):
         task_id = fire_daily_send_estimate.apply_async()
         accepted = {"accepted": True, "task_id": str(task_id)}
         return Response(accepted, status=202)
+
+
+class DjangoModelViewPermissions(DjangoModelPermissions):
+    """
+    Django model permissions for viewing
+    """
+    perms_map = {
+        "GET": ["%(app_label)s.view_%(model_name)s"],
+    }
+
+
+class CanFindBehindSubscriptionsPermission(DjangoModelPermissions):
+    """
+    Django model permissions for can_find_behind_subscriptions permission
+    """
+    perms_map = {
+        "POST": ["%(app_label)s.can_find_behind_subscriptions"],
+    }
+
+
+class BehindSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Viewset for querying BehindSubscriptions, and triggering the task that
+    creates them.
+    """
+    queryset = BehindSubscription.objects.select_related(
+        "current_messageset", "expected_messageset").all()
+    serializer_class = BehindSubscriptionSerializer
+    permission_classes = (DjangoModelViewPermissions,)
+    pagination_class = CreatedAtCursorPagination
+
+    @action(
+        detail=False, methods=["post"],
+        permission_classes=(CanFindBehindSubscriptionsPermission,)
+    )
+    def find_behind_subscriptions(self, request):
+        """
+        Starts a celery task that looks through active subscriptions to find
+        and subscriptions that are behind where they should be, and adds a
+        BehindSubscription for them.
+        """
+
+        task_id = find_behind_subscriptions.delay()
+        return Response(
+            {"accepted": True, "task_id": str(task_id)},
+            status=status.HTTP_202_ACCEPTED
+        )
