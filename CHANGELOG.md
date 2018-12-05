@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.2 (2018-12-05)
+### Fixes
+1. Move the send message task into separate tasks for acks_late
+
+### Enhancements
+ - Monitor subscriptions that are behind.
+
 ## 0.11.1 (2018-11-13)
 ### Fixes
 1. Fix flake8 check on testsettings.py
