@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.3 (2018-12-05)
+### Fixes
+1. Adding send subtasks to the correct queues.
+
 ## 0.11.2 (2018-12-05)
 ### Fixes
 1. Move the send message task into separate tasks for acks_late
