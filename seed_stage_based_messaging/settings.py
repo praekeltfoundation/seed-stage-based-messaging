@@ -180,8 +180,17 @@ CELERY_TASK_ROUTES = {
     'celery.backend_cleanup': {
         'queue': 'mediumpriority',
     },
-    'subscriptions.tasks.send_next_message': {
+    'subscriptions.tasks.pre_send_process': {
         'queue': 'priority',
+    },
+    'subscriptions.tasks.get_identity_address': {
+        'queue': 'priority',
+    },
+    'subscriptions.tasks.send_message': {
+        'queue': 'priority',
+    },
+    'subscriptions.tasks.post_send_process_resend': {
+        'queue': 'mediumpriority',
     },
     'subscriptions.tasks.post_send_process': {
         'queue': 'mediumpriority',
