@@ -212,6 +212,9 @@ CELERY_TASK_ROUTES = {
     },
     'contentstore.tasks.queue_subscription_send': {
         'queue': 'highmemory',
+    },
+    'subscriptions.tasks.find_behind_subscriptions': {
+        'queue': 'highmemory',
     }
 }
 
