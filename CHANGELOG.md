@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.4 (2018-12-06)
+### Fixes
+1. Move the find_behind_subscriptions task to the highmemory queue
+
 ## 0.11.3 (2018-12-05)
 ### Fixes
 1. Adding send subtasks to the correct queues.
