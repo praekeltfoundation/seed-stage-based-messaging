@@ -214,14 +214,15 @@ def get_identity_address(self, context):
 
 
 @app.task(
-    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError),
+    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError,
+                   SoftTimeLimitExceeded),
     retry_backoff=True,
     retry_jitter=True,
     max_retries=15,
     acks_late=True,
-    time_limit=10,
-    base=BaseSendMessage,
-    bind=True
+    soft_time_limit=10,
+    time_limit=15,
+    base=BaseSendMessage
 )
 def send_message(self, context):
     if "error" in context:
