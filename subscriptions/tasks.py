@@ -87,7 +87,6 @@ class BaseSendMessage(Task):
     """
     Base Task for sending messages
     """
-    default_retry_delay = 5
 
     class FailedEventRequest(Exception):
 
@@ -184,12 +183,14 @@ def pre_send_process(subscription_id, resend_id=None):
 
 
 @app.task(
-    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError),
+    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError,
+                   SoftTimeLimitExceeded),
     retry_backoff=True,
     retry_jitter=True,
     max_retries=15,
     acks_late=True,
-    time_limit=10,
+    soft_time_limit=10,
+    time_limit=15,
     base=BaseSendMessage
 )
 def get_identity_address(context):
@@ -214,12 +215,14 @@ def get_identity_address(context):
 
 
 @app.task(
-    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError),
+    autoretry_for=(HTTPError, ConnectionError, Timeout, HTTPServiceError,
+                   SoftTimeLimitExceeded),
     retry_backoff=True,
     retry_jitter=True,
     max_retries=15,
     acks_late=True,
-    time_limit=10,
+    soft_time_limit=10,
+    time_limit=15,
     base=BaseSendMessage
 )
 def send_message(context):
