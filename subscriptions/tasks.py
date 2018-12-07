@@ -189,10 +189,9 @@ def pre_send_process(subscription_id, resend_id=None):
     max_retries=15,
     acks_late=True,
     time_limit=10,
-    base=BaseSendMessage,
-    bind=True
+    base=BaseSendMessage
 )
-def get_identity_address(self, context):
+def get_identity_address(context):
     if "error" in context:
         return context
 
@@ -224,7 +223,7 @@ def get_identity_address(self, context):
     time_limit=15,
     base=BaseSendMessage
 )
-def send_message(self, context):
+def send_message(context):
     if "error" in context:
         return context
 
