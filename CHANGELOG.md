@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.5 (2018-12-07)
+### Fixes
+1. Add soft_time_limit to send sub tasks and auto retry for SoftTimeLimitExceeded
+
 ## 0.11.4 (2018-12-06)
 ### Fixes
 1. Move the find_behind_subscriptions task to the highmemory queue
@@ -34,7 +38,7 @@
 
 ## 0.10.0 (2018-06-05)
 ### Enhancements
- - Changed to having a schedule per schedule, instead of a schedule per 
+ - Changed to having a schedule per schedule, instead of a schedule per
    subscription. Any new or updated schedules will automatically be created or
    updated in the scheduler, but for existing schedules, there's a
    `sync_schedules` management command. Existing schedules linking directly
