@@ -49,6 +49,35 @@ class Subscription(models.Model):
     def __str__(self):
         return str(self.id)
 
+    def messages_behind(self, end_date=None, running_total=0):
+        """
+        Determines how many messages behind the subscription is, taking into
+        account the MessageSet `next_set` chain.
+        """
+        expected, complete = self.get_expected_next_sequence_number(end_date)
+        behind = expected - self.next_sequence_number
+        behind = max(0, behind) + running_total
+        # We should count the last message if we've completed the messageset
+        if complete and expected != 0:
+            behind += 1
+
+        if complete and self.messageset.next_set is not None:
+            try:
+                last_run = self.messageset.get_all_run_dates(
+                    self.created_at, self.lang, self.schedule,
+                    self.initial_sequence_number,
+                ).pop()
+            except IndexError:
+                last_run = self.created_at
+            next_sub = Subscription(
+                lang=self.lang,
+                messageset=self.messageset.next_set,
+                schedule=self.messageset.next_set.default_schedule,
+                created_at=last_run,
+            )
+            return next_sub.messages_behind(end_date, behind)
+        return behind
+
     def get_expected_next_sequence_number(self, end_date=None):
         """Determines the expected next sequence number this subscription
         should be at based on the configured schedule, message set and
