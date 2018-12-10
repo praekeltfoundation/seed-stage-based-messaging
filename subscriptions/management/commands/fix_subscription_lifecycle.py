@@ -60,18 +60,17 @@ class Command(BaseCommand):
             subscriptions = subscriptions.filter(messageset__pk=message_set)
 
         for sub in subscriptions.iterator():
-            number, complete = sub.get_expected_next_sequence_number(end_date)
+            messages_behind = sub.messages_behind()
 
             if (
                     messages_limit is not None and
-                    number - sub.next_sequence_number > messages_limit):
+                    messages_behind > messages_limit):
                 continue
 
-            if number > sub.next_sequence_number:
+            if messages_behind > 0:
 
                 if verbose:
-                    self.stdout.write("{}: {}".format(sub.id, number -
-                                      sub.next_sequence_number))
+                    self.stdout.write("{}: {}".format(sub.id, messages_behind))
 
                 if action == 'fast_forward':
                     Subscription.fast_forward_lifecycle(sub, end_date)
@@ -93,6 +92,7 @@ class Command(BaseCommand):
                         "expected_messageset_id": end_sub.messageset.pk,
                         "expected_sequence_number":
                             end_sub.next_sequence_number,
+                        "messages_behind": messages_behind,
                     }))
 
                 behind += 1

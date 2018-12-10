@@ -585,8 +585,8 @@ def calculate_subscription_lifecycle(subscription_id):
     ).get(
         id=subscription_id
     )
-    number, completed = subscription.get_expected_next_sequence_number()
-    if number <= subscription.next_sequence_number and completed is False:
+    behind = subscription.messages_behind()
+    if behind == 0:
         return
 
     current_messageset = subscription.messageset
@@ -595,7 +595,7 @@ def calculate_subscription_lifecycle(subscription_id):
         subscription, save=False)[-1]
     BehindSubscription.objects.create(
         subscription=subscription,
-        messages_behind=number - current_sequence_number,
+        messages_behind=behind,
         current_messageset=current_messageset,
         current_sequence_number=current_sequence_number,
         expected_messageset=end_subscription.messageset,
