@@ -2463,7 +2463,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(stderr.getvalue(), '')
         self.assertEqual(
             stdout.getvalue().strip(),
-            "{}: 2\n"
+            "{}: 3\n"
             "1 subscription behind schedule.\n"
             "0 subscriptions fast forwarded to end date.\n"
             "Message sent to 0 subscriptions.".format(sub1.id))
@@ -2872,6 +2872,7 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
                 'current_sequence_number': 1,
                 'expected_messageset_id': self.messageset_second.pk,
                 'expected_sequence_number': 0,
+                'messages_behind': 3,
             })
 
         # Ensure that we haven't changed any of the subscriptions
