@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.6 (2018-12-14)
+### Fixes
+1. Fix the number of messages behind calculation for behind subscriptions
+   monitoring and management task.
+   ([#132](https://github.com/praekelt/seed-stage-based-messaging/pull/132))
 ## 0.11.5 (2018-12-07)
 ### Fixes
 1. Add soft_time_limit to send sub tasks and auto retry for SoftTimeLimitExceeded
