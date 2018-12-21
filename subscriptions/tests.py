@@ -43,7 +43,7 @@ class APITestCase(TestCase):
 class AuthenticatedAPITestCase(APITestCase):
     def make_schedule(self):
         # Create hourly schedule
-        schedule_data = {"hour": 1}
+        schedule_data = {"day_of_month": 1, "hour": 1, "minute": 0}
         return Schedule.objects.create(**schedule_data)
 
     def make_messageset(self):
@@ -2934,6 +2934,9 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(updated_sub.next_sequence_number, 3)
 
     def test_diff_action(self):
+        import cProfile
+        prof = cProfile.Profile()
+        prof.enable()
         stdout, stderr = StringIO(), StringIO()
 
         self.make_subscription()
@@ -2978,6 +2981,8 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(Subscription.objects.count(), 3)
         for sub in Subscription.objects.all():
             self.assertEqual(sub.next_sequence_number, 1)
+        prof.disable()
+        prof.dump_stats('stats.cprof')
 
     def test_filter_by_messageset(self):
         stdout, stderr = StringIO(), StringIO()
