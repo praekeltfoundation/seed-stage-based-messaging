@@ -7,6 +7,7 @@ from django_prometheus import exports as django_prometheus
 from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.documentation import include_docs_urls
 
+from seed_stage_based_messaging.decorators import internal_only
 from subscriptions import views
 
 admin.site.site_header = os.environ.get(
@@ -23,5 +24,7 @@ urlpatterns = [
     url(r"^", include("subscriptions.urls")),
     url(r"^", include("contentstore.urls")),
     url(r"^docs/", include_docs_urls(title="Seed Stage Based Messaging")),
-    path("metrics", django_prometheus.ExportToDjangoView, name="metrics"),
+    path(
+        "metrics", internal_only(django_prometheus.ExportToDjangoView), name="metrics"
+    ),
 ]
