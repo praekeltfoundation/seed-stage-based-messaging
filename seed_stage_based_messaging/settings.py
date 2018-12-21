@@ -88,7 +88,7 @@ DATABASES = {
     )
 }
 
-PROMETHEUS_EXPORT_MIGRATRIONS = False
+PROMETHEUS_EXPORT_MIGRATIONS = False
 
 
 # Internationalization
