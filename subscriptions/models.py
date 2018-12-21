@@ -4,8 +4,6 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 
@@ -203,16 +201,6 @@ class Subscription(models.Model):
             self.process_status == 0
             and self.completed is not True
             and self.active is True
-        )
-
-
-@receiver(post_save, sender=Subscription)
-def fire_metrics_if_new(sender, instance, created, **kwargs):
-    from .tasks import fire_metric
-
-    if created:
-        fire_metric.apply_async(
-            kwargs={"metric_name": "subscriptions.created.sum", "metric_value": 1.0}
         )
 
 

@@ -3,7 +3,6 @@ from django.test import TestCase
 
 from contentstore.models import Schedule
 from contentstore.signals import schedule_deleted, schedule_saved
-from subscriptions.models import Subscription, fire_metrics_if_new
 
 from .utils import normalise_metric_name
 
@@ -19,7 +18,7 @@ class NormaliseMetricNameTest(TestCase):
         self.assertEqual(normalise_metric_name("_foo!bar,"), "foo_bar")
 
 
-post_save_signals = ((fire_metrics_if_new, Subscription), (schedule_saved, Schedule))
+post_save_signals = ((schedule_saved, Schedule),)
 
 
 post_delete_signals = ((schedule_deleted, Schedule),)

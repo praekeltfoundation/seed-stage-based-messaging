@@ -192,7 +192,6 @@ CELERY_TASK_ROUTES = {
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
 
 METRICS_REALTIME = [
-    "subscriptions.created.sum",
     "subscriptions.send_next_message_errored.sum",
     "sbm.send_next_message.connection_error.sum",
     "sbm.send_next_message.http_error.400.sum",
