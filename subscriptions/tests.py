@@ -2934,9 +2934,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(updated_sub.next_sequence_number, 3)
 
     def test_diff_action(self):
-        import cProfile
-        prof = cProfile.Profile()
-        prof.enable()
         stdout, stderr = StringIO(), StringIO()
 
         self.make_subscription()
@@ -2981,8 +2978,6 @@ class TestFixSubscriptionLifecycle(AuthenticatedAPITestCase):
         self.assertEqual(Subscription.objects.count(), 3)
         for sub in Subscription.objects.all():
             self.assertEqual(sub.next_sequence_number, 1)
-        prof.disable()
-        prof.dump_stats('stats.cprof')
 
     def test_filter_by_messageset(self):
         stdout, stderr = StringIO(), StringIO()
