@@ -12,7 +12,6 @@ import mimetypes
 import os
 
 import dj_database_url
-import django_cache_url
 from kombu import Exchange, Queue
 
 # Support SVG on admin
@@ -51,18 +50,21 @@ INSTALLED_APPS = (
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",
+    "django_prometheus",
     # us
     "contentstore",
     "subscriptions",
 )
 
 MIDDLEWARE = (
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 )
 
 SITE_ID = 1
@@ -81,9 +83,12 @@ DATABASES = {
         default=os.environ.get(
             "STAGE_BASED_MESSAGING_DATABASE",
             "postgres://postgres:@localhost/seed_stage_based_messaging",
-        )
+        ),
+        engine="django_prometheus.db.backends.postgresql",
     )
 }
+
+PROMETHEUS_EXPORT_MIGRATIONS = False
 
 
 # Internationalization
@@ -188,11 +193,7 @@ CELERY_TASK_ROUTES = {
 
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
 
-CACHE_URL = os.environ.get("STAGE_BASED_MESSAGING_CACHE", "locmem://")
-CACHES = {"default": django_cache_url.parse(CACHE_URL)}
-
 METRICS_REALTIME = [
-    "subscriptions.created.sum",
     "subscriptions.send_next_message_errored.sum",
     "sbm.send_next_message.connection_error.sum",
     "sbm.send_next_message.http_error.400.sum",

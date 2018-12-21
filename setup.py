@@ -47,9 +47,8 @@ setup(
         "requests==2.18.4",
         "seed-services-client==0.37.0",
         "croniter==0.3.25",
-        "django-cache-url==3.0.0",
-        "django-redis==4.9.0",
         "sftpclone==1.2.2",
+        "django-prometheus==1.0.15",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

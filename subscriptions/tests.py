@@ -9,7 +9,6 @@ import responses
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.db.models.signals import post_save
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from requests.exceptions import HTTPError
@@ -21,13 +20,7 @@ from contentstore.models import BinaryContent, Message, MessageSet, Schedule
 from seed_stage_based_messaging import test_utils as utils
 
 from . import tasks
-from .models import (
-    EstimatedSend,
-    ResendRequest,
-    Subscription,
-    SubscriptionSendFailure,
-    fire_metrics_if_new,
-)
+from .models import EstimatedSend, ResendRequest, Subscription, SubscriptionSendFailure
 from .tasks import BaseSendMessage, fire_metric, schedule_disable, scheduled_metrics
 
 try:
@@ -50,7 +43,7 @@ class APITestCase(TestCase):
 class AuthenticatedAPITestCase(APITestCase):
     def make_schedule(self):
         # Create hourly schedule
-        schedule_data = {"hour": 1}
+        schedule_data = {"day_of_month": 1, "hour": 1, "minute": 0}
         return Schedule.objects.create(**schedule_data)
 
     def make_messageset(self):
@@ -1795,7 +1788,6 @@ class TestMetricsAPI(AuthenticatedAPITestCase):
                     "sbm.send_next_message.http_error.404.sum",
                     "sbm.send_next_message.http_error.500.sum",
                     "sbm.send_next_message.timeout.sum",
-                    "subscriptions.created.sum",
                     "subscriptions.send.estimate.0.last",
                     "subscriptions.send.estimate.1.last",
                     "subscriptions.send.estimate.2.last",
@@ -1856,49 +1848,6 @@ class TestMetrics(AuthenticatedAPITestCase):
         request = responses.calls[-1].request
         self.check_request(request, "POST", data={"foo.last": 1.0})
         self.assertEqual(result.get(), "Fired metric <foo.last> with value <1.0>")
-
-    @responses.activate
-    def test_created_metrics(self):
-        """
-        When a new subscription is created, the correct metric should be sent
-        to the metrics API.
-        """
-        # reconnect metric post_save hook
-        post_save.connect(fire_metrics_if_new, sender=Subscription)
-
-        # Execute
-        self.make_subscription()
-
-        # Check
-        request = responses.calls[-1].request
-        self.check_request(request, "POST", data={"subscriptions.created.sum": 1.0})
-        # remove post_save hooks to prevent teardown errors
-        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
-
-    @responses.activate
-    def test_multiple_created_metrics(self):
-        # Setup
-        # deactivate Testsession for this test
-        self.session = None
-        # reconnect metric post_save hook
-        post_save.connect(fire_metrics_if_new, sender=Subscription)
-        # add metric post response
-        responses.add(
-            responses.POST,
-            "http://metrics-url/metrics/",
-            json={"foo": "bar"},
-            status=200,
-            content_type="application/json",
-        )
-
-        # Execute
-        self.make_subscription()
-        self.make_subscription()
-
-        # Check
-        self.assertEqual(len(responses.calls), 2)
-        # remove post_save hooks to prevent teardown errors
-        post_save.disconnect(fire_metrics_if_new, sender=Subscription)
 
     @responses.activate
     def test_scheduled_metrics(self):
