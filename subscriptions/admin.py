@@ -2,8 +2,9 @@ from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import path
 
-from .models import BehindSubscription, Subscription
 from subscriptions.tasks import find_behind_subscriptions
+
+from .models import BehindSubscription, Subscription
 
 
 class SubscriptionAdmin(admin.ModelAdmin):

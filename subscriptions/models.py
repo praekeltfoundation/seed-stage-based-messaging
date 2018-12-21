@@ -1,16 +1,15 @@
 import uuid
-
 from datetime import timedelta
 
+from django.contrib.auth.models import User
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 
-from contentstore.models import MessageSet, Schedule, Message
+from contentstore.models import Message, MessageSet, Schedule
 
 
 @python_2_unicode_compatible

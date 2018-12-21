@@ -2,13 +2,14 @@
 Tests for the contentstore tasks
 """
 
-from django.test import TestCase
 from unittest.mock import patch
 
-from subscriptions.models import Subscription
-from contentstore.models import Schedule, MessageSet
+from django.test import TestCase
+
+from contentstore.models import MessageSet, Schedule
 from contentstore.tasks import queue_subscription_send
 from seed_stage_based_messaging import test_utils as utils
+from subscriptions.models import Subscription
 
 
 class QueueSubscriptionSendTaskTests(TestCase):

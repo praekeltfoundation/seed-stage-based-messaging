@@ -2,11 +2,12 @@
 Tests for the contentstore views
 """
 
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
-from unittest.mock import patch
 
 from contentstore.models import Schedule
 from seed_stage_based_messaging import test_utils as utils

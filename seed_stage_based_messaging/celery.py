@@ -4,9 +4,8 @@ import os
 
 import celery
 import raven
-from raven.contrib.celery import register_signal, register_logger_signal
-
 from django.conf import settings
+from raven.contrib.celery import register_logger_signal, register_signal
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "seed_stage_based_messaging.settings")

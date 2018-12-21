@@ -1,22 +1,21 @@
 import json
+import os
 from datetime import datetime
 from unittest.mock import patch
-import os
 
 import pytz
 import responses
-
-from django.test import TestCase
-from django.contrib.auth.models import User
-from django.urls import reverse
 from django.conf import settings
-
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
-from ..models import Schedule, MessageSet, Message, BinaryContent
 from seed_stage_based_messaging import test_utils as utils
+
+from ..models import BinaryContent, Message, MessageSet, Schedule
 
 
 class APITestCase(TestCase):

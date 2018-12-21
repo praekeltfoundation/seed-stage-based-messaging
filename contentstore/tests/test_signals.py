@@ -1,8 +1,9 @@
 """
 Unit tests for contentstore signals
 """
-from django.test import TestCase
 from unittest.mock import patch
+
+from django.test import TestCase
 
 from contentstore.models import Schedule
 from seed_stage_based_messaging import test_utils as utils

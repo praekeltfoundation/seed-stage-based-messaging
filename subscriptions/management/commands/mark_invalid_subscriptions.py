@@ -1,12 +1,11 @@
+from demands import HTTPServiceError
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.validators import URLValidator
-from django.conf import settings
 from requests import exceptions
-from demands import HTTPServiceError
+from seed_services_client import HubApiClient, IdentityStoreApiClient
 
 from subscriptions.models import Subscription
-
-from seed_services_client import HubApiClient, IdentityStoreApiClient
 
 
 def url_validator(url_str):

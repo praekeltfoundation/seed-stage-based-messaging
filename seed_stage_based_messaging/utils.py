@@ -1,8 +1,10 @@
 import random
 import re
+
 from django.conf import settings
-from contentstore.models import MessageSet
 from seed_services_client import IdentityStoreApiClient
+
+from contentstore.models import MessageSet
 
 NORMALISE_METRIC_RE = re.compile(r"\W+")
 

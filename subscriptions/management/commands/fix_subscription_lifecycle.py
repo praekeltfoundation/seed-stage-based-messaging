@@ -1,7 +1,8 @@
+import json
 from datetime import datetime
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-import json
 
 from subscriptions.models import Subscription
 from subscriptions.tasks import send_next_message

@@ -1,20 +1,21 @@
-from .models import Schedule, MessageSet, Message, BinaryContent
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+
+from .models import BinaryContent, Message, MessageSet, Schedule
 from .serializers import (
-    ScheduleSerializer,
-    MessageSetSerializer,
-    MessageSerializer,
     BinaryContentSerializer,
     MessageListSerializer,
+    MessageSerializer,
     MessageSetMessagesSerializer,
+    MessageSetSerializer,
+    ScheduleSerializer,
 )
-from .tasks import sync_audio_messages, queue_subscription_send
+from .tasks import queue_subscription_send, sync_audio_messages
 
 
 class IdCursorPagination(CursorPagination):

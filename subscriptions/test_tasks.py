@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.db.models import signals
 from django.test import TestCase
 
-from contentstore.models import Schedule, MessageSet, Message
+from contentstore.models import Message, MessageSet, Schedule
 from contentstore.signals import schedule_saved
 from subscriptions.models import BehindSubscription, Subscription, fire_metrics_if_new
 from subscriptions.tasks import (

@@ -1,9 +1,10 @@
 from datetime import datetime
+
 from django.test import TestCase
 
-from contentstore.models import MessageSet, Message, Schedule
-from subscriptions.models import Subscription
+from contentstore.models import Message, MessageSet, Schedule
 from seed_stage_based_messaging import test_utils as utils
+from subscriptions.models import Subscription
 
 
 class SubscriptionTest(TestCase):

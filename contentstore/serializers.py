@@ -1,6 +1,6 @@
-from .models import Schedule, MessageSet, Message, BinaryContent
-
 from rest_framework import serializers
+
+from .models import BinaryContent, Message, MessageSet, Schedule
 
 
 class ScheduleSerializer(serializers.ModelSerializer):

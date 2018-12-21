@@ -3,29 +3,30 @@ try:
 except ImportError:
     from urllib.parse import urlunparse
 
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.task import Task
 from celery.utils.log import get_task_logger
-from celery.exceptions import SoftTimeLimitExceeded
 from demands import HTTPServiceError
-from django.db.models import Count, Q
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Count, Q
 from django.utils.timezone import now
-from seed_services_client.metrics import MetricsApiClient
 from requests.exceptions import ConnectionError, HTTPError, Timeout
+from seed_services_client import MessageSenderApiClient, SchedulerApiClient
+from seed_services_client.metrics import MetricsApiClient
 
-from .models import (
-    Subscription,
-    SubscriptionSendFailure,
-    EstimatedSend,
-    ResendRequest,
-    BehindSubscription,
-)
+from contentstore.models import Message, Schedule
 from seed_stage_based_messaging import utils
 from seed_stage_based_messaging.celery import app
-from contentstore.models import Message, Schedule
-from seed_services_client import MessageSenderApiClient, SchedulerApiClient
+
+from .models import (
+    BehindSubscription,
+    EstimatedSend,
+    ResendRequest,
+    Subscription,
+    SubscriptionSendFailure,
+)
 
 logger = get_task_logger(__name__)
 

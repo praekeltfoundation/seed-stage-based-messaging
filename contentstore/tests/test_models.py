@@ -3,9 +3,10 @@
 from django.test import TestCase
 from rest_framework.serializers import ValidationError
 
+from seed_stage_based_messaging import test_utils as utils
+
 from ..models import Message, validate_special_characters
 from .test_general import MessageSetTestMixin
-from seed_stage_based_messaging import test_utils as utils
 
 
 class TestValidators(TestCase):

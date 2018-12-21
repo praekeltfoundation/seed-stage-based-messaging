@@ -1,18 +1,19 @@
 import os
-import requests
-import paramiko
 
+import paramiko
+import requests
 from celery.task import Task
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.utils._os import abspathu
-from sftpclone import sftpclone
 from seed_services_client.scheduler import SchedulerApiClient
+from sftpclone import sftpclone
 
 from contentstore.models import Schedule
 from contentstore.signals import schedule_saved
 from subscriptions.models import Subscription
 from subscriptions.tasks import make_absolute_url, send_next_message
+
 from .models import BinaryContent
 
 

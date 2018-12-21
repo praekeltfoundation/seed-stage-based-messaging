@@ -1,10 +1,10 @@
-from django.db.models import Count
 from django.core import exceptions
 from django.core.management.base import BaseCommand
+from django.db.models import Count
 from django.utils.six.moves import input
 
-from subscriptions.models import Subscription
 from contentstore.models import MessageSet
+from subscriptions.models import Subscription
 
 
 def list_validator(valid_inputs):

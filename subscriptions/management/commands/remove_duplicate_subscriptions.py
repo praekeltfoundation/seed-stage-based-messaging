@@ -1,9 +1,9 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.validators import URLValidator
-from django.conf import settings
+from seed_services_client import SchedulerApiClient
 
 from subscriptions.models import Subscription
-from seed_services_client import SchedulerApiClient
 
 
 def url_validator(url_str):

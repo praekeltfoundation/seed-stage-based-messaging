@@ -1,10 +1,34 @@
-import responses
 import json
-import pytest
-from uuid import uuid4
-from requests.exceptions import HTTPError
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
+from uuid import uuid4
+
+import pytest
+import pytz
+import responses
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.core.management import call_command
+from django.db.models.signals import post_save
+from django.test import TestCase, override_settings
+from django.utils import timezone
+from requests.exceptions import HTTPError
+from rest_framework import status
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
+
+from contentstore.models import BinaryContent, Message, MessageSet, Schedule
+from seed_stage_based_messaging import test_utils as utils
+
+from . import tasks
+from .models import (
+    EstimatedSend,
+    ResendRequest,
+    Subscription,
+    SubscriptionSendFailure,
+    fire_metrics_if_new,
+)
+from .tasks import BaseSendMessage, fire_metric, schedule_disable, scheduled_metrics
 
 try:
     from StringIO import StringIO
@@ -15,31 +39,6 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-
-import pytz
-
-from django.conf import settings
-from django.contrib.auth.models import User
-from django.core.management import call_command
-from django.test import TestCase, override_settings
-from django.db.models.signals import post_save
-from django.utils import timezone
-
-from rest_framework import status
-from rest_framework.test import APIClient
-from rest_framework.authtoken.models import Token
-
-from .models import (
-    Subscription,
-    SubscriptionSendFailure,
-    EstimatedSend,
-    fire_metrics_if_new,
-    ResendRequest,
-)
-from contentstore.models import Schedule, MessageSet, BinaryContent, Message
-from .tasks import schedule_disable, fire_metric, scheduled_metrics, BaseSendMessage
-from . import tasks
-from seed_stage_based_messaging import test_utils as utils
 
 
 class APITestCase(TestCase):

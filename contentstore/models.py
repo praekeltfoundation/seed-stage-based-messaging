@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
 import os.path
 import re
+from datetime import datetime
+
+from croniter import croniter
+from django.conf import settings
+from django.db import models
+from django.shortcuts import reverse
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
+from rest_framework.serializers import ValidationError
 
 try:
     from urlparse import urljoin
 except ImportError:
     from urllib.parse import urljoin
-
-from rest_framework.serializers import ValidationError
-from django.conf import settings
-from django.db import models
-from django.shortcuts import reverse
-from django.utils.translation import ugettext_lazy as _
-from django.utils.encoding import python_2_unicode_compatible
-from croniter import croniter
 
 
 def validate_special_characters(value):

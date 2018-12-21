@@ -1,12 +1,13 @@
-from django.contrib.auth.models import User, Permission
+from unittest.mock import patch
+
+from django.contrib.auth.models import Permission, User
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from unittest.mock import patch
 
-from contentstore.models import Schedule, MessageSet
-from subscriptions.models import BehindSubscription, Subscription
+from contentstore.models import MessageSet, Schedule
 from seed_stage_based_messaging import test_utils as utils
+from subscriptions.models import BehindSubscription, Subscription
 
 
 class SubscriptionSendViewTests(APITestCase):

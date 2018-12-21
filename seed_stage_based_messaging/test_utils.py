@@ -1,10 +1,11 @@
 from django.db.models.signals import post_delete, post_save
 from django.test import TestCase
 
-from .utils import normalise_metric_name
-from contentstore.signals import schedule_deleted, schedule_saved
 from contentstore.models import Schedule
+from contentstore.signals import schedule_deleted, schedule_saved
 from subscriptions.models import Subscription, fire_metrics_if_new
+
+from .utils import normalise_metric_name
 
 
 class NormaliseMetricNameTest(TestCase):
