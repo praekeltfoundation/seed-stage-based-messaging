@@ -8,14 +8,16 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0006_messageset_channel'),
-    ]
+    dependencies = [("contentstore", "0006_messageset_channel")]
 
     operations = [
         migrations.AlterField(
-            model_name='message',
-            name='text_content',
-            field=models.TextField(blank=True, null=True, validators=[contentstore.models.validate_special_characters]),
-        ),
+            model_name="message",
+            name="text_content",
+            field=models.TextField(
+                blank=True,
+                null=True,
+                validators=[contentstore.models.validate_special_characters],
+            ),
+        )
     ]

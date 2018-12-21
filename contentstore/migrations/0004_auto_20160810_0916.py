@@ -8,14 +8,18 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0003_auto_20160513_1115'),
-    ]
+    dependencies = [("contentstore", "0003_auto_20160513_1115")]
 
     operations = [
         migrations.AlterField(
-            model_name='message',
-            name='binary_content',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='message', to='contentstore.BinaryContent'),
-        ),
+            model_name="message",
+            name="binary_content",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="message",
+                to="contentstore.BinaryContent",
+            ),
+        )
     ]

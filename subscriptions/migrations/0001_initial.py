@@ -13,29 +13,56 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-    ]
+    dependencies = [migrations.swappable_dependency(settings.AUTH_USER_MODEL)]
 
     operations = [
         migrations.CreateModel(
-            name='Subscription',
+            name="Subscription",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('contact', models.CharField(max_length=36)),
-                ('version', models.IntegerField(default=1)),
-                ('messageset_id', models.IntegerField()),
-                ('next_sequence_number', models.IntegerField(default=1)),
-                ('lang', models.CharField(max_length=6)),
-                ('active', models.BooleanField(default=True)),
-                ('completed', models.BooleanField(default=False)),
-                ('schedule', models.IntegerField(default=1)),
-                ('process_status', models.IntegerField(default=0)),
-                ('metadata', django.contrib.postgres.fields.jsonb.JSONField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='registrations_created', to=settings.AUTH_USER_MODEL)),
-                ('updated_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='registrations_updated', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("contact", models.CharField(max_length=36)),
+                ("version", models.IntegerField(default=1)),
+                ("messageset_id", models.IntegerField()),
+                ("next_sequence_number", models.IntegerField(default=1)),
+                ("lang", models.CharField(max_length=6)),
+                ("active", models.BooleanField(default=True)),
+                ("completed", models.BooleanField(default=False)),
+                ("schedule", models.IntegerField(default=1)),
+                ("process_status", models.IntegerField(default=0)),
+                (
+                    "metadata",
+                    django.contrib.postgres.fields.jsonb.JSONField(
+                        blank=True, null=True
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="registrations_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="registrations_updated",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
-        ),
+        )
     ]

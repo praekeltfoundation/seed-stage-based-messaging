@@ -16,7 +16,7 @@ class SubscriptionSendViewTests(APITestCase):
     def tearDown(self):
         utils.enable_signals()
 
-    @patch('subscriptions.views.schedule_disable')
+    @patch("subscriptions.views.schedule_disable")
     def test_disables_schedule(self, disable_schedule):
         """
         The subscription send view should disable the schedule for the
@@ -25,10 +25,11 @@ class SubscriptionSendViewTests(APITestCase):
         schedule = Schedule.objects.create()
         messageset = MessageSet.objects.create(default_schedule=schedule)
         subscription = Subscription.objects.create(
-            schedule=schedule, messageset=messageset)
-        url = reverse('subscription-send', args=[str(subscription.id)])
+            schedule=schedule, messageset=messageset
+        )
+        url = reverse("subscription-send", args=[str(subscription.id)])
 
-        user = User.objects.create_user('test')
+        user = User.objects.create_user("test")
         self.client.force_authenticate(user=user)
 
         response = self.client.post(url, {})
@@ -60,7 +61,7 @@ class BehindSubscriptionViewSetTests(APITestCase):
         If the user doesn't have the required permissions, the request should
         be denied.
         """
-        user = User.objects.create_user('test')
+        user = User.objects.create_user("test")
         self.client.force_authenticate(user=user)
 
         url = reverse("behindsubscription-list")
@@ -75,33 +76,29 @@ class BehindSubscriptionViewSetTests(APITestCase):
         """
         Creating, updating, and deleting should not be allowed
         """
-        user = User.objects.create_user('test')
+        user = User.objects.create_user("test")
         self.client.force_authenticate(user=user)
 
         url = reverse("behindsubscription-list")
         response = self.client.post(url)
-        self.assertEqual(
-            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
         url = reverse("behindsubscription-detail", args=(1,))
         response = self.client.patch(url)
-        self.assertEqual(
-            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         response = self.client.delete(url)
-        self.assertEqual(
-            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
         url = reverse("behindsubscription-find-behind-subscriptions")
         response = self.client.get(url)
-        self.assertEqual(
-            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_view_permission(self):
         """
         The view permission should allow listing and viewing, but should
         still disallow the actions.
         """
-        user = User.objects.create_user('test')
+        user = User.objects.create_user("test")
         permission = Permission.objects.get(codename="view_behindsubscription")
         user.user_permissions.add(permission)
         self.client.force_authenticate(user=user)
@@ -109,13 +106,18 @@ class BehindSubscriptionViewSetTests(APITestCase):
         schedule = Schedule.objects.create()
         messageset = MessageSet.objects.create(default_schedule=schedule)
         subscription = Subscription.objects.create(
-            schedule=schedule, messageset=messageset)
+            schedule=schedule, messageset=messageset
+        )
         # test paginattion size is set to 2
         for i in range(3):
             behind = BehindSubscription.objects.create(
-                subscription=subscription, messages_behind=i,
-                current_sequence_number=1, expected_sequence_number=1+i,
-                current_messageset=messageset, expected_messageset=messageset)
+                subscription=subscription,
+                messages_behind=i,
+                current_sequence_number=1,
+                expected_sequence_number=1 + i,
+                current_messageset=messageset,
+                expected_messageset=messageset,
+            )
 
         url = reverse("behindsubscription-list")
         # Ensure we're not doing a query per row
@@ -143,25 +145,28 @@ class BehindSubscriptionViewSetTests(APITestCase):
         """
         find_behind_subscriptions.return_value = "task-id"
 
-        user = User.objects.create_user('test')
-        permission = Permission.objects.get(
-            codename="can_find_behind_subscriptions")
+        user = User.objects.create_user("test")
+        permission = Permission.objects.get(codename="can_find_behind_subscriptions")
         user.user_permissions.add(permission)
         self.client.force_authenticate(user=user)
 
         schedule = Schedule.objects.create()
         messageset = MessageSet.objects.create(default_schedule=schedule)
         subscription = Subscription.objects.create(
-            schedule=schedule, messageset=messageset)
+            schedule=schedule, messageset=messageset
+        )
         behind = BehindSubscription.objects.create(
-            subscription=subscription, messages_behind=1,
-            current_sequence_number=1, expected_sequence_number=2,
-            current_messageset=messageset, expected_messageset=messageset)
+            subscription=subscription,
+            messages_behind=1,
+            current_sequence_number=1,
+            expected_sequence_number=2,
+            current_messageset=messageset,
+            expected_messageset=messageset,
+        )
 
         url = reverse("behindsubscription-list")
         response = self.client.get(url)
-        self.assertEqual(
-            response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         url = reverse("behindsubscription-detail", args=(behind.id,))
         response = self.client.get(url)
@@ -170,6 +175,4 @@ class BehindSubscriptionViewSetTests(APITestCase):
         url = reverse("behindsubscription-find-behind-subscriptions")
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.data, {
-            "accepted": True, "task_id": "task-id",
-        })
+        self.assertEqual(response.data, {"accepted": True, "task_id": "task-id"})

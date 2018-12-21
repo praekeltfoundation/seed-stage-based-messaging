@@ -22,6 +22,7 @@
 
 import sys
 from os.path import abspath, dirname, join
+
 sys.path.append(abspath(join(dirname(__file__), "_ext")))
 
 # -- General configuration ------------------------------------------------
@@ -33,39 +34,35 @@ sys.path.append(abspath(join(dirname(__file__), "_ext")))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'djangoref',
-    'sphinxcontrib.httpdomain',
-    'sphinx.ext.intersphinx',
-]
+extensions = ["djangoref", "sphinxcontrib.httpdomain", "sphinx.ext.intersphinx"]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ".rst"
 
 # The encoding of source files.
 #
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'contents'
+master_doc = "contents"
 
 # General information about the project.
-project = u'Seed Stage-Based Messaging Store'
-copyright = u'2017, Praekelt.org'
-author = u'Praekelt.org'
+project = u"Seed Stage-Based Messaging Store"
+copyright = u"2017, Praekelt.org"
+author = u"Praekelt.org"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = u'0.9'
+version = u"0.9"
 # The full version, including alpha/beta/rc tags.
 try:
     from seed_stage_based_messaging import VERSION
@@ -93,7 +90,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -115,14 +112,17 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # Links to Python's docs should reference the most recent version of the 3.x
 # branch, which is located at this URL.
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'sphinx': ('http://sphinx-doc.org/', None),
-    'django': ('http://docs.djangoproject.com/en/1.9/', 'http://docs.djangoproject.com/en/1.9/_objects/'),
+    "python": ("https://docs.python.org/3/", None),
+    "sphinx": ("http://sphinx-doc.org/", None),
+    "django": (
+        "http://docs.djangoproject.com/en/1.9/",
+        "http://docs.djangoproject.com/en/1.9/_objects/",
+    ),
 }
 
 # Python's docs don't change every week.
@@ -143,15 +143,13 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = "alabaster"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-    'show_powered_by': False
-}
+html_theme_options = {"show_powered_by": False}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -179,7 +177,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -259,34 +257,36 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'SeedStageBasedMessagingStoredoc'
+htmlhelp_basename = "SeedStageBasedMessagingStoredoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-     # The paper size ('letterpaper' or 'a4paper').
-     #
-     # 'papersize': 'letterpaper',
-
-     # The font size ('10pt', '11pt' or '12pt').
-     #
-     # 'pointsize': '10pt',
-
-     # Additional stuff for the LaTeX preamble.
-     #
-     # 'preamble': '',
-
-     # Latex figure (float) alignment
-     #
-     # 'figure_align': 'htbp',
+    # The paper size ('letterpaper' or 'a4paper').
+    #
+    # 'papersize': 'letterpaper',
+    # The font size ('10pt', '11pt' or '12pt').
+    #
+    # 'pointsize': '10pt',
+    # Additional stuff for the LaTeX preamble.
+    #
+    # 'preamble': '',
+    # Latex figure (float) alignment
+    #
+    # 'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'SeedStageBasedMessagingStore.tex', u'Seed Stage-Based Messaging Store Documentation',
-     u'Praekelt.org', 'manual'),
+    (
+        master_doc,
+        "SeedStageBasedMessagingStore.tex",
+        u"Seed Stage-Based Messaging Store Documentation",
+        u"Praekelt.org",
+        "manual",
+    )
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -327,8 +327,13 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'seedstagebasedmessagingstore', u'Seed Stage-Based Messaging Store Documentation',
-     [author], 1)
+    (
+        master_doc,
+        "seedstagebasedmessagingstore",
+        u"Seed Stage-Based Messaging Store Documentation",
+        [author],
+        1,
+    )
 ]
 
 # If true, show URL addresses after external links.
@@ -342,9 +347,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'SeedStageBasedMessagingStore', u'Seed Stage-Based Messaging Store Documentation',
-     author, 'SeedStageBasedMessagingStoredoc', 'One line description of project.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        "SeedStageBasedMessagingStore",
+        u"Seed Stage-Based Messaging Store Documentation",
+        author,
+        "SeedStageBasedMessagingStoredoc",
+        "One line description of project.",
+        "Miscellaneous",
+    )
 ]
 
 # Documents to append as an appendix to all manuals.

@@ -7,14 +7,17 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0008_schedule_scheduler_schedule_id'),
-    ]
+    dependencies = [("contentstore", "0008_schedule_scheduler_schedule_id")]
 
     operations = [
         migrations.AddField(
-            model_name='messageset',
-            name='label',
-            field=models.CharField(blank=True, default=b'', max_length=100, verbose_name='User-readable name'),
-        ),
+            model_name="messageset",
+            name="label",
+            field=models.CharField(
+                blank=True,
+                default=b"",
+                max_length=100,
+                verbose_name="User-readable name",
+            ),
+        )
     ]

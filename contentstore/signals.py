@@ -19,6 +19,7 @@ def schedule_saved(sender, instance, **kwargs):
             The instance of the Schedule that we want to sync
     """
     from contentstore.tasks import sync_schedule
+
     sync_schedule.delay(str(instance.id))
 
 
@@ -33,4 +34,5 @@ def schedule_deleted(sender, instance, **kwargs):
             The instance of the schedule that we want to deactivate
     """
     from contentstore.tasks import deactivate_schedule
+
     deactivate_schedule.delay(str(instance.scheduler_schedule_id))

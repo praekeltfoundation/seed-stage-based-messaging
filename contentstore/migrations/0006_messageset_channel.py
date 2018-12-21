@@ -7,14 +7,14 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0005_auto_20160912_0923'),
-    ]
+    dependencies = [("contentstore", "0005_auto_20160912_0923")]
 
     operations = [
         migrations.AddField(
-            model_name='messageset',
-            name='channel',
-            field=models.CharField(blank=True, max_length=64, null=True, verbose_name='Channel'),
-        ),
+            model_name="messageset",
+            name="channel",
+            field=models.CharField(
+                blank=True, max_length=64, null=True, verbose_name="Channel"
+            ),
+        )
     ]

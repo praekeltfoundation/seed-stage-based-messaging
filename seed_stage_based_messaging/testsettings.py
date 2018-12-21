@@ -1,7 +1,7 @@
 from seed_stage_based_messaging.settings import *  # noqa: F403
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'TESTSEKRET'
+SECRET_KEY = "TESTSEKRET"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -23,14 +23,14 @@ MESSAGE_SENDER_TOKEN = "REPLACEME"
 METRICS_URL = "http://metrics-url"
 METRICS_AUTH_TOKEN = "REPLACEME"
 
-PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
+PASSWORD_HASHERS = ("django.contrib.auth.hashers.MD5PasswordHasher",)
 
 
 # REST Framework conf defaults
-REST_FRAMEWORK['PAGE_SIZE'] = 2  # noqa: F405
+REST_FRAMEWORK["PAGE_SIZE"] = 2  # noqa: F405
 
-AUDIO_FTP_HOST = 'localhost'
-AUDIO_FTP_PORT = '2222'
-AUDIO_FTP_USER = 'test'
-AUDIO_FTP_PASS = 'secret'
-AUDIO_FTP_ROOT = 'test_directory'
+AUDIO_FTP_HOST = "localhost"
+AUDIO_FTP_PORT = "2222"
+AUDIO_FTP_USER = "test"
+AUDIO_FTP_PASS = "secret"
+AUDIO_FTP_ROOT = "test_directory"

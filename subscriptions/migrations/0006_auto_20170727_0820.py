@@ -7,14 +7,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('subscriptions', '0005_subscriptionsendfailure'),
-    ]
+    dependencies = [("subscriptions", "0005_subscriptionsendfailure")]
 
     operations = [
         migrations.AlterField(
-            model_name='subscription',
-            name='identity',
+            model_name="subscription",
+            name="identity",
             field=models.CharField(db_index=True, max_length=36),
-        ),
+        )
     ]

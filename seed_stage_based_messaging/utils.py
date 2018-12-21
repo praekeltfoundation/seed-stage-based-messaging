@@ -4,7 +4,7 @@ from django.conf import settings
 from contentstore.models import MessageSet
 from seed_services_client import IdentityStoreApiClient
 
-NORMALISE_METRIC_RE = re.compile(r'\W+')
+NORMALISE_METRIC_RE = re.compile(r"\W+")
 
 identity_store_client = IdentityStoreApiClient(
     settings.IDENTITY_STORE_TOKEN,
@@ -22,16 +22,15 @@ def normalise_metric_name(name):
     """
     Replaces all non-alphanumeric characters with underscores.
     """
-    return NORMALISE_METRIC_RE.sub('_', name).rstrip('_').lstrip('_')
+    return NORMALISE_METRIC_RE.sub("_", name).rstrip("_").lstrip("_")
 
 
 def get_identity_address(identity_uuid, use_communicate_through=False):
     params = {"default": True}
     if use_communicate_through:
-        params['use_communicate_through'] = True
+        params["use_communicate_through"] = True
 
-    return identity_store_client.get_identity_address(
-        identity_uuid, params=params)
+    return identity_store_client.get_identity_address(identity_uuid, params=params)
 
 
 def get_available_metrics():
@@ -42,10 +41,8 @@ def get_available_metrics():
     for messageset in MessageSet.objects.all().iterator():
         send_type = normalise_metric_name(messageset.content_type)
         ms_name = normalise_metric_name(messageset.short_name)
-        available_metrics.append(
-            'message.{}.{}.sum'.format(send_type, ms_name))
-        available_metrics.append(
-            'message.{}.sum'.format(send_type))
+        available_metrics.append("message.{}.{}.sum".format(send_type, ms_name))
+        available_metrics.append("message.{}.sum".format(send_type))
 
     return available_metrics
 

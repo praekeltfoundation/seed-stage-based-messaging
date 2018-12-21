@@ -10,6 +10,7 @@ install:
   - "pip install -r requirements-dev.txt --use-wheel"
 script:
   - flake8
+  - black --check .
   - py.test
   - createdb seed_stage_based_messaging
   - python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)

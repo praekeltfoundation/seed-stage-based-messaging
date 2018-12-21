@@ -8,19 +8,31 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('subscriptions', '0004_subscription_initial_sequence_number'),
-    ]
+    dependencies = [("subscriptions", "0004_subscription_initial_sequence_number")]
 
     operations = [
         migrations.CreateModel(
-            name='SubscriptionSendFailure',
+            name="SubscriptionSendFailure",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('task_id', models.UUIDField()),
-                ('initiated_at', models.DateTimeField()),
-                ('reason', models.TextField()),
-                ('subscription', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='subscriptions.Subscription')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("task_id", models.UUIDField()),
+                ("initiated_at", models.DateTimeField()),
+                ("reason", models.TextField()),
+                (
+                    "subscription",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="subscriptions.Subscription",
+                    ),
+                ),
             ],
-        ),
+        )
     ]

@@ -7,13 +7,11 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0004_auto_20160810_0916'),
-    ]
+    dependencies = [("contentstore", "0004_auto_20160810_0916")]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='message',
-            unique_together=set([('messageset', 'sequence_number', 'lang')]),
-        ),
+            name="message",
+            unique_together=set([("messageset", "sequence_number", "lang")]),
+        )
     ]

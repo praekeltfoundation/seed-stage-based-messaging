@@ -8,7 +8,7 @@ from seed_stage_based_messaging import test_utils as utils
 
 
 class SyncSchedulesTests(TestCase):
-    @patch('contentstore.management.commands.sync_schedules.sync_schedule')
+    @patch("contentstore.management.commands.sync_schedules.sync_schedule")
     def test_schedule_sync_called(self, sync_task):
         """
         The sync schedules management command should call the sync schedule
@@ -19,8 +19,8 @@ class SyncSchedulesTests(TestCase):
         utils.enable_signals()
 
         out = StringIO()
-        call_command('sync_schedules', stdout=out)
+        call_command("sync_schedules", stdout=out)
 
         sync_task.assert_called_once_with(str(schedule.id))
         self.assertIn(str(schedule.id), out.getvalue())
-        self.assertIn('Synchronised 1 schedule/s', out.getvalue())
+        self.assertIn("Synchronised 1 schedule/s", out.getvalue())

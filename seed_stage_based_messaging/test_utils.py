@@ -4,9 +4,7 @@ from django.test import TestCase
 from .utils import normalise_metric_name
 from contentstore.signals import schedule_deleted, schedule_saved
 from contentstore.models import Schedule
-from subscriptions.models import (
-    Subscription, fire_metrics_if_new,
-)
+from subscriptions.models import Subscription, fire_metrics_if_new
 
 
 class NormaliseMetricNameTest(TestCase):
@@ -15,20 +13,15 @@ class NormaliseMetricNameTest(TestCase):
         The normalise_metric_name function should replace all non-alphanumeric
         with underscores.
         """
-        self.assertEqual(normalise_metric_name('foo^& bar'), 'foo_bar')
-        self.assertEqual(normalise_metric_name('foo   bar'), 'foo_bar')
-        self.assertEqual(normalise_metric_name('_foo!bar,'), 'foo_bar')
+        self.assertEqual(normalise_metric_name("foo^& bar"), "foo_bar")
+        self.assertEqual(normalise_metric_name("foo   bar"), "foo_bar")
+        self.assertEqual(normalise_metric_name("_foo!bar,"), "foo_bar")
 
 
-post_save_signals = (
-    (fire_metrics_if_new, Subscription),
-    (schedule_saved, Schedule),
-)
+post_save_signals = ((fire_metrics_if_new, Subscription), (schedule_saved, Schedule))
 
 
-post_delete_signals = (
-    (schedule_deleted, Schedule),
-)
+post_delete_signals = ((schedule_deleted, Schedule),)
 
 
 def disable_signals():

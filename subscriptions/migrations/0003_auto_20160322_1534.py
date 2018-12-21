@@ -10,34 +10,50 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contentstore', '0002_messageset_content_type'),
-        ('subscriptions', '0002_auto_20160224_0822'),
+        ("contentstore", "0002_messageset_content_type"),
+        ("subscriptions", "0002_auto_20160224_0822"),
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='subscription',
-            name='messageset_id',
-        ),
+        migrations.RemoveField(model_name="subscription", name="messageset_id"),
         migrations.AddField(
-            model_name='subscription',
-            name='messageset',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to='contentstore.MessageSet'),
+            model_name="subscription",
+            name="messageset",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="subscriptions",
+                to="contentstore.MessageSet",
+            ),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='subscription',
-            name='created_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions_created', to=settings.AUTH_USER_MODEL),
+            model_name="subscription",
+            name="created_by",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="subscriptions_created",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='subscription',
-            name='schedule',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to='contentstore.Schedule'),
+            model_name="subscription",
+            name="schedule",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="subscriptions",
+                to="contentstore.Schedule",
+            ),
         ),
         migrations.AlterField(
-            model_name='subscription',
-            name='updated_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions_updated', to=settings.AUTH_USER_MODEL),
+            model_name="subscription",
+            name="updated_by",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="subscriptions_updated",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

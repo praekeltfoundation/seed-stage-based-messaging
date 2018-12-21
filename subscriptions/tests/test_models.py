@@ -18,11 +18,14 @@ class SubscriptionTest(TestCase):
         Creates and returns a messageset with n messages
         """
         messageset = MessageSet.objects.create(
-            default_schedule=schedule, short_name=name)
+            default_schedule=schedule, short_name=name
+        )
         for i in range(n):
             Message.objects.create(
-                messageset=messageset, text_content=str(i),
-                sequence_number=(i + 1), lang="eng_ZA"
+                messageset=messageset,
+                text_content=str(i),
+                sequence_number=(i + 1),
+                lang="eng_ZA",
             )
         return messageset
 
@@ -31,11 +34,14 @@ class SubscriptionTest(TestCase):
         Ensures that it returns the correct number of messages behind
         """
         messageset1 = self.create_messageset_with_messages(
-            'ms1', Schedule.objects.create(minute="0"), 2)
+            "ms1", Schedule.objects.create(minute="0"), 2
+        )
         messageset2 = self.create_messageset_with_messages(
-            'ms2', Schedule.objects.create(), 0)
+            "ms2", Schedule.objects.create(), 0
+        )
         messageset3 = self.create_messageset_with_messages(
-            'ms3', Schedule.objects.create(minute="0", hour="*/2"), 2)
+            "ms3", Schedule.objects.create(minute="0", hour="*/2"), 2
+        )
         messageset1.next_set = messageset2
         messageset1.save()
         messageset2.next_set = messageset3
@@ -48,7 +54,7 @@ class SubscriptionTest(TestCase):
             created_at=start,
             messageset=messageset1,
             schedule=messageset1.default_schedule,
-            lang="eng_ZA"
+            lang="eng_ZA",
         )
         self.assertEqual(sub.messages_behind(end), 1)
 

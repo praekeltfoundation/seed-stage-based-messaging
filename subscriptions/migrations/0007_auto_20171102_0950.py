@@ -9,23 +9,37 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contentstore', '0007_auto_20171102_0950'),
-        ('subscriptions', '0006_auto_20170727_0820'),
+        ("contentstore", "0007_auto_20171102_0950"),
+        ("subscriptions", "0006_auto_20170727_0820"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EstimatedSend',
+            name="EstimatedSend",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('send_date', models.DateField()),
-                ('estimate_subscriptions', models.IntegerField()),
-                ('estimate_identities', models.IntegerField()),
-                ('messageset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='estimates', to='contentstore.MessageSet')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("send_date", models.DateField()),
+                ("estimate_subscriptions", models.IntegerField()),
+                ("estimate_identities", models.IntegerField()),
+                (
+                    "messageset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="estimates",
+                        to="contentstore.MessageSet",
+                    ),
+                ),
             ],
         ),
         migrations.AlterUniqueTogether(
-            name='estimatedsend',
-            unique_together=set([('send_date', 'messageset')]),
+            name="estimatedsend", unique_together=set([("send_date", "messageset")])
         ),
     ]

@@ -17,7 +17,6 @@ from .models import BinaryContent
 
 
 class SyncAudioMessages(Task):
-
     def _get_existing_files(self, root, host, username, password, port):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -29,8 +28,8 @@ class SyncAudioMessages(Task):
     def run(self, **kwargs):
         if settings.AUDIO_FTP_HOST:
             src = abspathu(settings.MEDIA_ROOT)
-            if not src.endswith('/'):
-                src += '/'
+            if not src.endswith("/"):
+                src += "/"
 
             root = settings.AUDIO_FTP_ROOT
             host = settings.AUDIO_FTP_HOST
@@ -39,7 +38,8 @@ class SyncAudioMessages(Task):
             port = int(settings.AUDIO_FTP_PORT)
 
             existing_files = self._get_existing_files(
-                root, host, username, password, port)
+                root, host, username, password, port
+            )
 
             delete_files = []
 
@@ -49,7 +49,7 @@ class SyncAudioMessages(Task):
                 if item.content.name not in existing_files:
                     r = requests.get(make_absolute_url(item.content.url))
 
-                    local_path = '{}{}'.format(src, item.content.name)
+                    local_path = "{}{}".format(src, item.content.name)
                     with open(local_path, "wb") as f:
                         f.write(r.content)
 
@@ -59,7 +59,7 @@ class SyncAudioMessages(Task):
                 src,
                 "{}:{}@{}:{}".format(username, password, host, root),
                 port=port,
-                delete=False
+                delete=False,
             )
 
             cloner.run()
@@ -76,6 +76,7 @@ class QueueSubscriptionSend(Task):
     Queues the send next message task for all of the subscriptions tied to
     the schedule.
     """
+
     name = "contentstore.tasks.queue_subscription_send"
 
     def run(self, schedule_id, **kwargs):
@@ -84,13 +85,10 @@ class QueueSubscriptionSend(Task):
             schedule_id {int} -- The schedule to send messages for
         """
         subscriptions = Subscription.objects.filter(
-            schedule_id=schedule_id,
-            active=True,
-            completed=False,
-            process_status=0,
-        ).values('id')
+            schedule_id=schedule_id, active=True, completed=False, process_status=0
+        ).values("id")
         for subscription in subscriptions.iterator():
-            send_next_message.delay(str(subscription['id']))
+            send_next_message.delay(str(subscription["id"]))
 
 
 queue_subscription_send = QueueSubscriptionSend()
@@ -102,8 +100,7 @@ class SyncSchedule(Task):
     """
 
     name = "contentstore.tasks.sync_schedule"
-    scheduler = SchedulerApiClient(
-        settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
+    scheduler = SchedulerApiClient(settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
 
     def run(self, schedule_id, **kwargs):
         """
@@ -118,27 +115,32 @@ class SyncSchedule(Task):
         try:
             schedule = Schedule.objects.get(id=schedule_id)
         except Schedule.DoesNotExist:
-            log.error('Missing Schedule %s', schedule_id, exc_info=True)
+            log.error("Missing Schedule %s", schedule_id, exc_info=True)
 
         if schedule.scheduler_schedule_id is None:
             # Create the new schedule
             result = self.scheduler.create_schedule(schedule.scheduler_format)
-            schedule.scheduler_schedule_id = result['id']
+            schedule.scheduler_schedule_id = result["id"]
             # Disable update signal here to avoid calling twice
             post_save.disconnect(schedule_saved, sender=Schedule)
-            schedule.save(update_fields=('scheduler_schedule_id',))
+            schedule.save(update_fields=("scheduler_schedule_id",))
             post_save.connect(schedule_saved, sender=Schedule)
 
             log.info(
                 "Created schedule %s on scheduler for schedule %s",
-                schedule.scheduler_schedule_id, schedule.id)
+                schedule.scheduler_schedule_id,
+                schedule.id,
+            )
         else:
             # Update the existing schedule
             result = self.scheduler.update_schedule(
-                str(schedule.scheduler_schedule_id), schedule.scheduler_format)
+                str(schedule.scheduler_schedule_id), schedule.scheduler_format
+            )
             log.info(
                 "Updated schedule %s on scheduler for schedule %s",
-                schedule.scheduler_schedule_id, schedule.id)
+                schedule.scheduler_schedule_id,
+                schedule.id,
+            )
 
 
 sync_schedule = SyncSchedule()
@@ -150,8 +152,7 @@ class DeactivateSchedule(Task):
     """
 
     name = "contentstore.tasks.deactivate_schedule"
-    scheduler = SchedulerApiClient(
-        settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
+    scheduler = SchedulerApiClient(settings.SCHEDULER_API_TOKEN, settings.SCHEDULER_URL)
 
     def run(self, scheduler_schedule_id, **kwargs):
         """
@@ -163,15 +164,10 @@ class DeactivateSchedule(Task):
         """
         log = self.get_logger(**kwargs)
 
-        self.scheduler.update_schedule(
-            scheduler_schedule_id,
-            {
-                'active': False,
-            },
-        )
+        self.scheduler.update_schedule(scheduler_schedule_id, {"active": False})
         log.info(
-            "Deactivated schedule %s in the scheduler service",
-            scheduler_schedule_id)
+            "Deactivated schedule %s in the scheduler service", scheduler_schedule_id
+        )
 
 
 deactivate_schedule = DeactivateSchedule()

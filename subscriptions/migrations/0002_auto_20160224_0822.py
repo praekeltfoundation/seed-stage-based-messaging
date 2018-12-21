@@ -7,14 +7,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('subscriptions', '0001_initial'),
-    ]
+    dependencies = [("subscriptions", "0001_initial")]
 
     operations = [
         migrations.RenameField(
-            model_name='subscription',
-            old_name='contact',
-            new_name='identity',
-        ),
+            model_name="subscription", old_name="contact", new_name="identity"
+        )
     ]
