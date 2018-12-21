@@ -2,18 +2,34 @@ from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import path
 
-from .models import BehindSubscription, Subscription
 from subscriptions.tasks import find_behind_subscriptions
+
+from .models import BehindSubscription, Subscription
 
 
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'identity', 'messageset', 'next_sequence_number', 'lang',
-        'active', 'completed', 'process_status', 'created_at', 'updated_at',)
+        "id",
+        "identity",
+        "messageset",
+        "next_sequence_number",
+        "lang",
+        "active",
+        "completed",
+        "process_status",
+        "created_at",
+        "updated_at",
+    )
     list_filter = (
-        'messageset', 'lang', 'active', 'completed', 'process_status',
-        'created_at', 'updated_at', )
-    search_fields = ['id', 'identity']
+        "messageset",
+        "lang",
+        "active",
+        "completed",
+        "process_status",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = ["id", "identity"]
 
 
 admin.site.register(Subscription, SubscriptionAdmin)
@@ -29,22 +45,24 @@ class BehindSubscriptionAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         urls = super().get_urls()
-        return urls + [path(
-            "find_behind_subscriptions",
-            self.admin_site.admin_view(self.find_behind_subscriptions),
-            name="find_behind_subscriptions")]
+        return urls + [
+            path(
+                "find_behind_subscriptions",
+                self.admin_site.admin_view(self.find_behind_subscriptions),
+                name="find_behind_subscriptions",
+            )
+        ]
 
     def find_behind_subscriptions(self, request):
-        if not request.user.has_perm(
-                "subscriptions.can_find_behind_subscriptions"):
+        if not request.user.has_perm("subscriptions.can_find_behind_subscriptions"):
             self.message_user(
                 request,
                 "You do not have permission to find behind subscriptions",
-                level=messages.ERROR)
+                level=messages.ERROR,
+            )
         else:
             task = find_behind_subscriptions.delay()
             self.message_user(
-                request,
-                "Find behind subscriptions task {} queued".format(task)
+                request, "Find behind subscriptions task {} queued".format(task)
             )
         return redirect("admin:subscriptions_behindsubscription_changelist")

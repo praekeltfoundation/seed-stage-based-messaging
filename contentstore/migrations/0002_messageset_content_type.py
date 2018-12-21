@@ -7,14 +7,16 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0001_initial'),
-    ]
+    dependencies = [("contentstore", "0001_initial")]
 
     operations = [
         migrations.AddField(
-            model_name='messageset',
-            name='content_type',
-            field=models.CharField(choices=[('text', 'Text'), ('audio', 'Audio')], default='text', max_length=20),
-        ),
+            model_name="messageset",
+            name="content_type",
+            field=models.CharField(
+                choices=[("text", "Text"), ("audio", "Audio")],
+                default="text",
+                max_length=20,
+            ),
+        )
     ]

@@ -9,12 +9,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         count = 0
-        self.stdout.write('Fetching schedules...')
+        self.stdout.write("Fetching schedules...")
 
         for schedule in Schedule.objects.all().iterator():
-            self.stdout.write('Synchronising schedule {}'.format(schedule.id))
+            self.stdout.write("Synchronising schedule {}".format(schedule.id))
             sync_schedule(str(schedule.id))
             count += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            'Synchronised {} schedule/s'.format(count)))
+        self.stdout.write(
+            self.style.SUCCESS("Synchronised {} schedule/s".format(count))
+        )

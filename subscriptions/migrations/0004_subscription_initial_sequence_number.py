@@ -7,14 +7,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('subscriptions', '0003_auto_20160322_1534'),
-    ]
+    dependencies = [("subscriptions", "0003_auto_20160322_1534")]
 
     operations = [
         migrations.AddField(
-            model_name='subscription',
-            name='initial_sequence_number',
+            model_name="subscription",
+            name="initial_sequence_number",
             field=models.IntegerField(default=1),
-        ),
+        )
     ]

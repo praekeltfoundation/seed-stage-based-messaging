@@ -1,16 +1,15 @@
 import uuid
-
 from datetime import timedelta
 
+from django.contrib.auth.models import User
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 
-from contentstore.models import MessageSet, Schedule, Message
+from contentstore.models import Message, MessageSet, Schedule
 
 
 @python_2_unicode_compatible
@@ -18,29 +17,31 @@ class Subscription(models.Model):
 
     """ Identity subscriptions and their status
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    identity = models.CharField(
-        max_length=36, null=False, blank=False, db_index=True)
+    identity = models.CharField(max_length=36, null=False, blank=False, db_index=True)
     version = models.IntegerField(default=1)
-    messageset = models.ForeignKey(MessageSet, related_name='subscriptions',
-                                   null=False, on_delete=models.PROTECT)
-    initial_sequence_number = models.IntegerField(default=1, null=False,
-                                                  blank=False)
-    next_sequence_number = models.IntegerField(default=1, null=False,
-                                               blank=False)
+    messageset = models.ForeignKey(
+        MessageSet, related_name="subscriptions", null=False, on_delete=models.PROTECT
+    )
+    initial_sequence_number = models.IntegerField(default=1, null=False, blank=False)
+    next_sequence_number = models.IntegerField(default=1, null=False, blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
     active = models.BooleanField(default=True)
     completed = models.BooleanField(default=False)
-    schedule = models.ForeignKey(Schedule, related_name='subscriptions',
-                                 null=False, on_delete=models.PROTECT)
+    schedule = models.ForeignKey(
+        Schedule, related_name="subscriptions", null=False, on_delete=models.PROTECT
+    )
     process_status = models.IntegerField(default=0, null=False, blank=False)
     metadata = JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, related_name='subscriptions_created',
-                                   null=True, on_delete=models.SET_NULL)
-    updated_by = models.ForeignKey(User, related_name='subscriptions_updated',
-                                   null=True, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(
+        User, related_name="subscriptions_created", null=True, on_delete=models.SET_NULL
+    )
+    updated_by = models.ForeignKey(
+        User, related_name="subscriptions_updated", null=True, on_delete=models.SET_NULL
+    )
     user = property(lambda self: self.created_by)
 
     def get_scheduler_id(self):
@@ -64,7 +65,9 @@ class Subscription(models.Model):
         if complete and self.messageset.next_set is not None:
             try:
                 last_run = self.messageset.get_all_run_dates(
-                    self.created_at, self.lang, self.schedule,
+                    self.created_at,
+                    self.lang,
+                    self.schedule,
                     self.initial_sequence_number,
                 ).pop()
             except IndexError:
@@ -102,8 +105,7 @@ class Subscription(models.Model):
         configured MessageSet's maximum sequence number, returns False
         otherwise.
         """
-        return self.next_sequence_number < self.messageset.get_messageset_max(
-            self.lang)
+        return self.next_sequence_number < self.messageset.get_messageset_max(self.lang)
 
     def mark_as_complete(self, save=True):
         self.completed = True
@@ -162,7 +164,7 @@ class Subscription(models.Model):
                         sub.created_at,
                         sub.lang,
                         sub.schedule,
-                        sub.initial_sequence_number
+                        sub.initial_sequence_number,
                     )
                     if run_dates:
                         last_date = run_dates.pop()
@@ -170,7 +172,7 @@ class Subscription(models.Model):
                             identity=sub.identity,
                             lang=sub.lang,
                             messageset=sub.messageset.next_set,
-                            schedule=sub.messageset.next_set.default_schedule
+                            schedule=sub.messageset.next_set.default_schedule,
                         )
                         if save:
                             newsub.save()
@@ -197,19 +199,21 @@ class Subscription(models.Model):
 
     @property
     def is_ready_for_processing(self):
-        return self.process_status == 0 and \
-               self.completed is not True and \
-               self.active is True
+        return (
+            self.process_status == 0
+            and self.completed is not True
+            and self.active is True
+        )
 
 
 @receiver(post_save, sender=Subscription)
 def fire_metrics_if_new(sender, instance, created, **kwargs):
     from .tasks import fire_metric
+
     if created:
-        fire_metric.apply_async(kwargs={
-            "metric_name": 'subscriptions.created.sum',
-            "metric_value": 1.0
-        })
+        fire_metric.apply_async(
+            kwargs={"metric_name": "subscriptions.created.sum", "metric_value": 1.0}
+        )
 
 
 @python_2_unicode_compatible
@@ -228,9 +232,11 @@ class EstimatedSend(models.Model):
 
     """ Estimated number of messages to be sent per message set per day
     """
+
     send_date = models.DateField()
-    messageset = models.ForeignKey(MessageSet, related_name='estimates',
-                                   null=False, on_delete=models.CASCADE)
+    messageset = models.ForeignKey(
+        MessageSet, related_name="estimates", null=False, on_delete=models.CASCADE
+    )
     estimate_subscriptions = models.IntegerField(null=False, blank=False)
     estimate_identities = models.IntegerField(null=False, blank=False)
 
@@ -238,9 +244,12 @@ class EstimatedSend(models.Model):
         unique_together = (("send_date", "messageset"),)
 
     def __str__(self):
-        return '{},{}:{}/{}'.format(
-            self.send_date, self.messageset.short_name,
-            self.estimate_subscriptions, self.estimate_identities)
+        return "{},{}:{}/{}".format(
+            self.send_date,
+            self.messageset.short_name,
+            self.estimate_subscriptions,
+            self.estimate_identities,
+        )
 
 
 @python_2_unicode_compatible
@@ -248,14 +257,16 @@ class ResendRequest(models.Model):
 
     """ Resend Request from user, used to trigger a resend.
     """
+
     received_at = models.DateTimeField(auto_now_add=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
     outbound = models.UUIDField(null=True)
-    message = models.ForeignKey(Message, related_name='resend_requests',
-                                null=True, on_delete=models.SET_NULL)
+    message = models.ForeignKey(
+        Message, related_name="resend_requests", null=True, on_delete=models.SET_NULL
+    )
 
     def __str__(self):
-        return '{}: {}'.format(self.id, self.received_at)
+        return "{}: {}".format(self.id, self.received_at)
 
 
 class BehindSubscription(models.Model):
@@ -263,26 +274,32 @@ class BehindSubscription(models.Model):
     Subscriptions that are behind where they should be. Filled out by
     subscriptions.tasks.find_behind_subscriptions
     """
+
     subscription = models.ForeignKey(
-        to=Subscription, on_delete=models.CASCADE,
+        to=Subscription,
+        on_delete=models.CASCADE,
         help_text="The subscription that is behind",
     )
     messages_behind = models.IntegerField(
         help_text="The number of messages the subscription is behind by"
     )
     current_messageset = models.ForeignKey(
-        to=MessageSet, on_delete=models.CASCADE, related_name="+",
+        to=MessageSet,
+        on_delete=models.CASCADE,
+        related_name="+",
         help_text="The message set the the subscription is on",
     )
     current_sequence_number = models.IntegerField(
-        help_text="Which sequence in the messageset we are at",
+        help_text="Which sequence in the messageset we are at"
     )
     expected_messageset = models.ForeignKey(
-        to=MessageSet, on_delete=models.CASCADE, related_name="+",
+        to=MessageSet,
+        on_delete=models.CASCADE,
+        related_name="+",
         help_text="The messageset that the subscription should be on",
     )
     expected_sequence_number = models.IntegerField(
-        help_text="Which sequence in the messageset we expect to be",
+        help_text="Which sequence in the messageset we expect to be"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

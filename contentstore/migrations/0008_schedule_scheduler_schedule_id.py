@@ -7,14 +7,17 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('contentstore', '0007_auto_20171102_0950'),
-    ]
+    dependencies = [("contentstore", "0007_auto_20171102_0950")]
 
     operations = [
         migrations.AddField(
-            model_name='schedule',
-            name='scheduler_schedule_id',
-            field=models.UUIDField(blank=True, default=None, null=True, verbose_name='scheduler schedule id'),
-        ),
+            model_name="schedule",
+            name="scheduler_schedule_id",
+            field=models.UUIDField(
+                blank=True,
+                default=None,
+                null=True,
+                verbose_name="scheduler schedule id",
+            ),
+        )
     ]
