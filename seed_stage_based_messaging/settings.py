@@ -177,11 +177,11 @@ CELERY_IMPORTS = ("subscriptions.tasks", "contentstore.tasks")
 CELERY_TASK_CREATE_MISSING_QUEUES = True
 CELERY_TASK_ROUTES = {
     "celery.backend_cleanup": {"queue": "mediumpriority"},
-    "subscriptions.tasks.pre_send_process": {"queue": "priority"},
-    "subscriptions.tasks.get_identity_address": {"queue": "priority"},
-    "subscriptions.tasks.send_message": {"queue": "priority"},
-    "subscriptions.tasks.post_send_process_resend": {"queue": "mediumpriority"},
-    "subscriptions.tasks.post_send_process": {"queue": "mediumpriority"},
+    "subscriptions.tasks.pre_send_process": {"queue": "presend"},
+    "subscriptions.tasks.get_identity_address": {"queue": "getidentity"},
+    "subscriptions.tasks.send_message": {"queue": "send"},
+    "subscriptions.tasks.post_send_process_resend": {"queue": "postsend"},
+    "subscriptions.tasks.post_send_process": {"queue": "postsend"},
     "subscriptions.tasks.schedule_create": {"queue": "mediumpriority"},
     "subscriptions.tasks.schedule_disable": {"queue": "mediumpriority"},
     "subscriptions.tasks.requeue_failed_tasks": {"queue": "mediumpriority"},
