@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.7 (2019-01-14)
+### Enhancements
+1. Added python black and isort auto formatting
+   ([#133](https://github.com/praekelt/seed-stage-based-messaging/pull/133))
+1. Added prometheus metrics endpoint
+   ([#134](https://github.com/praekelt/seed-stage-based-messaging/pull/134))
+
 ## 0.11.6 (2018-12-14)
 ### Fixes
 1. Fix the number of messages behind calculation for behind subscriptions
