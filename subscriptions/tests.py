@@ -634,9 +634,20 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         Message.objects.create(**message_data_zul_3)
 
         # Execute
-        response = self.client.post(
-            existing.schedule.send_url, content_type="application/json"
-        )
+        # Queue subscriptions endpoint
+        # 1. Auth token lookup
+        # 2. Schedule lookup
+        # 3. Subscriptions lookup
+        # Send next message task
+        # 4. Subscription and MessageSet lookup
+        # 5. Message lookup
+        # 6. Set process status to 1
+        # 7. Find total number of messages in message set
+        # 8. Set processes status to 0 and increment next sequence number
+        with self.assertNumQueries(8):
+            response = self.client.post(
+                existing.schedule.send_url, content_type="application/json"
+            )
         # Check
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         d = Subscription.objects.get(id=existing.id)

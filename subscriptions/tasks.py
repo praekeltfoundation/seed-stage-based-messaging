@@ -129,14 +129,13 @@ class BaseSendMessage(Task):
     base=BaseSendMessage,
 )
 def pre_send_process(subscription_id, resend_id=None):
-    context = {"subscription_id": subscription_id}
-
+    context = {}
     if resend_id:
         context["resend_id"] = resend_id
 
     logger.info("Loading Subscription")
     subscription = Subscription.objects.select_related("messageset").get(
-        id=context["subscription_id"]
+        id=subscription_id
     )
 
     if not subscription.is_ready_for_processing:
