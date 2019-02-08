@@ -7,13 +7,12 @@ from celery.exceptions import SoftTimeLimitExceeded
 from celery.task import Task
 from celery.utils.log import get_task_logger
 from demands import HTTPServiceError
-from django.db import transaction
-from django.db.models import F
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, F, Q
 from django.utils.timezone import now
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
@@ -401,7 +400,9 @@ def post_send_process(context):
 def post_send_process_resend(context):
     [message] = serializers.deserialize("json", context["message"])
     message = message.object
-    [deserialized_subscription] = serializers.deserialize("json", context["subscription"])
+    [deserialized_subscription] = serializers.deserialize(
+        "json", context["subscription"]
+    )
     subscription = deserialized_subscription.object
     resend_request = ResendRequest.objects.get(id=context["resend_id"])
 
