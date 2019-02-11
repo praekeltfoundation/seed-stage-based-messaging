@@ -9,8 +9,10 @@ from celery.utils.log import get_task_logger
 from demands import HTTPServiceError
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
+from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, F, Q
 from django.utils.timezone import now
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 from seed_services_client import MessageSenderApiClient, SchedulerApiClient
@@ -117,19 +119,24 @@ class BaseSendMessage(Task):
         super(BaseSendMessage, self).on_failure(exc, task_id, args, kwargs, einfo)
 
 
-@app.task
+@app.task(
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=15,
+    acks_late=True,
+    soft_time_limit=10,
+    time_limit=15,
+    base=BaseSendMessage,
+)
 def pre_send_process(subscription_id, resend_id=None):
-    context = {"subscription_id": subscription_id}
-
+    context = {}
     if resend_id:
         context["resend_id"] = resend_id
 
     logger.info("Loading Subscription")
     subscription = Subscription.objects.select_related("messageset").get(
-        id=context["subscription_id"]
+        id=subscription_id
     )
-
-    context["identity"] = subscription.identity
 
     if not subscription.is_ready_for_processing:
         if subscription.process_status == 2 or subscription.completed is True:
@@ -146,6 +153,13 @@ def pre_send_process(subscription_id, resend_id=None):
             )
         return context
 
+    context.update(
+        {
+            "subscription": serializers.serialize("json", [subscription]),
+            "messageset": serializers.serialize("json", [subscription.messageset]),
+        }
+    )
+
     try:
         logger.info("Loading Message")
         next_sequence_number = subscription.next_sequence_number
@@ -158,12 +172,7 @@ def pre_send_process(subscription_id, resend_id=None):
             lang=subscription.lang,
         )
 
-        context["message_id"] = message.id
-        if subscription.messageset.content_type == "text":
-            context["message_text_content"] = message.text_content
-
-        if message.binary_content:
-            context["message_binary_content_url"] = message.binary_content.content.url
+        context["message"] = serializers.serialize("json", [message])
     except ObjectDoesNotExist:
         error = (
             "Missing Message: MessageSet: <%s>, Sequence Number: <%s>" ", Lang: <%s>"
@@ -180,7 +189,7 @@ def pre_send_process(subscription_id, resend_id=None):
     logger.debug("setting process status to 1")
     subscription.process_status = 1  # in process
     logger.debug("saving subscription")
-    subscription.save()
+    subscription.save(update_fields=("process_status",))
 
     return context
 
@@ -205,16 +214,19 @@ def get_identity_address(context):
     if "error" in context:
         return context
 
+    [deserialized_subscription] = serializers.deserialize(
+        "json", context["subscription"]
+    )
+    subscription = deserialized_subscription.object
+
     to_addr = utils.get_identity_address(
-        context["identity"], use_communicate_through=True
+        subscription.identity, use_communicate_through=True
     )
 
     if to_addr is None:
         logger.info("No valid recipient to_addr found")
-        subscription = Subscription.objects.get(id=context["subscription_id"])
-        subscription.process_status = -1  # Error
-        logger.debug("saving subscription")
-        subscription.save()
+        subscription.process_status = -1
+        deserialized_subscription.save(update_fields=("process_status",))
 
         context["error"] = "Valid recipient could not be found"
     else:
@@ -243,9 +255,14 @@ def send_message(context):
     if "error" in context:
         return context
 
-    subscription = Subscription.objects.select_related("messageset").get(
-        id=context["subscription_id"]
+    [deserialized_subscription] = serializers.deserialize(
+        "json", context["subscription"]
     )
+    subscription = deserialized_subscription.object
+    [messageset] = serializers.deserialize("json", context["messageset"])
+    messageset = messageset.object
+    [message] = serializers.deserialize("json", context["message"])
+    message = message.object
 
     payload = {
         "to_addr": context["to_addr"],
@@ -255,53 +272,37 @@ def send_message(context):
         "metadata": {},
     }
 
-    if subscription.messageset.channel:
-        payload["channel"] = subscription.messageset.channel
+    if messageset.channel:
+        payload["channel"] = messageset.channel
 
-    prepend_next = None
-    if subscription.messageset.content_type == "text":
+    prepend_next = (subscription.metadata or {}).get("prepend_next_delivery", None)
+    if messageset.content_type == "text":
         logger.debug("Determining payload content")
-        if (
-            subscription.metadata is not None
-            and "prepend_next_delivery" in subscription.metadata
-            and subscription.metadata["prepend_next_delivery"] is not None
-        ):
-            prepend_next = subscription.metadata["prepend_next_delivery"]
+        if prepend_next:
             logger.debug("Prepending next delivery")
-            payload["content"] = "%s\n%s" % (
-                subscription.metadata["prepend_next_delivery"],
-                context["message_text_content"],
-            )
+            payload["content"] = "%s\n%s" % (prepend_next, message.text_content)
         else:
             logger.debug("Loading default content")
-            payload["content"] = context["message_text_content"]
+            payload["content"] = message.text_content
 
-        if "message_binary_content_url" in context:
+        if message.binary_content:
             payload["metadata"]["image_url"] = make_absolute_url(
-                context["message_binary_content_url"]
+                message.binary_content.content.url
             )
 
         logger.debug("text content loaded")
     else:
-        # TODO - audio media handling on MC
-        # audio
-
-        if (
-            subscription.metadata is not None
-            and "prepend_next_delivery" in subscription.metadata
-            and subscription.metadata["prepend_next_delivery"] is not None
-        ):
-            prepend_next = subscription.metadata["prepend_next_delivery"]
+        if prepend_next:
             payload["metadata"]["voice_speech_url"] = [
-                subscription.metadata["prepend_next_delivery"],
-                make_absolute_url(context["message_binary_content_url"]),
+                prepend_next,
+                make_absolute_url(message.binary_content.content.url),
             ]
         else:
             payload["metadata"]["voice_speech_url"] = [
-                make_absolute_url(context["message_binary_content_url"])
+                make_absolute_url(message.binary_content.content.url)
             ]
 
-    if subscription.messageset_id in settings.DRY_RUN_MESSAGESETS:
+    if messageset.id in settings.DRY_RUN_MESSAGESETS:
         logger.info("Skipping sending of message")
     else:
         logger.info("Sending message to Message Sender")
@@ -317,110 +318,100 @@ def send_message(context):
     if prepend_next:
         logger.debug("Clearing prepended message")
         subscription.metadata["prepend_next_delivery"] = None
-    logger.debug("setting process status back to 0")
-    subscription.process_status = 0  # ready
-    logger.debug("saving subscription")
-    subscription.save()
+        deserialized_subscription.save(update_fields=("metadata",))
+        context["subscription"] = serializers.serialize("json", [subscription])
 
     logger.debug("Message queued for send. ID: <%s>" % str(context.get("outbound_id")))
     return context
 
 
-class PostSendProcess(Task):
-
+@app.task(
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=15,
+    acks_late=True,
+    soft_time_limit=10,
+    time_limit=15,
+    base=BaseSendMessage,
+)
+def post_send_process(context):
     """
     Task to ensure subscription is bumped or converted
     """
+    if "error" in context:
+        return context
 
-    name = "subscriptions.tasks.post_send_process"
+    [deserialized_subscription] = serializers.deserialize(
+        "json", context["subscription"]
+    )
+    subscription = deserialized_subscription.object
+    [messageset] = serializers.deserialize("json", context["messageset"])
+    messageset = messageset.object
 
-    class FailedEventRequest(Exception):
+    # Get set max
+    set_max = messageset.messages.filter(lang=subscription.lang).count()
+    logger.debug("set_max calculated - %s" % set_max)
 
-        """
-        The attempted task failed because of a non-200 HTTP return
-        code.
-        """
-
-    def run(self, context, **kwargs):
-        """
-        Load subscription and process
-        """
-        if "error" in context:
-            return context
-
-        log = self.get_logger(**kwargs)
-
-        log.info("Loading Subscription")
-        # Process moving to next message, next set or finished
-        try:
-            subscription = Subscription.objects.select_related("messageset").get(
-                id=context["subscription_id"]
+    # Compare user position to max
+    if subscription.next_sequence_number == set_max:
+        with transaction.atomic():
+            # Mark current as completed
+            logger.debug("marking current subscription as complete")
+            subscription.completed = True
+            subscription.active = False
+            subscription.process_status = 2  # Completed
+            deserialized_subscription.save(
+                update_fields=("completed", "active", "process_status")
             )
-            if subscription.process_status == 0:
-                log.debug("setting process status to 1")
-                subscription.process_status = 1  # in process
-                log.debug("saving subscription")
-                subscription.save()
-                # Get set max
-                set_max = subscription.messageset.messages.filter(
-                    lang=subscription.lang
-                ).count()
-                log.debug("set_max calculated - %s" % set_max)
-                # Compare user position to max
-                if subscription.next_sequence_number == set_max:
-                    # Mark current as completed
-                    log.debug("setting subscription completed")
-                    subscription.completed = True
-                    log.debug("setting subscription inactive")
-                    subscription.active = False
-                    log.debug("setting process status to 2")
-                    subscription.process_status = 2  # Completed
-                    log.debug("saving subscription")
-                    subscription.save()
-                    # If next set defined create new subscription
-                    messageset = subscription.messageset
-                    if messageset.next_set:
-                        log.info("Creating new subscription for next set")
-                        newsub = Subscription.objects.create(
-                            identity=subscription.identity,
-                            lang=subscription.lang,
-                            messageset=messageset.next_set,
-                            schedule=messageset.next_set.default_schedule,
-                        )
-                        log.debug("Created Subscription <%s>" % newsub.id)
-                else:
-                    # More in this set so interate by one
-                    log.debug("incrementing next_sequence_number")
-                    subscription.next_sequence_number += 1
-                    log.debug("setting process status back to 0")
-                    subscription.process_status = 0
-                    log.debug("saving subscription")
-                    subscription.save()
-                # return response
-                return "Subscription for %s updated" % str(subscription.id)
-            else:
-                log.info("post_send_process not executed")
-                return "post_send_process not executed"
-
-        except SoftTimeLimitExceeded:
-            logger.error(
-                "Soft time limit exceed processing message send search " "via Celery.",
-                exc_info=True,
-            )
-
-        return False
+            # If next set defined create new subscription
+            if messageset.next_set:
+                logger.info("Creating new subscription for next set")
+                newsub = Subscription.objects.create(
+                    identity=subscription.identity,
+                    lang=subscription.lang,
+                    messageset=messageset.next_set,
+                    schedule=messageset.next_set.default_schedule,
+                )
+                logger.debug("Created Subscription <%s>" % newsub.id)
+    else:
+        # More in this set so increment by one
+        logger.debug("incrementing next_sequence_number")
+        subscription.next_sequence_number = F("next_sequence_number") + 1
+        logger.debug("setting process status back to 0")
+        subscription.process_status = 0
+        logger.debug("saving subscription")
+        deserialized_subscription.save(
+            update_fields=("next_sequence_number", "process_status")
+        )
+    # return response
+    return "Subscription for %s updated" % str(subscription.id)
 
 
-post_send_process = PostSendProcess()
-
-
-@app.task
+@app.task(
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=15,
+    acks_late=True,
+    soft_time_limit=10,
+    time_limit=15,
+    base=BaseSendMessage,
+)
 def post_send_process_resend(context):
+    [message] = serializers.deserialize("json", context["message"])
+    message = message.object
+    [deserialized_subscription] = serializers.deserialize(
+        "json", context["subscription"]
+    )
+    subscription = deserialized_subscription.object
     resend_request = ResendRequest.objects.get(id=context["resend_id"])
-    if "outbound_id" in context:
-        resend_request.outbound = context["outbound_id"]
-    resend_request.message_id = context["message_id"]
-    resend_request.save()
+
+    with transaction.atomic():
+        if "outbound_id" in context:
+            resend_request.outbound = context["outbound_id"]
+        resend_request.message_id = message.id
+        resend_request.save(update_fields=("outbound", "message_id"))
+        subscription.process_status = 0
+        deserialized_subscription.save(update_fields=("process_status",))
 
 
 send_next_message = (
