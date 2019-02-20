@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.encoding import python_2_unicode_compatible
+from django.contrib.postgres.fields import JSONField
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.serializers import ValidationError
 
@@ -197,6 +198,7 @@ class Message(models.Model):
     )
     sequence_number = models.IntegerField(null=False, blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
+    metadata = JSONField(default=dict)
     text_content = models.TextField(
         null=True, blank=True, validators=[validate_special_characters]
     )

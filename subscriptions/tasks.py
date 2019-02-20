@@ -269,7 +269,7 @@ def send_message(context):
         "to_identity": subscription.identity,
         "delivered": "false",
         "resend": "true" if "resend_id" in context else "false",
-        "metadata": {},
+        "metadata": message.metadata,
     }
 
     if messageset.channel:
