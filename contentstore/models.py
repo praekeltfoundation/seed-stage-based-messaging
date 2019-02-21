@@ -6,10 +6,10 @@ from datetime import datetime
 
 from croniter import croniter
 from django.conf import settings
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.encoding import python_2_unicode_compatible
-from django.contrib.postgres.fields import JSONField
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.serializers import ValidationError
 
