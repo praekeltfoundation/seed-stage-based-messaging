@@ -46,6 +46,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "messageset",
             "sequence_number",
             "lang",
+            "metadata",
             "text_content",
             "binary_content",
             "created_at",

@@ -546,6 +546,56 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         scheds_all = Schedule.objects.all()
         self.assertEqual(scheds_all.count(), 1)
 
+        # make messages
+        message_data_eng_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data_eng_1)
+        message_data_eng_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "eng_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "This is message 2",
+        }
+        Message.objects.create(**message_data_eng_2)
+        message_data_eng_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "eng_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "This is message 3",
+        }
+        Message.objects.create(**message_data_eng_3)
+        message_data_zul_1 = {
+            "messageset": existing.messageset,
+            "sequence_number": 1,
+            "lang": "zu_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "Ke msg 1",
+        }
+        Message.objects.create(**message_data_zul_1)
+        message_data_zul_2 = {
+            "messageset": existing.messageset,
+            "sequence_number": 2,
+            "lang": "zu_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "Ke msg 2",
+        }
+        Message.objects.create(**message_data_zul_2)
+        message_data_zul_3 = {
+            "messageset": existing.messageset,
+            "sequence_number": 3,
+            "lang": "zu_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "Ke msg 3",
+        }
+        Message.objects.create(**message_data_zul_3)
+
         # mock identity address lookup
         responses.add(
             responses.GET,
@@ -581,57 +631,13 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
                 "content": "This is message 1",
                 "delivered": False,
                 "attempts": 0,
-                "metadata": {},
+                "metadata": message_data_zul_2["metadata"],
                 "created_at": "2016-03-24T13:43:43.614952Z",
                 "updated_at": "2016-03-24T13:43:43.614921Z",
             },
             status=200,
             content_type="application/json",
         )
-
-        # make messages
-        message_data_eng_1 = {
-            "messageset": existing.messageset,
-            "sequence_number": 1,
-            "lang": "eng_ZA",
-            "text_content": "This is message 1",
-        }
-        Message.objects.create(**message_data_eng_1)
-        message_data_eng_2 = {
-            "messageset": existing.messageset,
-            "sequence_number": 2,
-            "lang": "eng_ZA",
-            "text_content": "This is message 2",
-        }
-        Message.objects.create(**message_data_eng_2)
-        message_data_eng_3 = {
-            "messageset": existing.messageset,
-            "sequence_number": 3,
-            "lang": "eng_ZA",
-            "text_content": "This is message 3",
-        }
-        Message.objects.create(**message_data_eng_3)
-        message_data_zul_1 = {
-            "messageset": existing.messageset,
-            "sequence_number": 1,
-            "lang": "zu_ZA",
-            "text_content": "Ke msg 1",
-        }
-        Message.objects.create(**message_data_zul_1)
-        message_data_zul_2 = {
-            "messageset": existing.messageset,
-            "sequence_number": 2,
-            "lang": "zu_ZA",
-            "text_content": "Ke msg 2",
-        }
-        Message.objects.create(**message_data_zul_2)
-        message_data_zul_3 = {
-            "messageset": existing.messageset,
-            "sequence_number": 3,
-            "lang": "zu_ZA",
-            "text_content": "Ke msg 3",
-        }
-        Message.objects.create(**message_data_zul_3)
 
         # Execute
         # Queue subscriptions endpoint
@@ -667,6 +673,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         sender_call = responses.calls[1]
         self.assertEqual(
             json.loads(sender_call.request.body).get("channel"), "CHANNEL1"
+        )
+        self.assertEqual(
+            json.loads(sender_call.request.body).get("metadata"),
+            {"data": "message_data"},
         )
 
         # Check the message_count / set_max count

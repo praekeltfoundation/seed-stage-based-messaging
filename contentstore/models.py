@@ -6,6 +6,7 @@ from datetime import datetime
 
 from croniter import croniter
 from django.conf import settings
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.shortcuts import reverse
 from django.utils.encoding import python_2_unicode_compatible
@@ -197,6 +198,7 @@ class Message(models.Model):
     )
     sequence_number = models.IntegerField(null=False, blank=False)
     lang = models.CharField(max_length=6, null=False, blank=False)
+    metadata = JSONField(default=dict)
     text_content = models.TextField(
         null=True, blank=True, validators=[validate_special_characters]
     )
