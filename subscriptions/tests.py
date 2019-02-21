@@ -674,6 +674,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(
             json.loads(sender_call.request.body).get("channel"), "CHANNEL1"
         )
+        self.assertEqual(
+            json.loads(sender_call.request.body).get("metadata"),
+            {"data": "message_data"},
+        )
 
         # Check the message_count / set_max count
         message_count = existing.messageset.messages.filter(lang=existing.lang).count()
