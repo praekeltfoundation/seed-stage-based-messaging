@@ -596,7 +596,6 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         }
         Message.objects.create(**message_data_zul_3)
 
-
         # mock identity address lookup
         responses.add(
             responses.GET,
