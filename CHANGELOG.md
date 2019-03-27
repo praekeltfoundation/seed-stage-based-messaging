@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.12.1 (2019-03-27)
+### Enhancements
+1. Added metadata field for messages in contentstore
+   ([#136](https://github.com/praekelt/seed-stage-based-messaging/pull/135))
+
 ## 0.12.0 (2019-02-15)
 ### Enhancements
 1. Reduced the amount of database requests for subscription processing
-   ([#133](https://github.com/praekelt/seed-stage-based-messaging/pull/135))
+   ([#135](https://github.com/praekelt/seed-stage-based-messaging/pull/135))
 
 ## 0.11.7 (2019-01-14)
 ### Enhancements
