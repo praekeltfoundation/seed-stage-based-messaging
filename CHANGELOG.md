@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.12.1 (2019-05-09)
+### Fixes
+1. Make sure subscription.updated_at is updated when subscription is processed
+   ([#137](https://github.com/praekelt/seed-stage-based-messaging/pull/137))
+
 ## 0.12.1 (2019-03-27)
 ### Enhancements
 1. Added metadata field for messages in contentstore
-   ([#136](https://github.com/praekelt/seed-stage-based-messaging/pull/135))
+   ([#136](https://github.com/praekelt/seed-stage-based-messaging/pull/136))
 
 ## 0.12.0 (2019-02-15)
 ### Enhancements
