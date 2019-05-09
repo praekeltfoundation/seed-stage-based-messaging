@@ -540,6 +540,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.messageset.channel = "CHANNEL1"
         self.messageset.save()
 
+        Subscription.objects.all().update(
+            updated_at=datetime(2017, 10, 31, tzinfo=timezone.utc)
+        )
+
         # Precheck
         subs_all = Subscription.objects.all()
         self.assertEqual(subs_all.count(), 1)
@@ -663,6 +667,8 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
+        self.assertNotEqual(d.updated_at, datetime(2017, 10, 31, tzinfo=timezone.utc))
+
         subs_all = Subscription.objects.all()
         self.assertEqual(subs_all.count(), 1)
         scheds_all = Schedule.objects.all()
@@ -876,6 +882,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         existing.next_sequence_number = 2  # fast forward to end
         existing.save()
 
+        Subscription.objects.all().update(
+            updated_at=datetime(2017, 10, 31, tzinfo=timezone.utc)
+        )
+
         # add a next message set
         messageset_data = {
             "short_name": "messageset_two_text",
@@ -962,6 +972,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.completed, True)
         self.assertEqual(d.process_status, 2)
         self.assertEqual(len(responses.calls), 2)
+        self.assertNotEqual(d.updated_at, datetime(2017, 10, 31, tzinfo=timezone.utc))
 
         # make sure a subscription is created on the next message set
         subs_active = Subscription.objects.filter(
@@ -1566,6 +1577,10 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # Setup
         existing = self.make_subscription_audio({"next_sequence_number": 2})
 
+        Subscription.objects.all().update(
+            updated_at=datetime(2017, 10, 31, tzinfo=timezone.utc)
+        )
+
         # mock identity address lookup
         responses.add(
             responses.GET,
@@ -1623,6 +1638,7 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         self.assertEqual(d.active, True)
         self.assertEqual(d.completed, False)
         self.assertEqual(d.process_status, 0)
+        self.assertNotEqual(d.updated_at, datetime(2017, 10, 31, tzinfo=timezone.utc))
 
         outbound_call = responses.calls[1]
         self.assertEqual(

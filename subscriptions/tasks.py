@@ -360,8 +360,9 @@ def post_send_process(context):
             subscription.completed = True
             subscription.active = False
             subscription.process_status = 2  # Completed
+            subscription.updated_at = now()
             deserialized_subscription.save(
-                update_fields=("completed", "active", "process_status")
+                update_fields=("completed", "active", "process_status", "updated_at")
             )
             # If next set defined create new subscription
             if messageset.next_set:
@@ -379,9 +380,10 @@ def post_send_process(context):
         subscription.next_sequence_number = F("next_sequence_number") + 1
         logger.debug("setting process status back to 0")
         subscription.process_status = 0
+        subscription.updated_at = now()
         logger.debug("saving subscription")
         deserialized_subscription.save(
-            update_fields=("next_sequence_number", "process_status")
+            update_fields=("next_sequence_number", "process_status", "updated_at")
         )
     # return response
     return "Subscription for %s updated" % str(subscription.id)
@@ -411,7 +413,8 @@ def post_send_process_resend(context):
         resend_request.message_id = message.id
         resend_request.save(update_fields=("outbound", "message_id"))
         subscription.process_status = 0
-        deserialized_subscription.save(update_fields=("process_status",))
+        subscription.updated_at = now()
+        deserialized_subscription.save(update_fields=("process_status", "updated_at"))
 
 
 send_next_message = (
