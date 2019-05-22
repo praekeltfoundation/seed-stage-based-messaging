@@ -189,7 +189,7 @@ def pre_send_process(subscription_id, resend_id=None):
     logger.debug("setting process status to 1")
     subscription.process_status = 1  # in process
     logger.debug("saving subscription")
-    subscription.save(update_fields=("process_status",))
+    subscription.save(update_fields=("process_status", "updated_at"))
 
     return context
 

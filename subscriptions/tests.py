@@ -21,7 +21,13 @@ from seed_stage_based_messaging import test_utils as utils
 
 from . import tasks
 from .models import EstimatedSend, ResendRequest, Subscription, SubscriptionSendFailure
-from .tasks import BaseSendMessage, fire_metric, schedule_disable, scheduled_metrics
+from .tasks import (
+    BaseSendMessage,
+    fire_metric,
+    pre_send_process,
+    schedule_disable,
+    scheduled_metrics,
+)
 
 try:
     from StringIO import StringIO
@@ -530,6 +536,32 @@ class TestSubscriptionsWebhookListener(AuthenticatedAPITestCase):
         # Check
         self.assertTrue(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json(), {"data": ["This field is required."]})
+
+
+class TestPreSendProcessTask(AuthenticatedAPITestCase):
+    def test_pre_send_process(self):
+        subscription = self.make_subscription()
+
+        message_data = {
+            "messageset": subscription.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data)
+
+        Subscription.objects.all().update(
+            updated_at=datetime(2017, 10, 31, tzinfo=timezone.utc)
+        )
+
+        pre_send_process(subscription.id)
+
+        subscription.refresh_from_db()
+        self.assertEqual(subscription.process_status, 1)
+        self.assertNotEqual(
+            subscription.updated_at, datetime(2017, 10, 31, tzinfo=timezone.utc)
+        )
 
 
 class TestSendMessageTask(AuthenticatedAPITestCase):
