@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.12.1 (2019-05-09)
+## 0.12.3 (2019-05-22)
+### Fixes
+1. Make sure subscription.updated_at is updated in pre_send_process too
+   ([#138](https://github.com/praekelt/seed-stage-based-messaging/pull/138))
+
+## 0.12.2 (2019-05-09)
 ### Fixes
 1. Make sure subscription.updated_at is updated when subscription is processed
    ([#137](https://github.com/praekelt/seed-stage-based-messaging/pull/137))
