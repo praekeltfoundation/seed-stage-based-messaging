@@ -11,6 +11,8 @@ from subscriptions.models import BehindSubscription, Subscription
 from subscriptions.tasks import (
     calculate_subscription_lifecycle,
     find_behind_subscriptions,
+    pre_send_process,
+    post_send_process,
 )
 
 
@@ -103,3 +105,62 @@ class TestCalculateSubscriptionLifecycle(TestCase):
         )
         self.assertEqual(behind.expected_messageset, subscription.messageset)
         self.assertEqual(behind.expected_sequence_number, 3)
+
+
+class CachedMessageLookupTests(TestCase):
+    def test_caching_message_lookup_working(self):
+        """
+        Ensure that the second time we make a request, there's no database hit
+        """
+        with disable_signal("post_save", schedule_saved, Schedule):
+            schedule = Schedule.objects.create(minute=0)
+        messageset = MessageSet.objects.create(default_schedule=schedule)
+        for i in range(10):
+            Message.objects.create(
+                messageset=messageset, text_content=str(i), sequence_number=i
+            )
+        subscription_1 = Subscription.objects.create(
+            schedule=schedule, messageset=messageset
+        )
+        subscription_2 = Subscription.objects.create(
+            schedule=schedule, messageset=messageset
+        )
+        subscription_1.created_at = datetime.now() - timedelta(hours=2)
+        subscription_2.created_at = datetime.now() - timedelta(hours=2)
+        subscription_1.save()
+        subscription_2.save()
+
+        with self.assertNumQueries(3):
+            pre_send_process(subscription_1.id)
+
+        with self.assertNumQueries(2):
+            pre_send_process(subscription_2.id)
+
+    def test_cache_message_count_working(self):
+        """
+        Ensure that the second time we do a message_count, there's no database hit
+        """
+        with disable_signal("post_save", schedule_saved, Schedule):
+            schedule = Schedule.objects.create(minute=0)
+        messageset = MessageSet.objects.create(default_schedule=schedule)
+        for i in range(3):
+            Message.objects.create(
+                messageset=messageset, text_content=str(i), sequence_number=i
+            )
+        subscription = Subscription.objects.create(
+            schedule=schedule, messageset=messageset
+        )
+
+        subscription.created_at = datetime.now() - timedelta(hours=2)
+        subscription.save()
+
+        res = pre_send_process(subscription.id)
+
+        with self.assertNumQueries(2):
+            post_send_process(res)
+
+        subscription.process_status = 0
+        subscription.save()
+
+        with self.assertNumQueries(1):
+            post_send_process(res)

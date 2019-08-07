@@ -21,6 +21,8 @@ from seed_services_client.metrics import MetricsApiClient
 from contentstore.models import Message, Schedule
 from seed_stage_based_messaging import utils
 from seed_stage_based_messaging.celery import app
+from django.core.cache import caches
+from functools import partial
 
 from .models import (
     BehindSubscription,
@@ -31,6 +33,8 @@ from .models import (
 )
 
 logger = get_task_logger(__name__)
+
+locmem_cache = caches["locmem"]
 
 
 def get_metric_client(session=None):
@@ -166,10 +170,16 @@ def pre_send_process(subscription_id, resend_id=None):
         if next_sequence_number > 1 and resend_id:
             next_sequence_number -= 1
 
-        message = Message.objects.get(
-            messageset=subscription.messageset,
-            sequence_number=next_sequence_number,
-            lang=subscription.lang,
+        message = locmem_cache.get_or_set(
+            "message:{}:{}:{}".format(
+                subscription.messageset_id, next_sequence_number, subscription.lang
+            ),
+            partial(
+                Message.objects.get,
+                messageset=subscription.messageset,
+                sequence_number=next_sequence_number,
+                lang=subscription.lang,
+            ),
         )
 
         context["message"] = serializers.serialize("json", [message])
@@ -349,7 +359,10 @@ def post_send_process(context):
     messageset = messageset.object
 
     # Get set max
-    set_max = messageset.messages.filter(lang=subscription.lang).count()
+    set_max = locmem_cache.get_or_set(
+        "messageset_size:{}:{}".format(messageset.id, subscription.lang),
+        messageset.messages.filter(lang=subscription.lang).count,
+    )
     logger.debug("set_max calculated - %s" % set_max)
 
     # Compare user position to max
