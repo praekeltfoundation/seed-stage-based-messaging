@@ -3,12 +3,12 @@ try:
 except ImportError:
     from urllib.parse import urlunparse
 
+from datetime import timedelta
 from functools import partial
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.task import Task
 from celery.utils.log import get_task_logger
-from datetime import timedelta
 from demands import HTTPServiceError
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
