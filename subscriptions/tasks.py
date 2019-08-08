@@ -3,6 +3,8 @@ try:
 except ImportError:
     from urllib.parse import urlunparse
 
+from functools import partial
+
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.task import Task
 from celery.utils.log import get_task_logger
@@ -10,6 +12,7 @@ from demands import HTTPServiceError
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.core import serializers
+from django.core.cache import caches
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models import Count, F, Q
@@ -21,8 +24,6 @@ from seed_services_client.metrics import MetricsApiClient
 from contentstore.models import Message, Schedule
 from seed_stage_based_messaging import utils
 from seed_stage_based_messaging.celery import app
-from django.core.cache import caches
-from functools import partial
 
 from .models import (
     BehindSubscription,

@@ -11,8 +11,8 @@ from subscriptions.models import BehindSubscription, Subscription
 from subscriptions.tasks import (
     calculate_subscription_lifecycle,
     find_behind_subscriptions,
-    pre_send_process,
     post_send_process,
+    pre_send_process,
 )
 
 
