@@ -8,6 +8,7 @@ from functools import partial
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.task import Task
 from celery.utils.log import get_task_logger
+from datetime import timedelta
 from demands import HTTPServiceError
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
@@ -36,6 +37,7 @@ from .models import (
 logger = get_task_logger(__name__)
 
 locmem_cache = caches["locmem"]
+redis_cache = caches["redis"]
 
 
 def get_metric_client(session=None):
@@ -132,8 +134,21 @@ class BaseSendMessage(Task):
     soft_time_limit=10,
     time_limit=15,
     base=BaseSendMessage,
+    bind=True,
 )
-def pre_send_process(subscription_id, resend_id=None):
+def pre_send_process(self, subscription_id, resend_id=None):
+    logger.debug("Locking subscription")
+    key = "subscription_lock:{}".format(subscription_id)
+    locked = not redis_cache.add(
+        key,
+        now() + timedelta(seconds=settings.SUBSCRIPTION_LOCK_TIMEOUT),
+        timeout=settings.SUBSCRIPTION_LOCK_TIMEOUT,
+    )
+    if locked:
+        retry_timestamp = redis_cache.get(key)
+        logger.debug("Subscription locked, retrying at {}".format(retry_timestamp))
+        self.retry(eta=retry_timestamp)
+
     context = {}
     if resend_id:
         context["resend_id"] = resend_id
@@ -150,8 +165,7 @@ def pre_send_process(subscription_id, resend_id=None):
             context["error"] = "Subscription has completed"
 
         else:
-            logger.info("Message sending aborted - busy, broken or inactive")
-            # TODO: retry if busy (process_status = 1)
+            logger.info("Message sending aborted - broken or inactive")
             # TODO: be more specific about why it aborted
             context["error"] = (
                 "Message sending aborted, status <%s>" % subscription.process_status
@@ -195,12 +209,6 @@ def pre_send_process(subscription_id, resend_id=None):
         logger.error(error, exc_info=True)
         context["error"] = "Message sending aborted, missing message"
         return context
-
-    # Start processing
-    logger.debug("setting process status to 1")
-    subscription.process_status = 1  # in process
-    logger.debug("saving subscription")
-    subscription.save(update_fields=("process_status", "updated_at"))
 
     return context
 
@@ -392,13 +400,13 @@ def post_send_process(context):
         # More in this set so increment by one
         logger.debug("incrementing next_sequence_number")
         subscription.next_sequence_number = F("next_sequence_number") + 1
-        logger.debug("setting process status back to 0")
-        subscription.process_status = 0
         subscription.updated_at = now()
         logger.debug("saving subscription")
         deserialized_subscription.save(
-            update_fields=("next_sequence_number", "process_status", "updated_at")
+            update_fields=("next_sequence_number", "updated_at")
         )
+    logger.debug("unlocking the subscription")
+    redis_cache.delete("subscription_lock:{}".format(subscription.id))
     # return response
     return "Subscription for %s updated" % str(subscription.id)
 
