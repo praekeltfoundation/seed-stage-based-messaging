@@ -125,8 +125,6 @@ class CachedMessageLookupTests(TestCase):
         subscription_2 = Subscription.objects.create(
             schedule=schedule, messageset=messageset
         )
-        subscription_1.created_at = datetime.now() - timedelta(hours=2)
-        subscription_2.created_at = datetime.now() - timedelta(hours=2)
         subscription_1.save()
         subscription_2.save()
 
@@ -150,8 +148,6 @@ class CachedMessageLookupTests(TestCase):
         subscription = Subscription.objects.create(
             schedule=schedule, messageset=messageset
         )
-
-        subscription.created_at = datetime.now() - timedelta(hours=2)
         subscription.save()
 
         res = pre_send_process(subscription.id)
@@ -159,7 +155,6 @@ class CachedMessageLookupTests(TestCase):
         with self.assertNumQueries(2):
             post_send_process(res)
 
-        subscription.process_status = 0
         subscription.save()
 
         with self.assertNumQueries(1):

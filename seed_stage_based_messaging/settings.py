@@ -149,7 +149,11 @@ RAVEN_CONFIG = {
 
 CACHES = {
     "default": env.cache(default="locmemcache://"),
-    "locmem": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "locmem": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 60,
+        "OPTIONS": {"MAX_ENTRIES": 300000},
+    },
 }
 
 # REST Framework conf defaults
