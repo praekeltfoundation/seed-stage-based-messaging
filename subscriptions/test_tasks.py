@@ -125,8 +125,6 @@ class CachedMessageLookupTests(TestCase):
         subscription_2 = Subscription.objects.create(
             schedule=schedule, messageset=messageset
         )
-        subscription_1.save()
-        subscription_2.save()
 
         with self.assertNumQueries(3):
             pre_send_process(subscription_1.id)
@@ -148,14 +146,11 @@ class CachedMessageLookupTests(TestCase):
         subscription = Subscription.objects.create(
             schedule=schedule, messageset=messageset
         )
-        subscription.save()
 
         res = pre_send_process(subscription.id)
 
         with self.assertNumQueries(2):
             post_send_process(res)
-
-        subscription.save()
 
         with self.assertNumQueries(1):
             post_send_process(res)
