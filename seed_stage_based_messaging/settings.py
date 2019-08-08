@@ -12,11 +12,14 @@ import mimetypes
 import os
 
 import dj_database_url
+import environ
 from kombu import Exchange, Queue
 
 # Support SVG on admin
 mimetypes.add_type("image/svg+xml", ".svg", True)
 mimetypes.add_type("image/svg+xml", ".svgz", True)
+
+env = environ.Env()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -142,6 +145,15 @@ STAGE_BASED_MESSAGING_SENTRY_DSN = os.environ.get(
 RAVEN_CONFIG = {
     # DevOps will supply you with this.
     "dsn": STAGE_BASED_MESSAGING_SENTRY_DSN
+}
+
+CACHES = {
+    "default": env.cache(default="locmemcache://"),
+    "locmem": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 60 * 60,
+        "OPTIONS": {"MAX_ENTRIES": 300000},
+    },
 }
 
 # REST Framework conf defaults

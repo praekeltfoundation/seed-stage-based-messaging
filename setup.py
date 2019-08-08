@@ -49,6 +49,7 @@ setup(
         "croniter==0.3.25",
         "sftpclone==1.2.2",
         "django-prometheus==1.0.15",
+        "django-environ==0.4.5",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
