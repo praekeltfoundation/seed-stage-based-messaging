@@ -6,8 +6,10 @@ from uuid import uuid4
 import pytest
 import pytz
 import responses
+from celery.exceptions import Retry
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import caches
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -38,6 +40,9 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
+
+
+redis_cache = caches["redis"]
 
 
 class APITestCase(TestCase):
@@ -551,17 +556,30 @@ class TestPreSendProcessTask(AuthenticatedAPITestCase):
         }
         Message.objects.create(**message_data)
 
-        Subscription.objects.all().update(
-            updated_at=datetime(2017, 10, 31, tzinfo=timezone.utc)
-        )
-
         pre_send_process(subscription.id)
 
-        subscription.refresh_from_db()
-        self.assertEqual(subscription.process_status, 1)
-        self.assertNotEqual(
-            subscription.updated_at, datetime(2017, 10, 31, tzinfo=timezone.utc)
-        )
+        lock = redis_cache.get("subscription_lock:{}".format(subscription.id))
+        self.assertIsNotNone(lock)
+
+    def test_pre_send_locks(self):
+        """
+        The task should be locked after the first attempt, and retry if it's attempted
+        again
+        """
+        subscription = self.make_subscription()
+
+        message_data = {
+            "messageset": subscription.messageset,
+            "sequence_number": 1,
+            "lang": "eng_ZA",
+            "metadata": {"data": "message_data"},
+            "text_content": "This is message 1",
+        }
+        Message.objects.create(**message_data)
+
+        pre_send_process(subscription.id)
+        with self.assertRaises(Retry):
+            pre_send_process(subscription.id)
 
 
 class TestSendMessageTask(AuthenticatedAPITestCase):
@@ -683,10 +701,9 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # Send next message task
         # 4. Subscription and MessageSet lookup
         # 5. Message lookup
-        # 6. Set process status to 1
         # 7. Find total number of messages in message set
-        # 8. Set processes status to 0 and increment next sequence number
-        with self.assertNumQueries(8):
+        # 8. Increment next sequence number
+        with self.assertNumQueries(7):
             response = self.client.post(
                 existing.schedule.send_url, content_type="application/json"
             )
@@ -720,6 +737,9 @@ class TestSendMessageTask(AuthenticatedAPITestCase):
         # Check the message_count / set_max count
         message_count = existing.messageset.messages.filter(lang=existing.lang).count()
         self.assertEqual(message_count, 3)
+
+        # Check that the lock gets cleared
+        self.assertIsNone(redis_cache.get("subscription_lock:{}".format(existing.id)))
 
     @override_settings()
     @responses.activate

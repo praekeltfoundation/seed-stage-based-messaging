@@ -154,6 +154,7 @@ CACHES = {
         "TIMEOUT": 60 * 60,
         "OPTIONS": {"MAX_ENTRIES": 300000},
     },
+    "redis": env.cache("REDIS_URL", default="locmemcache://"),
 }
 
 # REST Framework conf defaults
@@ -262,3 +263,5 @@ AUDIO_FTP_ROOT = os.environ.get("AUDIO_FTP_ROOT")
 DRY_RUN_MESSAGESETS = map(
     int, filter(bool, os.environ.get("DRY_RUN_MESSAGESETS", "").split(","))
 )
+
+SUBSCRIPTION_LOCK_TIMEOUT: int = env.int("SUBSCRIPTION_LOCK_TIMEOUT", default=60 * 5)

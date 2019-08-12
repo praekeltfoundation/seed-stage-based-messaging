@@ -126,10 +126,10 @@ class CachedMessageLookupTests(TestCase):
             schedule=schedule, messageset=messageset
         )
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             pre_send_process(subscription_1.id)
 
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(1):
             pre_send_process(subscription_2.id)
 
     def test_cache_message_count_working(self):
