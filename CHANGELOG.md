@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.0 (2019-09-03)
+### Fixes
+1. Upgrade dependancies that have security issues
+   ([#139](https://github.com/praekelt/seed-stage-based-messaging/pull/139))
+## Performance
+1. Add caching for message lookup
+   ([#140](https://github.com/praekelt/seed-stage-based-messaging/pull/140))
+1. Move subscription lock to expiring key in cache
+   ([#141](https://github.com/praekelt/seed-stage-based-messaging/pull/141))
+
 ## 0.12.3 (2019-05-22)
 ### Fixes
 1. Make sure subscription.updated_at is updated in pre_send_process too
