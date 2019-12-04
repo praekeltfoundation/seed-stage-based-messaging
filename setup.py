@@ -35,7 +35,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "Django==2.2.4",
+        "Django==2.2.8",
         "djangorestframework==3.9.1",
         "coreapi==2.3.3",
         "dj-database-url==0.5.0",
