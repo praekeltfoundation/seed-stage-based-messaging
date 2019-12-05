@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1 (2019-12-05)
+### Fixes
+1. Upgrade Django to 2.2.8 (Security vulnerability)
+   ([#142](https://github.com/praekelt/seed-stage-based-messaging/pull/142))
+
 ## 0.13.0 (2019-09-03)
 ### Fixes
 1. Upgrade dependancies that have security issues
